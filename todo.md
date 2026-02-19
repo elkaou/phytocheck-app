@@ -1,0 +1,20 @@
+# PhytoCheck TODO
+
+- [x] Configuration du thème (couleurs teal/vert, typographie)
+- [x] Intégration du logo fourni (icon.png)
+- [x] Navigation par onglets (5 onglets : Accueil, Recherche, Stock, Premium, À propos)
+- [x] Écran Accueil avec boutons Scanner, Recherche manuelle, Gestion stock + carte info base de données
+- [x] Préparation des données CSV en JSON embarqué (produits + phrases de risque)
+- [x] Écran Recherche avec saisie manuelle par nom ou AMM
+- [x] Fonctionnalité de scan d'étiquette via appareil photo (OCR)
+- [x] Logique de classification des produits (Homologué, Retiré, CMR, Toxique)
+- [x] Écran Résultat produit avec détails complets et badge de classification
+- [x] Écran Stock avec grille de statistiques et liste des produits stockés
+- [x] Ajout/suppression de produits au stock (AsyncStorage)
+- [x] Compteur de recherches restantes (Freemium : 15 max)
+- [x] Limite de stock (Freemium : 20 produits max)
+- [x] Écran Premium avec comparaison Gratuit/Premium
+- [ ] Intégration react-native-iap pour Google Play Billing et Apple IAP
+- [x] Écran À propos avec version, documents légaux et info base de données
+- [x] Tests unitaires pour la logique de classification et du store
+- [ ] Export PDF du stock (fonctionnalité Premium)

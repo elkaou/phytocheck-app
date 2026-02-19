@@ -32,7 +32,7 @@ const env = {
   appSlug: "phytocheck-app",
   // S3 URL of the app logo - set this to the URL returned by generate_image when creating custom logo
   // Leave empty to use the default icon from assets/images/icon.png
-  logoUrl: "",
+  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663301976938/jaKhoOxxocgRITrI.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
@@ -86,6 +86,19 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    [
+      "expo-camera",
+      {
+        cameraPermission: "Autoriser PhytoCheck à accéder à votre appareil photo pour scanner les étiquettes.",
+      },
+    ],
+    [
+      "expo-image-picker",
+      {
+        photosPermission: "Autoriser PhytoCheck à accéder à vos photos pour identifier les produits.",
+        cameraPermission: "Autoriser PhytoCheck à prendre des photos pour scanner les étiquettes.",
+      },
+    ],
     [
       "expo-audio",
       {
