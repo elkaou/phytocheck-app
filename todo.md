@@ -1,0 +1,36 @@
+# PhytoCheck TODO
+
+- [x] Configuration du thème (couleurs teal/vert, typographie)
+- [x] Intégration du logo fourni (icon.png)
+- [x] Navigation par onglets (5 onglets : Accueil, Recherche, Stock, Premium, À propos)
+- [x] Écran Accueil avec boutons Scanner, Recherche manuelle, Gestion stock + carte info base de données
+- [x] Préparation des données CSV en JSON embarqué (produits + phrases de risque)
+- [x] Écran Recherche avec saisie manuelle par nom ou AMM
+- [x] Fonctionnalité de scan d'étiquette via appareil photo (OCR)
+- [x] Logique de classification des produits (Homologué, Retiré, CMR, Toxique)
+- [x] Écran Résultat produit avec détails complets et badge de classification
+- [x] Écran Stock avec grille de statistiques et liste des produits stockés
+- [x] Ajout/suppression de produits au stock (AsyncStorage)
+- [x] Compteur de recherches restantes (Freemium : 15 max)
+- [x] Limite de stock (Freemium : 20 produits max)
+- [x] Écran Premium avec comparaison Gratuit/Premium
+- [x] Intégration expo-iap pour Google Play Billing et Apple IAP
+- [x] Écran À propos avec version, documents légaux et info base de données
+- [x] Tests unitaires pour la logique de classification et du store
+- [ ] Export PDF du stock (fonctionnalité Premium)
+- [x] Bug : OCR non disponible lors du scan d'étiquette sur appareil physique
+- [x] Bug : Produits multi-AMM (ex: FOLY R) — demander quel AMM quand un produit a plusieurs AMM avec statuts différents
+- [x] Bug : Badge "Homologué Toxique" doit être en orange foncé (pas rouge)
+- [x] Bug : Décompte des recherches doit compter par action de recherche (manuelle ou scan), pas par nombre de résultats
+- [x] Ajouter champ quantité au stock avec possibilité d'incrémenter si produit déjà en stock
+- [x] Bug : Recherche ne trouve pas les produits par noms secondaires (ex: BELKAR)
+- [x] Afficher le nom secondaire trouvé dans les résultats de recherche
+- [x] Intégration expo-iap pour Google Play Billing et Apple IAP
+- [x] Créer le service IAP (connexion store, achat, restauration, vérification)
+- [x] Intégrer les boutons d'achat réels dans l'écran Premium
+- [x] Configurer les product IDs pour abonnement/achat unique Premium (phytocheck_premium)
+- [x] Installer et configurer EAS CLI (v18.0.1)
+- [x] Créer eas.json avec profils development, preview et production
+- [x] Configurer le keystore Android (via eas credentials)
+- [x] Configurer les credentials iOS (Apple Team ID intégré)
+- [x] Documenter les instructions de build et publication (BUILD_GUIDE.md)
