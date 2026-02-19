@@ -1,31 +1,62 @@
-import { ScrollView, Text, View, Pressable, StyleSheet, Alert } from "react-native";
+import { ScrollView, Text, View, Pressable, StyleSheet, Alert, ActivityIndicator, Platform } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useApp } from "@/lib/app-context";
+import { useIAPContext } from "@/lib/iap-context";
 
 export default function PremiumScreen() {
-  const { isPremium, setPremium } = useApp();
+  const { isPremium: appIsPremium, setPremium } = useApp();
+  const {
+    connected,
+    purchasing,
+    isPremium: iapIsPremium,
+    purchasePremium,
+    restorePurchases,
+    premiumPrice,
+    platformSupported,
+  } = useIAPContext();
 
-  const handlePurchase = () => {
-    Alert.alert(
-      "PhytoCheck Premium",
-      "L'achat in-app sera disponible via Google Play / App Store une fois l'application publiée. Pour le moment, vous pouvez activer le mode Premium pour tester.",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Activer Premium (test)",
-          onPress: () => setPremium(true),
-        },
-      ]
-    );
+  // L'utilisateur est premium si l'un des deux systèmes le confirme
+  const isPremium = appIsPremium || iapIsPremium;
+
+  const handlePurchase = async () => {
+    if (platformSupported && connected) {
+      // Achat réel via Google Play / App Store
+      await purchasePremium();
+    } else {
+      // Fallback : mode test (web ou service non disponible)
+      Alert.alert(
+        "PhytoCheck Premium",
+        platformSupported
+          ? "Le service d'achat n'est pas disponible actuellement. Vérifiez votre connexion internet et réessayez."
+          : "L'achat in-app n'est pas disponible sur cette plateforme. Utilisez l'application sur Android ou iOS pour acheter Premium.",
+        [
+          { text: "Annuler", style: "cancel" },
+          ...(platformSupported
+            ? []
+            : [
+                {
+                  text: "Activer Premium (test)",
+                  onPress: () => setPremium(true),
+                },
+              ]),
+        ]
+      );
+    }
   };
 
-  const handleRestore = () => {
-    Alert.alert(
-      "Restaurer l'achat",
-      "La restauration des achats sera disponible via Google Play / App Store une fois l'application publiée.",
-      [{ text: "OK" }]
-    );
+  const handleRestore = async () => {
+    if (platformSupported && connected) {
+      await restorePurchases();
+    } else {
+      Alert.alert(
+        "Restaurer l'achat",
+        platformSupported
+          ? "Le service d'achat n'est pas disponible actuellement. Vérifiez votre connexion internet."
+          : "La restauration des achats n'est disponible que sur Android et iOS.",
+        [{ text: "OK" }]
+      );
+    }
   };
 
   if (isPremium) {
@@ -45,15 +76,18 @@ export default function PremiumScreen() {
               Recherches illimitées, stock illimité et export PDF disponibles.
             </Text>
           </View>
-          <Pressable
-            style={({ pressed }) => [
-              styles.deactivateButton,
-              pressed && { opacity: 0.7 },
-            ]}
-            onPress={() => setPremium(false)}
-          >
-            <Text style={styles.deactivateText}>Désactiver Premium (test)</Text>
-          </Pressable>
+          {/* Bouton de désactivation uniquement en mode test (web) */}
+          {!platformSupported && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.deactivateButton,
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={() => setPremium(false)}
+            >
+              <Text style={styles.deactivateText}>Désactiver Premium (test)</Text>
+            </Pressable>
+          )}
         </View>
       </ScreenContainer>
     );
@@ -153,17 +187,41 @@ export default function PremiumScreen() {
             </View>
           </View>
 
+          {/* Prix */}
+          <View style={styles.priceCard}>
+            <Text style={styles.priceLabel}>Achat unique</Text>
+            <Text style={styles.priceValue}>{premiumPrice}</Text>
+            <Text style={styles.priceNote}>Paiement unique, pas d'abonnement</Text>
+          </View>
+
           {/* Purchase button */}
           <Pressable
             style={({ pressed }) => [
               styles.purchaseButton,
-              pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+              pressed && !purchasing && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+              purchasing && { opacity: 0.7 },
             ]}
             onPress={handlePurchase}
+            disabled={purchasing}
           >
-            <IconSymbol name="star.fill" size={22} color="#FFFFFF" />
-            <Text style={styles.purchaseButtonText}>Passer à Premium</Text>
+            {purchasing ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <IconSymbol name="star.fill" size={22} color="#FFFFFF" />
+            )}
+            <Text style={styles.purchaseButtonText}>
+              {purchasing ? "Achat en cours..." : "Passer à Premium"}
+            </Text>
           </Pressable>
+
+          {/* Statut connexion IAP */}
+          {platformSupported && (
+            <Text style={styles.connectionStatus}>
+              {connected
+                ? "Service d'achat connecté"
+                : "Connexion au service d'achat..."}
+            </Text>
+          )}
 
           {/* Restore */}
           <Pressable
@@ -175,6 +233,13 @@ export default function PremiumScreen() {
           >
             <Text style={styles.restoreText}>Restaurer un achat</Text>
           </Pressable>
+
+          {/* Mentions légales */}
+          <Text style={styles.legalText}>
+            {Platform.OS === "ios"
+              ? "Le paiement sera débité de votre compte Apple ID lors de la confirmation de l'achat. L'abonnement se renouvelle automatiquement sauf si vous le désactivez au moins 24h avant la fin de la période en cours."
+              : "Le paiement sera traité via votre compte Google Play. Achat unique sans renouvellement automatique."}
+          </Text>
         </ScrollView>
       </View>
     </ScreenContainer>
@@ -250,6 +315,30 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1A1A1A",
   },
+  priceCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#1A8A7D",
+  },
+  priceLabel: {
+    fontSize: 14,
+    color: "#687076",
+    marginBottom: 4,
+  },
+  priceValue: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#1A8A7D",
+    marginBottom: 4,
+  },
+  priceNote: {
+    fontSize: 13,
+    color: "#687076",
+  },
   purchaseButton: {
     backgroundColor: "#1A8A7D",
     borderRadius: 14,
@@ -265,6 +354,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFFFFF",
   },
+  connectionStatus: {
+    fontSize: 12,
+    color: "#9BA1A6",
+    textAlign: "center",
+    marginTop: 8,
+  },
   restoreButton: {
     marginTop: 16,
     alignItems: "center",
@@ -274,6 +369,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#1A8A7D",
     textDecorationLine: "underline",
+  },
+  legalText: {
+    fontSize: 11,
+    color: "#9BA1A6",
+    textAlign: "center",
+    lineHeight: 16,
+    marginTop: 16,
+    paddingHorizontal: 12,
   },
   activeCard: {
     backgroundColor: "#FFFFFF",

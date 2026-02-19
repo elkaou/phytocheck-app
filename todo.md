@@ -14,7 +14,7 @@
 - [x] Compteur de recherches restantes (Freemium : 15 max)
 - [x] Limite de stock (Freemium : 20 produits max)
 - [x] Écran Premium avec comparaison Gratuit/Premium
-- [ ] Intégration react-native-iap pour Google Play Billing et Apple IAP
+- [x] Intégration expo-iap pour Google Play Billing et Apple IAP
 - [x] Écran À propos avec version, documents légaux et info base de données
 - [x] Tests unitaires pour la logique de classification et du store
 - [ ] Export PDF du stock (fonctionnalité Premium)
@@ -25,3 +25,7 @@
 - [x] Ajouter champ quantité au stock avec possibilité d'incrémenter si produit déjà en stock
 - [x] Bug : Recherche ne trouve pas les produits par noms secondaires (ex: BELKAR)
 - [x] Afficher le nom secondaire trouvé dans les résultats de recherche
+- [x] Intégration expo-iap pour Google Play Billing et Apple IAP
+- [x] Créer le service IAP (connexion store, achat, restauration, vérification)
+- [x] Intégrer les boutons d'achat réels dans l'écran Premium
+- [x] Configurer les product IDs pour abonnement/achat unique Premium (phytocheck_premium)
