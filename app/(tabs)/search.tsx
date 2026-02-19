@@ -94,9 +94,20 @@ export default function SearchScreen() {
         }
       >
         <View style={styles.resultCardContent}>
-          <Text style={styles.resultName} numberOfLines={1}>
-            {item.nom}
-          </Text>
+          {item.matchedName ? (
+            <>
+              <Text style={styles.resultName} numberOfLines={1}>
+                {item.matchedName}
+              </Text>
+              <Text style={styles.resultSecondary} numberOfLines={1}>
+                (Nom principal : {item.nom})
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.resultName} numberOfLines={1}>
+              {item.nom}
+            </Text>
+          )}
           <Text style={styles.resultAMM}>AMM : {item.amm}</Text>
           <Text style={styles.resultInfo} numberOfLines={1}>
             {item.titulaire}
@@ -335,6 +346,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#1A1A1A",
+  },
+  resultSecondary: {
+    fontSize: 12,
+    color: "#1A8A7D",
+    fontStyle: "italic",
+    marginTop: 1,
   },
   resultAMM: {
     fontSize: 13,

@@ -3,6 +3,7 @@ import {
   getStock,
   addToStock,
   removeFromStock,
+  updateStockQuantity,
   getSearchCount,
   incrementSearchCount,
   getIsPremium,
@@ -22,9 +23,11 @@ interface AppContextType {
   isPremium: boolean;
   remainingSearches: number;
   stockLimit: number;
-  addProductToStock: (product: ClassifiedProduct) => Promise<boolean>;
+  addProductToStock: (product: ClassifiedProduct, quantity?: number) => Promise<"added" | "incremented" | "limit" | "error">;
   removeProductFromStock: (amm: string) => Promise<boolean>;
+  updateProductQuantity: (amm: string, quantity: number) => Promise<boolean>;
   isProductInStock: (amm: string) => boolean;
+  getProductQuantity: (amm: string) => number;
   performSearch: () => Promise<boolean>;
   setPremium: (value: boolean) => Promise<void>;
   refreshStock: () => Promise<void>;
@@ -73,14 +76,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addProductToStock = useCallback(
-    async (product: ClassifiedProduct): Promise<boolean> => {
-      const success = await addToStock(product);
+    async (product: ClassifiedProduct, quantity: number = 1): Promise<"added" | "incremented" | "limit" | "error"> => {
+      const result = await addToStock(product, quantity);
+      if (result === "added" || result === "incremented") {
+        await refreshStock();
+      }
+      return result;
+    },
+    [refreshStock]
+  );
+
+  const updateProductQuantity = useCallback(
+    async (amm: string, quantity: number): Promise<boolean> => {
+      const success = await updateStockQuantity(amm, quantity);
       if (success) {
         await refreshStock();
       }
       return success;
     },
     [refreshStock]
+  );
+
+  const getProductQuantity = useCallback(
+    (amm: string): number => {
+      const item = stock.find((i) => i.amm === amm);
+      return item?.quantite || 0;
+    },
+    [stock]
   );
 
   const removeProductFromStock = useCallback(
@@ -126,7 +148,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         stockLimit,
         addProductToStock,
         removeProductFromStock,
+        updateProductQuantity,
         isProductInStock,
+        getProductQuantity,
         performSearch,
         setPremium,
         refreshStock,

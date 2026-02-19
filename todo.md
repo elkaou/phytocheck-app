@@ -22,3 +22,6 @@
 - [x] Bug : Produits multi-AMM (ex: FOLY R) — demander quel AMM quand un produit a plusieurs AMM avec statuts différents
 - [x] Bug : Badge "Homologué Toxique" doit être en orange foncé (pas rouge)
 - [x] Bug : Décompte des recherches doit compter par action de recherche (manuelle ou scan), pas par nombre de résultats
+- [x] Ajouter champ quantité au stock avec possibilité d'incrémenter si produit déjà en stock
+- [x] Bug : Recherche ne trouve pas les produits par noms secondaires (ex: BELKAR)
+- [x] Afficher le nom secondaire trouvé dans les résultats de recherche

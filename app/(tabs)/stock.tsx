@@ -129,30 +129,37 @@ export default function StockScreen() {
                     {item.nom}
                   </Text>
                   <Text style={styles.stockAMM}>AMM : {item.amm}</Text>
-                  <View
-                    style={[
-                      styles.stockBadge,
-                      {
-                        backgroundColor: getClassificationBgColor(
-                          item.classification as ProductClassification
-                        ),
-                      },
-                    ]}
-                  >
-                    <Text
+                  <View style={styles.stockCardBottom}>
+                    <View
                       style={[
-                        styles.stockBadgeText,
+                        styles.stockBadge,
                         {
-                          color: getClassificationColor(
+                          backgroundColor: getClassificationBgColor(
                             item.classification as ProductClassification
                           ),
                         },
                       ]}
                     >
-                      {getClassificationLabel(
-                        item.classification as ProductClassification
-                      )}
-                    </Text>
+                      <Text
+                        style={[
+                          styles.stockBadgeText,
+                          {
+                            color: getClassificationColor(
+                              item.classification as ProductClassification
+                            ),
+                          },
+                        ]}
+                      >
+                        {getClassificationLabel(
+                          item.classification as ProductClassification
+                        )}
+                      </Text>
+                    </View>
+                    <View style={styles.stockQuantityBadge}>
+                      <Text style={styles.stockQuantityText}>
+                        Qté : {item.quantite || 1}
+                      </Text>
+                    </View>
                   </View>
                 </View>
                 <Pressable
@@ -257,16 +264,31 @@ const styles = StyleSheet.create({
     color: "#687076",
     marginTop: 2,
   },
+  stockCardBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 6,
+  },
   stockBadge: {
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    alignSelf: "flex-start",
-    marginTop: 6,
   },
   stockBadgeText: {
     fontSize: 11,
     fontWeight: "bold",
+  },
+  stockQuantityBadge: {
+    backgroundColor: "#F0F4F8",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  stockQuantityText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#1A8A7D",
   },
   deleteButton: {
     width: 36,

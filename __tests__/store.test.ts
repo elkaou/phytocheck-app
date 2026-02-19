@@ -81,21 +81,23 @@ describe("store", () => {
     it("should add a product to stock", async () => {
       const product = makeProduct("1234567");
       const result = await addToStock(product);
-      expect(result).toBe(true);
+      expect(result).toBe("added");
 
       const stock = await getStock();
       expect(stock.length).toBe(1);
       expect(stock[0].amm).toBe("1234567");
+      expect(stock[0].quantite).toBe(1);
     });
 
-    it("should not add duplicate product", async () => {
+    it("should increment quantity for duplicate product", async () => {
       const product = makeProduct("1234567");
       await addToStock(product);
       const result = await addToStock(product);
-      expect(result).toBe(false);
+      expect(result).toBe("incremented");
 
       const stock = await getStock();
       expect(stock.length).toBe(1);
+      expect(stock[0].quantite).toBe(2);
     });
 
     it("should remove a product from stock", async () => {
@@ -113,7 +115,7 @@ describe("store", () => {
         await addToStock(makeProduct(`AMM${i}`));
       }
       const result = await addToStock(makeProduct("EXTRA"));
-      expect(result).toBe(false);
+      expect(result).toBe("limit");
 
       const stock = await getStock();
       expect(stock.length).toBe(FREE_STOCK_LIMIT);

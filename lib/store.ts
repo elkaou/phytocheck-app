@@ -20,6 +20,7 @@ export interface StockItem {
   titulaire: string;
   fonctions: string;
   etat: string;
+  quantite: number;
 }
 
 // Get stock
@@ -32,20 +33,24 @@ export async function getStock(): Promise<StockItem[]> {
   }
 }
 
-// Add to stock
-export async function addToStock(product: ClassifiedProduct): Promise<boolean> {
+// Add to stock (or increment quantity if already present)
+export async function addToStock(product: ClassifiedProduct, quantity: number = 1): Promise<"added" | "incremented" | "limit" | "error"> {
   try {
     const stock = await getStock();
     const isPremium = await getIsPremium();
 
-    // Check limit
-    if (!isPremium && stock.length >= FREE_STOCK_LIMIT) {
-      return false;
+    // Check if already in stock
+    const existingIndex = stock.findIndex((item) => item.amm === product.amm);
+    if (existingIndex >= 0) {
+      // Increment quantity
+      stock[existingIndex].quantite = (stock[existingIndex].quantite || 1) + quantity;
+      await AsyncStorage.setItem(STORAGE_KEYS.STOCK, JSON.stringify(stock));
+      return "incremented";
     }
 
-    // Check if already in stock
-    if (stock.some((item) => item.amm === product.amm)) {
-      return false;
+    // Check limit for new products
+    if (!isPremium && stock.length >= FREE_STOCK_LIMIT) {
+      return "limit";
     }
 
     const item: StockItem = {
@@ -56,9 +61,27 @@ export async function addToStock(product: ClassifiedProduct): Promise<boolean> {
       titulaire: product.titulaire,
       fonctions: product.fonctions,
       etat: product.etat,
+      quantite: quantity,
     };
 
     stock.push(item);
+    await AsyncStorage.setItem(STORAGE_KEYS.STOCK, JSON.stringify(stock));
+    return "added";
+  } catch {
+    return "error";
+  }
+}
+
+// Update quantity for a stock item
+export async function updateStockQuantity(amm: string, quantity: number): Promise<boolean> {
+  try {
+    const stock = await getStock();
+    const index = stock.findIndex((item) => item.amm === amm);
+    if (index < 0) return false;
+    stock[index].quantite = Math.max(0, quantity);
+    if (stock[index].quantite === 0) {
+      stock.splice(index, 1);
+    }
     await AsyncStorage.setItem(STORAGE_KEYS.STOCK, JSON.stringify(stock));
     return true;
   } catch {

@@ -22,7 +22,7 @@ import { useApp } from "@/lib/app-context";
 export default function ProductDetailScreen() {
   const { amm } = useLocalSearchParams<{ amm: string }>();
   const router = useRouter();
-  const { addProductToStock, isProductInStock, isPremium, stock } = useApp();
+  const { addProductToStock, isProductInStock, getProductQuantity, updateProductQuantity, isPremium, stock } = useApp();
 
   const [product, setProduct] = useState<ClassifiedProduct | null>(null);
   const inStock = amm ? isProductInStock(amm) : false;
@@ -34,23 +34,23 @@ export default function ProductDetailScreen() {
     }
   }, [amm]);
 
+  const currentQuantity = amm ? getProductQuantity(amm) : 0;
+
   const handleAddToStock = useCallback(async () => {
     if (!product) return;
 
-    const success = await addProductToStock(product);
-    if (success) {
-      Alert.alert("Ajouté", `"${product.nom}" a été ajouté à votre stock.`);
-    } else {
-      if (inStock) {
-        Alert.alert("Déjà en stock", "Ce produit est déjà dans votre stock.");
-      } else {
-        Alert.alert(
-          "Limite atteinte",
-          "Vous avez atteint la limite de 20 produits en stock. Passez à Premium pour un stock illimité."
-        );
-      }
+    const result = await addProductToStock(product, 1);
+    if (result === "added") {
+      Alert.alert("Ajouté", `"${product.nom}" a été ajouté à votre stock (quantité : 1).`);
+    } else if (result === "incremented") {
+      Alert.alert("Quantité mise à jour", `Quantité de "${product.nom}" augmentée.`);
+    } else if (result === "limit") {
+      Alert.alert(
+        "Limite atteinte",
+        "Vous avez atteint la limite de 20 produits en stock. Passez à Premium pour un stock illimité."
+      );
     }
-  }, [product, addProductToStock, inStock]);
+  }, [product, addProductToStock]);
 
   if (!product) {
     return (
@@ -206,11 +206,51 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
-          {/* Add to stock button */}
+          {/* Stock section */}
           {inStock ? (
-            <View style={styles.inStockBadge}>
-              <IconSymbol name="checkmark.circle.fill" size={20} color="#22C55E" />
-              <Text style={styles.inStockText}>Déjà dans votre stock</Text>
+            <View style={styles.stockSection}>
+              <View style={styles.inStockBadge}>
+                <IconSymbol name="checkmark.circle.fill" size={20} color="#22C55E" />
+                <Text style={styles.inStockText}>En stock (quantité : {currentQuantity})</Text>
+              </View>
+              <View style={styles.quantityRow}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.quantityButton,
+                    pressed && { opacity: 0.7 },
+                  ]}
+                  onPress={async () => {
+                    if (amm && currentQuantity > 1) {
+                      await updateProductQuantity(amm, currentQuantity - 1);
+                    } else if (amm && currentQuantity === 1) {
+                      Alert.alert(
+                        "Retirer du stock",
+                        "La quantité sera 0 et le produit sera retiré du stock.",
+                        [
+                          { text: "Annuler", style: "cancel" },
+                          {
+                            text: "Retirer",
+                            style: "destructive",
+                            onPress: () => updateProductQuantity(amm, 0),
+                          },
+                        ]
+                      );
+                    }
+                  }}
+                >
+                  <Text style={styles.quantityButtonText}>−</Text>
+                </Pressable>
+                <Text style={styles.quantityValue}>{currentQuantity}</Text>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.quantityButton,
+                    pressed && { opacity: 0.7 },
+                  ]}
+                  onPress={handleAddToStock}
+                >
+                  <Text style={styles.quantityButtonText}>+</Text>
+                </Pressable>
+              </View>
             </View>
           ) : (
             <Pressable
@@ -387,13 +427,16 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFFFFF",
   },
+  stockSection: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    gap: 12,
+  },
   inStockBadge: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    marginHorizontal: 20,
-    marginTop: 20,
     paddingVertical: 16,
     backgroundColor: "#F0FDF4",
     borderRadius: 14,
@@ -404,5 +447,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#22C55E",
+  },
+  quantityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    paddingVertical: 12,
+  },
+  quantityButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#1A8A7D",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quantityButtonText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  quantityValue: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#1A1A1A",
+    minWidth: 40,
+    textAlign: "center",
   },
 });

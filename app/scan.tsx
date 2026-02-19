@@ -85,9 +85,27 @@ export default function ScanScreen() {
         });
 
         if (result.success && (result.nom || result.amm)) {
-          // Search by name to find all AMMs for this product
-          const searchQuery = result.nom || result.amm;
-          const results = searchProducts(searchQuery);
+          // Try searching by name first, then by AMM
+          let results = searchProducts(result.nom || "");
+          let searchQuery = result.nom || "";
+
+          // If no results by name, try by AMM
+          if (results.length === 0 && result.amm) {
+            results = searchProducts(result.amm);
+            searchQuery = result.amm;
+          }
+
+          // If still no results and name has multiple words, try each word
+          if (results.length === 0 && result.nom) {
+            const words = result.nom.split(/\s+/).filter((w: string) => w.length >= 3);
+            for (const word of words) {
+              results = searchProducts(word);
+              if (results.length > 0) {
+                searchQuery = word;
+                break;
+              }
+            }
+          }
 
           // Check if multiple AMMs exist for the same product name
           const uniqueAMMs = [...new Set(results.map((r) => r.amm))];

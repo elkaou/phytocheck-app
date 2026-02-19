@@ -32,6 +32,7 @@ export interface ClassifiedProduct extends Product {
   riskPhrases: RiskPhrase[];
   isCMR: boolean;
   isToxique: boolean;
+  matchedName?: string; // Nom secondaire par lequel le produit a été trouvé
 }
 
 // CMR codes: Cancérogène, Mutagène, Reprotoxique
@@ -113,12 +114,32 @@ export function searchProducts(query: string, limit = 50): ClassifiedProduct[] {
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
 
-    if (
-      normalizedName.includes(normalizedQuery) ||
-      normalizedAMM.includes(normalizedQuery) ||
-      normalizedSecondary.includes(normalizedQuery)
-    ) {
-      results.push(classifyProduct(product));
+    let matched = false;
+    let matchedSecondaryName: string | undefined;
+
+    if (normalizedName.includes(normalizedQuery) || normalizedAMM.includes(normalizedQuery)) {
+      matched = true;
+    } else if (normalizedSecondary.includes(normalizedQuery)) {
+      matched = true;
+      // Find which secondary name matched
+      if (product.nomsSecondaires) {
+        const secondaryNames = product.nomsSecondaires.split(" | ");
+        for (const sn of secondaryNames) {
+          const normalizedSN = sn.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          if (normalizedSN.includes(normalizedQuery)) {
+            matchedSecondaryName = sn.trim();
+            break;
+          }
+        }
+      }
+    }
+
+    if (matched) {
+      const classified = classifyProduct(product);
+      if (matchedSecondaryName) {
+        classified.matchedName = matchedSecondaryName;
+      }
+      results.push(classified);
     }
   }
 
