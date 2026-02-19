@@ -107,7 +107,7 @@ describe("product-service", () => {
 
   describe("getClassificationLabel", () => {
     it("should return correct labels", () => {
-      expect(getClassificationLabel("homologue")).toBe("Homologué");
+      expect(getClassificationLabel("homologue")).toBe("Homologué non CMR, non toxique");
       expect(getClassificationLabel("retire")).toBe("Retiré");
       expect(getClassificationLabel("homologue_cmr")).toBe("Homologué — CMR");
       expect(getClassificationLabel("homologue_toxique")).toBe("Homologué — Toxique");

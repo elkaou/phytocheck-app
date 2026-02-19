@@ -157,7 +157,7 @@ export function getProductByAMM(amm: string): ClassifiedProduct | null {
 export function getClassificationLabel(classification: ProductClassification): string {
   switch (classification) {
     case "homologue":
-      return "Homologué";
+      return "Homologué non CMR, non toxique";
     case "retire":
       return "Retiré";
     case "homologue_cmr":

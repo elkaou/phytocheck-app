@@ -42,3 +42,5 @@
 - [x] Bug : Erreur d'analyse lors du scan photo (erreur de connexion internet)
 - [x] Ajouter saisie de quantité et unité (L ou Kg) lors de l'ajout au stock
 - [x] Ajouter focus automatique sur les résultats après recherche manuelle ou scan
+- [x] Modifier le label "Homologués" en "Homologués non CMR, non toxique" dans l'écran stock
+- [x] Ajouter des filtres cliquables sur les cartes statistiques (Homologués, PPNU, CMR, Toxiques)
