@@ -150,9 +150,20 @@ export default function ScanScreen() {
         }
       } catch (error: any) {
         console.error("[Scan] Error:", error);
+        const errorMessage = error?.message || error?.toString() || "Erreur inconnue";
+        console.error("[Scan] Error details:", errorMessage);
+        
+        // More specific error messages
+        let userMessage = "Une erreur est survenue lors de l'analyse de l'image.";
+        if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorMessage.includes("timeout")) {
+          userMessage = "Erreur de connexion. Vérifiez votre connexion internet et réessayez.";
+        } else if (errorMessage.includes("TRPCClientError")) {
+          userMessage = "Erreur de communication avec le serveur. Vérifiez votre connexion et réessayez.";
+        }
+        
         Alert.alert(
           "Erreur d'analyse",
-          "Une erreur est survenue lors de l'analyse de l'image. Vérifiez votre connexion internet et réessayez.",
+          userMessage,
           [{ text: "OK", onPress: () => setIsProcessing(false) }]
         );
       } finally {

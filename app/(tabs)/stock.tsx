@@ -157,7 +157,7 @@ export default function StockScreen() {
                     </View>
                     <View style={styles.stockQuantityBadge}>
                       <Text style={styles.stockQuantityText}>
-                        Qté : {item.quantite || 1}
+                        Qté : {item.quantite || 1} {item.unite || "L"}
                       </Text>
                     </View>
                   </View>

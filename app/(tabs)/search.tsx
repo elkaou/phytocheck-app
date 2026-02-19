@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   ScrollView,
   Text,
@@ -33,6 +33,8 @@ export default function SearchScreen() {
   const [results, setResults] = useState<ClassifiedProduct[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const resultsRef = useRef<View>(null);
 
   const doSearch = useCallback((searchQuery: string) => {
     setIsSearching(true);
@@ -41,6 +43,18 @@ export default function SearchScreen() {
       setResults(found);
       setHasSearched(true);
       setIsSearching(false);
+      
+      // Scroll to results after a short delay
+      setTimeout(() => {
+        resultsRef.current?.measureLayout(
+          // @ts-ignore
+          scrollViewRef.current?.getInnerViewNode?.(),
+          (_x: number, y: number) => {
+            scrollViewRef.current?.scrollTo({ y: y - 20, animated: true });
+          },
+          () => {}
+        );
+      }, 200);
     }, 100);
   }, []);
 
@@ -150,6 +164,7 @@ export default function SearchScreen() {
 
       <View style={styles.content}>
         <ScrollView
+          ref={scrollViewRef}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -213,7 +228,7 @@ export default function SearchScreen() {
           )}
 
           {!isSearching && results.length > 0 && (
-            <View style={{ marginTop: 20 }}>
+            <View ref={resultsRef} style={{ marginTop: 20 }}>
               <Text style={styles.resultsCount}>
                 {results.length} résultat{results.length > 1 ? "s" : ""}
               </Text>

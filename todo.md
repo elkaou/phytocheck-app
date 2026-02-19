@@ -39,3 +39,6 @@
 - [x] Mettre à jour le service IAP pour supporter les subscriptions
 - [x] Mettre à jour l'écran Premium avec les deux options d'abonnement
 - [x] Mettre à jour la documentation BUILD_GUIDE.md avec les IDs d'abonnements
+- [x] Bug : Erreur d'analyse lors du scan photo (erreur de connexion internet)
+- [x] Ajouter saisie de quantité et unité (L ou Kg) lors de l'ajout au stock
+- [x] Ajouter focus automatique sur les résultats après recherche manuelle ou scan

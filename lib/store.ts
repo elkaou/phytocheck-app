@@ -21,6 +21,7 @@ export interface StockItem {
   fonctions: string;
   etat: string;
   quantite: number;
+  unite: "L" | "Kg"; // Unit for quantity
 }
 
 // Get stock
@@ -34,7 +35,7 @@ export async function getStock(): Promise<StockItem[]> {
 }
 
 // Add to stock (or increment quantity if already present)
-export async function addToStock(product: ClassifiedProduct, quantity: number = 1): Promise<"added" | "incremented" | "limit" | "error"> {
+export async function addToStock(product: ClassifiedProduct, quantity: number = 1, unite: "L" | "Kg" = "L"): Promise<"added" | "incremented" | "limit" | "error"> {
   try {
     const stock = await getStock();
     const isPremium = await getIsPremium();
@@ -62,6 +63,7 @@ export async function addToStock(product: ClassifiedProduct, quantity: number = 
       fonctions: product.fonctions,
       etat: product.etat,
       quantite: quantity,
+      unite: unite,
     };
 
     stock.push(item);
