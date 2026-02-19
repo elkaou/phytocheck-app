@@ -1,0 +1,29 @@
+cd..
+cd..
+cd testapp
+cd expotest
+cd expoultraminimal
+
+npx expo start --clear
+
+git init
+git add .
+git commit -m "PhytoCheck v1.0.0 - Application complète"
+git branch -M main
+git remote add origin https://github.com/elkaou/phytocheck-app.git
+git push -u origin main
+
+
+
+
+J'ai besoin de créer une application appelée "PhytoCheck" valide pour android et ios, compatible avec billing google avec une version "Freemium" et une version "Premium".
+ (Billing Google n'est pas forcément compatible avec react-native, à vérifier). Le but de l'application est de savoir si un produit phytosanitaire est homologué ou retiré. 
+L'application doit trouver le nom commercial et l'AMM d'un produit phytosanitaire en lisant l'étiquette d'un bidon via l'appareil photo ou en le saisissant manuellement.
+ Pour cela, je fournis un fichier CSV dans lequel tous les noms de produits (principal ou secondaire) sont référencés avec une AMM en face et un autre fichier CSV Phrases de risques (CMR, Toxique).
+ Le but étant ensuite de savoir si le produit est homologué, d'indiquer clairement au résultat, si le produit est CMR, toxique ou ni l'un ni l'autre mais homologué tout de même.
+
+J'ai besoin de créer une application appelée "PhytoCheck" valide pour android et ios, compatible avec billing google avec une version "Freemium" et une version "Premium". (Billing Google n'est pas forcément compatible avec react-native, à vérifier). Le but de l'application est de savoir si un produit phytosanitaire est homologué ou retiré. 
+L'application doit trouver le nom commercial et l'AMM d'un produit phytosanitaire en lisant l'étiquette d'un bidon via l'appareil photo ou en le saisissant manuellement. Pour cela, je fournis un fichier CSV dans lequel tous les noms de produits (principal ou secondaire) sont référencés avec une AMM en face et un autre fichier CSV Phrases de risques (CMR, Toxique). Le but étant ensuite de savoir si le produit est homologué, d'indiquer clairement au résultat, si le produit est CMR, toxique ou ni l'un ni l'autre mais homologué tout de même.
+Suite au classement du produit (Retiré, Homologué, Homologué CMR, Homologué toxique), pouvoir les mettre en stocks avec un onglet "stock" 
+
+Important : je possède déjà un keystore pour Google et un id apple.

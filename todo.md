@@ -34,3 +34,4 @@
 - [x] Configurer le keystore Android (via eas credentials)
 - [x] Configurer les credentials iOS (Apple Team ID intégré)
 - [x] Documenter les instructions de build et publication (BUILD_GUIDE.md)
+- [x] Bug : eas.json contient des champs vides non autorisés (submit) — section submit retirée
