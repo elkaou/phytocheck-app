@@ -137,12 +137,18 @@ pnpm eas:build:prod:ios
 }
 ```
 
-#### Configurer le produit IAP sur Google Play
+#### Configurer les abonnements IAP sur Google Play
 
-1. Google Play Console > Monétiser > Produits > Produits intégrés à l'application.
-2. Créez un nouveau produit avec l'ID : **`phytocheck_premium`**.
-3. Définissez le prix (ex: 4,99 €).
-4. Activez le produit.
+1. Google Play Console > Monétiser > Abonnements.
+2. Créez un nouvel abonnement avec l'ID : **`phytocheck_premium`**.
+3. Ajoutez deux plans de base (Base Plans) :
+   - **Plan mensuel** : ID `monthly`, période de facturation 1 mois, prix (ex: 4,99 €/mois)
+   - **Plan annuel** : ID `yearly`, période de facturation 1 an, prix (ex: 49,99 €/an)
+4. Activez l'abonnement et les plans.
+
+**Important** : L'application utilise les Product IDs suivants :
+- Abonnement mensuel : `phytocheck_premium:monthly`
+- Abonnement annuel : `phytocheck_premium:yearly`
 
 #### Soumettre sur Google Play
 
@@ -181,13 +187,19 @@ pnpm eas:submit:android
 }
 ```
 
-#### Configurer le produit IAP sur App Store
+#### Configurer les abonnements IAP sur App Store
 
-1. App Store Connect > Votre app > Fonctionnalités > Achats intégrés.
-2. Créez un nouvel achat intégré de type "Non-consommable".
-3. ID de référence : **`phytocheck_premium`**.
-4. Définissez le prix (ex: 4,99 €).
-5. Ajoutez les informations de localisation (nom, description).
+1. App Store Connect > Votre app > Abonnements.
+2. Créez un nouveau groupe d'abonnements (ex: "Premium").
+3. Créez deux abonnements dans ce groupe :
+   - **Abonnement mensuel** : ID `phytocheck_premium:monthly`, durée 1 mois, prix (ex: 4,99 €)
+   - **Abonnement annuel** : ID `phytocheck_premium:yearly`, durée 1 an, prix (ex: 49,99 €)
+4. Ajoutez les informations de localisation (nom, description) pour chaque abonnement.
+5. Activez les abonnements.
+
+**Important** : L'application utilise les Product IDs suivants :
+- Abonnement mensuel : `phytocheck_premium:monthly`
+- Abonnement annuel : `phytocheck_premium:yearly`
 
 #### Soumettre sur l'App Store
 
@@ -232,7 +244,9 @@ Cela permet de corriger des bugs ou d'ajouter du contenu sans soumettre une nouv
 | **Package Android** | `siteswebs.phytocheck.app.t20260219` |
 | **Bundle ID iOS** | `siteswebs.phytocheck.app.t20260219` |
 | **Apple Team ID** | `4be0624c-2bbd-48be-9ff8-19063048c684` |
-| **Product ID IAP** | `phytocheck_premium` |
+| **Product ID IAP Base** | `phytocheck_premium` |
+| **Abonnement Mensuel** | `phytocheck_premium:monthly` |
+| **Abonnement Annuel** | `phytocheck_premium:yearly` |
 | **Version** | `1.0.0` |
 
 ---

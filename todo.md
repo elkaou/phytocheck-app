@@ -35,3 +35,7 @@
 - [x] Configurer les credentials iOS (Apple Team ID intégré)
 - [x] Documenter les instructions de build et publication (BUILD_GUIDE.md)
 - [x] Bug : eas.json contient des champs vides non autorisés (submit) — section submit retirée
+- [x] Migrer d'achat unique vers abonnements mensuels et annuels
+- [x] Mettre à jour le service IAP pour supporter les subscriptions
+- [x] Mettre à jour l'écran Premium avec les deux options d'abonnement
+- [x] Mettre à jour la documentation BUILD_GUIDE.md avec les IDs d'abonnements
