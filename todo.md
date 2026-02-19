@@ -29,3 +29,8 @@
 - [x] Créer le service IAP (connexion store, achat, restauration, vérification)
 - [x] Intégrer les boutons d'achat réels dans l'écran Premium
 - [x] Configurer les product IDs pour abonnement/achat unique Premium (phytocheck_premium)
+- [x] Installer et configurer EAS CLI (v18.0.1)
+- [x] Créer eas.json avec profils development, preview et production
+- [x] Configurer le keystore Android (via eas credentials)
+- [x] Configurer les credentials iOS (Apple Team ID intégré)
+- [x] Documenter les instructions de build et publication (BUILD_GUIDE.md)
