@@ -55,7 +55,7 @@ export default function SearchScreen() {
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return;
 
-    // Check search limit
+    // Count 1 search action per manual search button press
     const canDo = await performSearch();
     if (!canDo) {
       Alert.alert(

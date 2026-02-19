@@ -119,7 +119,7 @@ describe("product-service", () => {
       expect(getClassificationColor("homologue")).toBe("#22C55E");
       expect(getClassificationColor("retire")).toBe("#EF4444");
       expect(getClassificationColor("homologue_cmr")).toBe("#F59E0B");
-      expect(getClassificationColor("homologue_toxique")).toBe("#DC2626");
+      expect(getClassificationColor("homologue_toxique")).toBe("#C2410C"); // Orange foncé
     });
   });
 });

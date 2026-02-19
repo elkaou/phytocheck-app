@@ -156,7 +156,7 @@ export function getClassificationColor(classification: ProductClassification): s
     case "homologue_cmr":
       return "#F59E0B";
     case "homologue_toxique":
-      return "#DC2626";
+      return "#C2410C"; // Orange foncé
   }
 }
 
@@ -170,6 +170,6 @@ export function getClassificationBgColor(classification: ProductClassification):
     case "homologue_cmr":
       return "#FFFBEB";
     case "homologue_toxique":
-      return "#FEF2F2";
+      return "#FFF7ED"; // Orange clair
   }
 }

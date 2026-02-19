@@ -30,6 +30,23 @@ export default function ScanScreen() {
 
   const processImage = useCallback(
     async (uri: string) => {
+      // Check search limit FIRST (before processing image)
+      const canDo = await performSearch();
+      if (!canDo) {
+        Alert.alert(
+          "Limite atteinte",
+          "Vous avez atteint la limite de recherches gratuites. Passez à Premium pour des recherches illimitées.",
+          [
+            { text: "Annuler" },
+            {
+              text: "Voir Premium",
+              onPress: () => router.replace("/premium" as any),
+            },
+          ]
+        );
+        return;
+      }
+
       setIsProcessing(true);
       setStatusText("Lecture de l'image...");
       try {
@@ -68,29 +85,12 @@ export default function ScanScreen() {
         });
 
         if (result.success && (result.nom || result.amm)) {
-          // We found something, perform search
-          const canDo = await performSearch();
-          if (!canDo) {
-            Alert.alert(
-              "Limite atteinte",
-              "Vous avez atteint la limite de recherches gratuites. Passez à Premium pour des recherches illimitées.",
-              [
-                { text: "Annuler", onPress: () => setIsProcessing(false) },
-                {
-                  text: "Voir Premium",
-                  onPress: () => {
-                    setIsProcessing(false);
-                    router.replace("/premium" as any);
-                  },
-                },
-              ]
-            );
-            return;
-          }
-
-          // Search by AMM first (more precise), then by name
-          const searchQuery = result.amm || result.nom;
+          // Search by name to find all AMMs for this product
+          const searchQuery = result.nom || result.amm;
           const results = searchProducts(searchQuery);
+
+          // Check if multiple AMMs exist for the same product name
+          const uniqueAMMs = [...new Set(results.map((r) => r.amm))];
 
           if (results.length === 1) {
             // Single result: go directly to product detail
@@ -98,11 +98,17 @@ export default function ScanScreen() {
               pathname: "/product/[amm]" as any,
               params: { amm: results[0].amm },
             });
-          } else if (results.length > 1) {
-            // Multiple results: go to search with query pre-filled
+          } else if (uniqueAMMs.length > 1) {
+            // Multiple AMMs: go to search so user can choose the right one
             router.replace({
               pathname: "/(tabs)/search" as any,
               params: { q: searchQuery },
+            });
+          } else if (results.length > 0) {
+            // Same AMM, go to product detail
+            router.replace({
+              pathname: "/product/[amm]" as any,
+              params: { amm: results[0].amm },
             });
           } else {
             // No results found

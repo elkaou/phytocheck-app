@@ -94,11 +94,11 @@ export default function StockScreen() {
               </Text>
               <Text style={[styles.statLabel, { color: "#D97706" }]}>CMR</Text>
             </View>
-            <View style={[styles.statCard, { backgroundColor: "#FEF2F2", borderColor: "#FECACA" }]}>
-              <Text style={[styles.statNumber, { color: "#DC2626" }]}>
+            <View style={[styles.statCard, { backgroundColor: "#FFF7ED", borderColor: "#FED7AA" }]}>
+              <Text style={[styles.statNumber, { color: "#C2410C" }]}>
                 {stockStats.toxiques}
               </Text>
-              <Text style={[styles.statLabel, { color: "#DC2626" }]}>
+              <Text style={[styles.statLabel, { color: "#C2410C" }]}>
                 Toxiques
               </Text>
             </View>

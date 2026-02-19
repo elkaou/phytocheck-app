@@ -118,9 +118,9 @@ export default function ProductDetailScreen() {
               </View>
             )}
             {product.isToxique && !product.isCMR && (
-              <View style={styles.warningTag}>
-                <IconSymbol name="exclamationmark.triangle.fill" size={16} color="#DC2626" />
-                <Text style={[styles.warningTagText, { color: "#DC2626" }]}>
+              <View style={[styles.warningTag, { backgroundColor: "#FFF7ED" }]}>
+                <IconSymbol name="exclamationmark.triangle.fill" size={16} color="#C2410C" />
+                <Text style={[styles.warningTagText, { color: "#C2410C" }]}>
                   Produit à toxicité élevée
                 </Text>
               </View>

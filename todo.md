@@ -19,3 +19,6 @@
 - [x] Tests unitaires pour la logique de classification et du store
 - [ ] Export PDF du stock (fonctionnalité Premium)
 - [x] Bug : OCR non disponible lors du scan d'étiquette sur appareil physique
+- [x] Bug : Produits multi-AMM (ex: FOLY R) — demander quel AMM quand un produit a plusieurs AMM avec statuts différents
+- [x] Bug : Badge "Homologué Toxique" doit être en orange foncé (pas rouge)
+- [x] Bug : Décompte des recherches doit compter par action de recherche (manuelle ou scan), pas par nombre de résultats
