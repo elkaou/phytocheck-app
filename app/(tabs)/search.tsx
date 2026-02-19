@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   ScrollView,
   Text,
@@ -25,13 +25,32 @@ import { useApp } from "@/lib/app-context";
 
 export default function SearchScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ mode?: string }>();
+  const params = useLocalSearchParams<{ mode?: string; q?: string }>();
   const { remainingSearches, isPremium, performSearch } = useApp();
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(params.q || "");
+  const [autoSearchDone, setAutoSearchDone] = useState(false);
   const [results, setResults] = useState<ClassifiedProduct[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+
+  const doSearch = useCallback((searchQuery: string) => {
+    setIsSearching(true);
+    setTimeout(() => {
+      const found = searchProducts(searchQuery);
+      setResults(found);
+      setHasSearched(true);
+      setIsSearching(false);
+    }, 100);
+  }, []);
+
+  // Auto-search when coming from scan with q parameter
+  useEffect(() => {
+    if (params.q && !autoSearchDone) {
+      setAutoSearchDone(true);
+      doSearch(params.q);
+    }
+  }, [params.q, autoSearchDone, doSearch]);
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return;
@@ -53,15 +72,8 @@ export default function SearchScreen() {
       return;
     }
 
-    setIsSearching(true);
-    // Small delay to allow UI to update
-    setTimeout(() => {
-      const found = searchProducts(query.trim());
-      setResults(found);
-      setHasSearched(true);
-      setIsSearching(false);
-    }, 100);
-  }, [query, performSearch, router]);
+    doSearch(query.trim());
+  }, [query, performSearch, router, doSearch]);
 
   const handleScan = useCallback(() => {
     router.push("/scan" as any);

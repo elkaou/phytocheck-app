@@ -12,9 +12,11 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { searchProducts, ClassifiedProduct } from "@/lib/product-service";
+import { searchProducts } from "@/lib/product-service";
 import { useApp } from "@/lib/app-context";
+import { trpc } from "@/lib/trpc";
 
 export default function ScanScreen() {
   const router = useRouter();
@@ -22,120 +24,118 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [statusText, setStatusText] = useState("Analyse de l'étiquette en cours...");
+
+  const analyzeMutation = trpc.ocr.analyzeLabel.useMutation();
 
   const processImage = useCallback(
     async (uri: string) => {
       setIsProcessing(true);
+      setStatusText("Lecture de l'image...");
       try {
-        // Use the built-in server LLM to perform OCR on the image
-        const apiBase =
-          Platform.OS === "web"
-            ? "/api"
-            : "https://3000-ix0fvf3uapsj0prlqr0jt-46d68d43.us2.manus.computer/api";
-
         // Read image as base64
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const base64 = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const result = reader.result as string;
-            resolve(result.split(",")[1] || result);
-          };
-          reader.readAsDataURL(blob);
+        let base64: string;
+        if (Platform.OS === "web") {
+          const response = await fetch(uri);
+          const blob = await response.blob();
+          base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const result = reader.result as string;
+              resolve(result.split(",")[1] || result);
+            };
+            reader.readAsDataURL(blob);
+          });
+        } else {
+          // Native: use FileSystem to read base64
+          base64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+        }
+
+        setStatusText("Envoi au serveur d'analyse...");
+
+        // Determine MIME type
+        const mimeType = uri.toLowerCase().includes("png")
+          ? "image/png"
+          : "image/jpeg";
+
+        // Call server OCR via tRPC
+        setStatusText("Identification du produit...");
+        const result = await analyzeMutation.mutateAsync({
+          imageBase64: base64,
+          mimeType,
         });
 
-        // Call server LLM for OCR
-        const llmResponse = await fetch(`${apiBase}/trpc/ai.chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            json: {
-              messages: [
+        if (result.success && (result.nom || result.amm)) {
+          // We found something, perform search
+          const canDo = await performSearch();
+          if (!canDo) {
+            Alert.alert(
+              "Limite atteinte",
+              "Vous avez atteint la limite de recherches gratuites. Passez à Premium pour des recherches illimitées.",
+              [
+                { text: "Annuler", onPress: () => setIsProcessing(false) },
                 {
-                  role: "user",
-                  content: [
-                    {
-                      type: "text",
-                      text: "Analyse cette image d'étiquette de produit phytosanitaire. Extrais le nom commercial du produit et/ou le numéro AMM (Autorisation de Mise sur le Marché). Réponds UNIQUEMENT avec un JSON au format: {\"nom\": \"NOM_DU_PRODUIT\", \"amm\": \"NUMERO_AMM\"}. Si tu ne trouves qu'un seul des deux, laisse l'autre vide. Si tu ne trouves rien, réponds {\"nom\": \"\", \"amm\": \"\"}.",
-                    },
-                    {
-                      type: "image_url",
-                      image_url: {
-                        url: `data:image/jpeg;base64,${base64}`,
-                      },
-                    },
-                  ],
+                  text: "Voir Premium",
+                  onPress: () => {
+                    setIsProcessing(false);
+                    router.replace("/premium" as any);
+                  },
                 },
-              ],
-            },
-          }),
-        });
+              ]
+            );
+            return;
+          }
 
-        if (llmResponse.ok) {
-          const data = await llmResponse.json();
-          const content = data?.result?.data?.json?.content || "";
+          // Search by AMM first (more precise), then by name
+          const searchQuery = result.amm || result.nom;
+          const results = searchProducts(searchQuery);
 
-          // Parse the JSON response
-          const jsonMatch = content.match(/\{[^}]+\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            const searchQuery = parsed.amm || parsed.nom || "";
-
-            if (searchQuery) {
-              const canDo = await performSearch();
-              if (!canDo) {
-                Alert.alert(
-                  "Limite atteinte",
-                  "Vous avez atteint la limite de recherches gratuites."
-                );
-                setIsProcessing(false);
-                return;
-              }
-
-              const results = searchProducts(searchQuery);
-              if (results.length > 0) {
-                router.replace({
-                  pathname: "/product/[amm]" as any,
-                  params: { amm: results[0].amm },
-                });
-              } else {
-                Alert.alert(
-                  "Produit non trouvé",
-                  `Aucun produit trouvé pour "${searchQuery}". Essayez la recherche manuelle.`,
-                  [
-                    { text: "OK", onPress: () => setPhotoUri(null) },
-                  ]
-                );
-              }
-            } else {
-              Alert.alert(
-                "Texte non reconnu",
-                "Impossible d'identifier le produit sur cette image. Essayez de prendre une photo plus nette ou utilisez la recherche manuelle.",
-                [{ text: "OK", onPress: () => setPhotoUri(null) }]
-              );
-            }
+          if (results.length === 1) {
+            // Single result: go directly to product detail
+            router.replace({
+              pathname: "/product/[amm]" as any,
+              params: { amm: results[0].amm },
+            });
+          } else if (results.length > 1) {
+            // Multiple results: go to search with query pre-filled
+            router.replace({
+              pathname: "/(tabs)/search" as any,
+              params: { q: searchQuery },
+            });
+          } else {
+            // No results found
+            const detectedInfo = result.nom
+              ? `Nom détecté : "${result.nom}"`
+              : result.amm
+                ? `AMM détecté : "${result.amm}"`
+                : "";
+            Alert.alert(
+              "Produit non trouvé",
+              `Aucun produit trouvé dans la base de données.\n${detectedInfo}\n\nEssayez la recherche manuelle.`,
+              [{ text: "OK", onPress: () => setIsProcessing(false) }]
+            );
           }
         } else {
-          // Fallback: simple text-based search prompt
           Alert.alert(
-            "OCR non disponible",
-            "Le service de reconnaissance d'image n'est pas disponible. Utilisez la recherche manuelle.",
-            [{ text: "OK", onPress: () => router.back() }]
+            "Texte non reconnu",
+            "Impossible d'identifier le produit sur cette image. Essayez de prendre une photo plus nette de l'étiquette, en vous assurant que le nom du produit ou le numéro AMM est bien visible.",
+            [{ text: "Réessayer", onPress: () => setIsProcessing(false) }]
           );
         }
-      } catch (error) {
+      } catch (error: any) {
+        console.error("[Scan] Error:", error);
         Alert.alert(
-          "Erreur",
-          "Une erreur est survenue lors de l'analyse de l'image. Essayez la recherche manuelle.",
-          [{ text: "OK", onPress: () => setPhotoUri(null) }]
+          "Erreur d'analyse",
+          "Une erreur est survenue lors de l'analyse de l'image. Vérifiez votre connexion internet et réessayez.",
+          [{ text: "OK", onPress: () => setIsProcessing(false) }]
         );
       } finally {
         setIsProcessing(false);
       }
     },
-    [performSearch, router]
+    [performSearch, router, analyzeMutation]
   );
 
   const takePicture = useCallback(async () => {
@@ -146,7 +146,6 @@ export default function ScanScreen() {
         base64: false,
       });
       if (photo?.uri) {
-        setPhotoUri(photo.uri);
         await processImage(photo.uri);
       }
     } catch (error) {
@@ -160,7 +159,6 @@ export default function ScanScreen() {
       quality: 0.7,
     });
     if (!result.canceled && result.assets[0]?.uri) {
-      setPhotoUri(result.assets[0].uri);
       await processImage(result.assets[0].uri);
     }
   }, [processImage]);
@@ -171,10 +169,13 @@ export default function ScanScreen() {
       <View style={styles.container}>
         <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1 }}>
           <View style={styles.headerBar}>
-            <Pressable onPress={() => router.back()}>
+            <Pressable
+              style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+              onPress={() => router.back()}
+            >
               <IconSymbol name="arrow.left" size={24} color="#FFFFFF" />
             </Pressable>
-            <Text style={styles.headerBarTitle}>Scanner</Text>
+            <Text style={styles.headerBarTitle}>Scanner une étiquette</Text>
             <View style={{ width: 24 }} />
           </View>
           <View style={styles.centerContent}>
@@ -190,10 +191,13 @@ export default function ScanScreen() {
       <View style={styles.container}>
         <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1 }}>
           <View style={styles.headerBar}>
-            <Pressable onPress={() => router.back()}>
+            <Pressable
+              style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+              onPress={() => router.back()}
+            >
               <IconSymbol name="arrow.left" size={24} color="#FFFFFF" />
             </Pressable>
-            <Text style={styles.headerBarTitle}>Scanner</Text>
+            <Text style={styles.headerBarTitle}>Scanner une étiquette</Text>
             <View style={{ width: 24 }} />
           </View>
           <View style={styles.centerContent}>
@@ -235,7 +239,13 @@ export default function ScanScreen() {
       <View style={styles.container}>
         <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1 }}>
           <View style={styles.headerBar}>
-            <Pressable onPress={() => router.back()}>
+            <Pressable
+              style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+              onPress={() => {
+                setIsProcessing(false);
+                router.back();
+              }}
+            >
               <IconSymbol name="arrow.left" size={24} color="#FFFFFF" />
             </Pressable>
             <Text style={styles.headerBarTitle}>Analyse en cours</Text>
@@ -243,9 +253,7 @@ export default function ScanScreen() {
           </View>
           <View style={styles.centerContent}>
             <ActivityIndicator size="large" color="#1A8A7D" />
-            <Text style={styles.processingText}>
-              Analyse de l'étiquette en cours...
-            </Text>
+            <Text style={styles.processingText}>{statusText}</Text>
             <Text style={styles.processingSubtext}>
               Identification du nom et du numéro AMM
             </Text>
@@ -270,11 +278,7 @@ export default function ScanScreen() {
         </View>
 
         <View style={styles.cameraContainer}>
-          <CameraView
-            ref={cameraRef}
-            style={styles.camera}
-            facing="back"
-          >
+          <CameraView ref={cameraRef} style={styles.camera} facing="back">
             {/* Overlay guide */}
             <View style={styles.overlay}>
               <View style={styles.scanFrame}>
@@ -380,6 +384,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1A1A1A",
     marginTop: 16,
+    textAlign: "center",
   },
   processingSubtext: {
     fontSize: 14,

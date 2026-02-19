@@ -18,3 +18,4 @@
 - [x] Écran À propos avec version, documents légaux et info base de données
 - [x] Tests unitaires pour la logique de classification et du store
 - [ ] Export PDF du stock (fonctionnalité Premium)
+- [x] Bug : OCR non disponible lors du scan d'étiquette sur appareil physique
