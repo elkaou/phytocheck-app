@@ -146,6 +146,22 @@ pnpm eas:build:prod:ios
 
 #### Soumettre sur Google Play
 
+Avant de soumettre, ajoutez la section `submit` dans `eas.json` :
+
+```json
+"submit": {
+  "production": {
+    "android": {
+      "serviceAccountKeyPath": "./google-service-account.json",
+      "track": "internal",
+      "releaseStatus": "draft"
+    }
+  }
+}
+```
+
+Puis lancez :
+
 ```bash
 pnpm eas:submit:android
 ```
@@ -174,6 +190,22 @@ pnpm eas:submit:android
 5. Ajoutez les informations de localisation (nom, description).
 
 #### Soumettre sur l'App Store
+
+Avant de soumettre, ajoutez la section iOS dans `submit` de `eas.json` :
+
+```json
+"submit": {
+  "production": {
+    "ios": {
+      "appleId": "votre@email.com",
+      "ascAppId": "1234567890",
+      "appleTeamId": "4be0624c-2bbd-48be-9ff8-19063048c684"
+    }
+  }
+}
+```
+
+Puis lancez :
 
 ```bash
 pnpm eas:submit:ios

@@ -57,19 +57,5 @@
         "APP_VARIANT": "production"
       }
     }
-  },
-  "submit": {
-    "production": {
-      "ios": {
-        "appleId": "",
-        "ascAppId": "",
-        "appleTeamId": "4be0624c-2bbd-48be-9ff8-19063048c684"
-      },
-      "android": {
-        "serviceAccountKeyPath": "",
-        "track": "internal",
-        "releaseStatus": "draft"
-      }
-    }
   }
 }
