@@ -58,7 +58,7 @@ const riskPhrases: Record<string, RiskPhrase[]> = riskPhrasesData as Record<stri
 
 // Total count
 export const TOTAL_PRODUCTS = products.length;
-export const DB_UPDATE_DATE = "21/01/2026";
+export const DB_UPDATE_DATE = "19/02/2026";
 
 // Classify a product
 export function classifyProduct(product: Product): ClassifiedProduct {

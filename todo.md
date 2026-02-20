@@ -71,3 +71,8 @@
 
 - [x] Bug : Scan photo ne fonctionne toujours pas malgré l'utilisation de fetch() → utilisation de manipulateAsync pour normaliser l'URI
 - [x] Modifier les prix des abonnements : 9,99€/mois et 19,99€/an
+
+## Build 17 - Nouvelles corrections
+
+- [x] Bug : Scan photo ne fonctionne toujours pas (erreur rapide même avec manipulateAsync) → utilisation de base64 direct depuis ImagePicker/Camera
+- [x] Modifier la date de mise à jour à 19/02/2026

@@ -30,7 +30,7 @@ export default function ScanScreen() {
   const analyzeMutation = trpc.ocr.analyzeLabel.useMutation();
 
   const processImage = useCallback(
-    async (uri: string) => {
+    async (uri: string, providedBase64?: string) => {
       // Check search limit FIRST (before processing image)
       const canDo = await performSearch();
       if (!canDo) {
@@ -53,10 +53,16 @@ export default function ScanScreen() {
       try {
         console.log("[Scan] Starting image processing for URI:", uri);
         console.log("[Scan] Platform:", Platform.OS);
+        console.log("[Scan] Provided base64:", providedBase64 ? "YES (length: " + providedBase64.length + ")" : "NO");
         
         // Read image as base64
         let base64: string;
-        if (Platform.OS === "web") {
+        
+        // If base64 was provided directly (from ImagePicker/Camera), use it
+        if (providedBase64) {
+          console.log("[Scan] Using provided base64 directly");
+          base64 = providedBase64;
+        } else if (Platform.OS === "web") {
           const response = await fetch(uri);
           const blob = await response.blob();
           base64 = await new Promise<string>((resolve) => {
@@ -201,10 +207,10 @@ export default function ScanScreen() {
     try {
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.7,
-        base64: false,
+        base64: true, // Request base64 directly
       });
       if (photo?.uri) {
-        await processImage(photo.uri);
+        await processImage(photo.uri, photo.base64);
       }
     } catch (error) {
       Alert.alert("Erreur", "Impossible de prendre la photo.");
@@ -215,9 +221,10 @@ export default function ScanScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.7,
+      base64: true, // Request base64 directly
     });
     if (!result.canceled && result.assets[0]?.uri) {
-      await processImage(result.assets[0].uri);
+      await processImage(result.assets[0].uri, result.assets[0].base64 || undefined);
     }
   }, [processImage]);
 
