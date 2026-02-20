@@ -141,6 +141,7 @@ export default function SearchScreen() {
               styles.badgeText,
               { color: getClassificationColor(item.classification) },
             ]}
+            numberOfLines={2}
           >
             {getClassificationLabel(item.classification)}
           </Text>
@@ -390,10 +391,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
+    flexShrink: 0,
+    maxWidth: 140,
   },
   badgeText: {
     fontSize: 11,
     fontWeight: "bold",
+    textAlign: "center",
   },
   hintCard: {
     backgroundColor: "#FFFFFF",

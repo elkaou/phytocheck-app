@@ -50,6 +50,9 @@ export default function ScanScreen() {
       setIsProcessing(true);
       setStatusText("Lecture de l'image...");
       try {
+        console.log("[Scan] Starting image processing for URI:", uri);
+        console.log("[Scan] Platform:", Platform.OS);
+        
         // Read image as base64
         let base64: string;
         if (Platform.OS === "web") {
@@ -64,10 +67,30 @@ export default function ScanScreen() {
             reader.readAsDataURL(blob);
           });
         } else {
-          // Native: use legacy FileSystem for better compatibility
-          base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
+          // Native: use fetch for content:// URIs (gallery) or FileSystem for file:// URIs (camera)
+          console.log("[Scan] Reading file with fetch (works for content:// URIs)...");
+          try {
+            // Use fetch which works with both content:// and file:// URIs on Android
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            console.log("[Scan] Blob created, size:", blob.size);
+            
+            // Convert blob to base64
+            base64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                const result = reader.result as string;
+                const base64Data = result.split(",")[1] || result;
+                resolve(base64Data);
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+            console.log("[Scan] File read successfully, base64 length:", base64.length);
+          } catch (fileError: any) {
+            console.error("[Scan] File reading error:", fileError);
+            throw new Error(`Erreur de lecture du fichier: ${fileError.message || fileError}`);
+          }
         }
 
         setStatusText("Envoi au serveur d'analyse...");
@@ -76,13 +99,16 @@ export default function ScanScreen() {
         const mimeType = uri.toLowerCase().includes("png")
           ? "image/png"
           : "image/jpeg";
+        console.log("[Scan] MIME type:", mimeType);
 
         // Call server OCR via tRPC
         setStatusText("Identification du produit...");
+        console.log("[Scan] Calling analyzeMutation.mutateAsync...");
         const result = await analyzeMutation.mutateAsync({
           imageBase64: base64,
           mimeType,
         });
+        console.log("[Scan] Server response:", result);
 
         if (result.success && (result.nom || result.amm)) {
           // Try searching by name first, then by AMM

@@ -23,12 +23,12 @@ export function QuantityModal({
   onCancel,
   onConfirm,
 }: QuantityModalProps) {
-  const [quantity, setQuantity] = useState("1");
+  const [quantity, setQuantity] = useState("");
 
   const handleConfirm = (unit: "L" | "Kg") => {
     const qty = parseFloat(quantity) || 1;
     onConfirm(qty, unit);
-    setQuantity("1"); // Reset for next time
+    setQuantity(""); // Reset for next time
   };
 
   return (
@@ -159,13 +159,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   buttonRow: {
-    flexDirection: "row",
-    gap: 8,
+    flexDirection: "column",
+    gap: 10,
   },
   button: {
-    flex: 1,
+    width: "100%",
     borderRadius: 8,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: "center",
   },
   cancelButton: {

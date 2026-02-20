@@ -60,3 +60,9 @@
 - [x] Afficher le nom secondaire dans le stock (ex: "Centurion R (Foly R)")
 - [x] Bug persistant : Affichage vertical des noms courts (SWITCH, ALLIE) dans les résultats de recherche
 - [x] Bug persistant : Scan photo s'arrête immédiatement avec erreur d'analyse
+
+## Build 15 - Nouveaux bugs à corriger
+
+- [x] Bug : Label "Homologué non CMR, non toxique" tronqué dans les résultats de recherche (affiche "Homologué non CMR, no")
+- [x] Bug : Modal d'ajout au stock avec champ quantité pré-rempli "1" et boutons "Annul" et "Ajo" tronqués
+- [x] Bug : Scan photo retourne toujours "Erreur d'analyse" malgré les corrections du build 15 (erreur immédiate = lecture fichier)
