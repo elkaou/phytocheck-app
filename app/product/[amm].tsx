@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
+import { QuantityModal } from "@/components/quantity-modal";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -20,70 +21,44 @@ import {
 import { useApp } from "@/lib/app-context";
 
 export default function ProductDetailScreen() {
-  const { amm } = useLocalSearchParams<{ amm: string }>();
+  const { amm, name } = useLocalSearchParams<{ amm: string; name?: string }>();
   const router = useRouter();
   const { addProductToStock, isProductInStock, getProductQuantity, updateProductQuantity, isPremium, stock } = useApp();
 
   const [product, setProduct] = useState<ClassifiedProduct | null>(null);
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
   const inStock = amm ? isProductInStock(amm) : false;
 
   useEffect(() => {
     if (amm) {
-      const p = getProductByAMM(amm);
+      const p = getProductByAMM(amm, name);
       setProduct(p);
     }
-  }, [amm]);
+  }, [amm, name]);
 
   const currentQuantity = amm ? getProductQuantity(amm) : 0;
 
   const handleAddToStock = useCallback(async () => {
     if (!product) return;
+    setShowQuantityModal(true);
+  }, [product]);
 
-    // Show dialog to enter quantity and unit
-    Alert.prompt(
-      "Ajouter au stock",
-      "Entrez la quantité :",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Ajouter (L)",
-          onPress: async (quantityStr?: string) => {
-            const quantity = parseFloat(quantityStr || "1") || 1;
-            const result = await addProductToStock(product, quantity, "L");
-            if (result === "added") {
-              Alert.alert("Ajouté", `"${product.nom}" a été ajouté à votre stock (${quantity} L).`);
-            } else if (result === "incremented") {
-              Alert.alert("Quantité mise à jour", `Quantité de "${product.nom}" augmentée (+${quantity} L).`);
-            } else if (result === "limit") {
-              Alert.alert(
-                "Limite atteinte",
-                "Vous avez atteint la limite de 20 produits en stock. Passez à Premium pour un stock illimité."
-              );
-            }
-          },
-        },
-        {
-          text: "Ajouter (Kg)",
-          onPress: async (quantityStr?: string) => {
-            const quantity = parseFloat(quantityStr || "1") || 1;
-            const result = await addProductToStock(product, quantity, "Kg");
-            if (result === "added") {
-              Alert.alert("Ajouté", `"${product.nom}" a été ajouté à votre stock (${quantity} Kg).`);
-            } else if (result === "incremented") {
-              Alert.alert("Quantité mise à jour", `Quantité de "${product.nom}" augmentée (+${quantity} Kg).`);
-            } else if (result === "limit") {
-              Alert.alert(
-                "Limite atteinte",
-                "Vous avez atteint la limite de 20 produits en stock. Passez à Premium pour un stock illimité."
-              );
-            }
-          },
-        },
-      ],
-      "plain-text",
-      "1",
-      "numeric"
-    );
+  const handleQuantityConfirm = useCallback(async (quantity: number, unit: "L" | "Kg") => {
+    if (!product) return;
+    
+    setShowQuantityModal(false);
+    
+    const result = await addProductToStock(product, quantity, unit);
+    if (result === "added") {
+      Alert.alert("Ajouté", `"${product.nom}" a été ajouté à votre stock (${quantity} ${unit}).`);
+    } else if (result === "incremented") {
+      Alert.alert("Quantité mise à jour", `Quantité de "${product.nom}" augmentée (+${quantity} ${unit}).`);
+    } else if (result === "limit") {
+      Alert.alert(
+        "Limite atteinte",
+        "Vous avez atteint la limite de 20 produits en stock. Passez à Premium pour un stock illimité."
+      );
+    }
   }, [product, addProductToStock]);
 
   if (!product) {
@@ -300,6 +275,14 @@ export default function ProductDetailScreen() {
           )}
         </ScrollView>
       </SafeAreaView>
+
+      {/* Quantity Modal */}
+      <QuantityModal
+        visible={showQuantityModal}
+        productName={product.nom}
+        onCancel={() => setShowQuantityModal(false)}
+        onConfirm={handleQuantityConfirm}
+      />
     </View>
   );
 }

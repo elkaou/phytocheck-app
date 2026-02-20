@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import { File } from "expo-file-system/next";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { searchProducts } from "@/lib/product-service";
 import { useApp } from "@/lib/app-context";
@@ -64,10 +65,17 @@ export default function ScanScreen() {
             reader.readAsDataURL(blob);
           });
         } else {
-          // Native: use FileSystem to read base64
-          base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
+          // Native: use new File API for better Android compatibility
+          try {
+            const file = new File(uri);
+            base64 = await file.base64();
+          } catch (fileError) {
+            // Fallback to legacy FileSystem if File API fails
+            console.warn("[Scan] File API failed, falling back to legacy:", fileError);
+            base64 = await FileSystem.readAsStringAsync(uri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+          }
         }
 
         setStatusText("Envoi au serveur d'analyse...");

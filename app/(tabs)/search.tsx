@@ -103,7 +103,10 @@ export default function SearchScreen() {
         onPress={() =>
           router.push({
             pathname: "/product/[amm]" as any,
-            params: { amm: item.amm },
+            params: { 
+              amm: item.amm,
+              name: item.matchedName || item.nom,
+            },
           })
         }
       >
@@ -356,11 +359,13 @@ const styles = StyleSheet.create({
   resultCardContent: {
     flex: 1,
     marginRight: 12,
+    minWidth: 0, // Allow text truncation
   },
   resultName: {
     fontSize: 16,
     fontWeight: "600",
     color: "#1A1A1A",
+    flexShrink: 1,
   },
   resultSecondary: {
     fontSize: 12,
@@ -372,6 +377,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#687076",
     marginTop: 2,
+    flexShrink: 1,
   },
   resultInfo: {
     fontSize: 12,

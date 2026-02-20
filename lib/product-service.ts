@@ -146,11 +146,22 @@ export function searchProducts(query: string, limit = 50): ClassifiedProduct[] {
   return results;
 }
 
-// Get product by AMM
-export function getProductByAMM(amm: string): ClassifiedProduct | null {
-  const product = products.find((p) => p.amm === amm);
-  if (!product) return null;
-  return classifyProduct(product);
+// Get product by AMM (optionally filter by name if multiple products share the same AMM)
+export function getProductByAMM(amm: string, preferredName?: string): ClassifiedProduct | null {
+  const matchingProducts = products.filter((p) => p.amm === amm);
+  if (matchingProducts.length === 0) return null;
+  
+  // If preferred name is provided, try to find exact match
+  if (preferredName && matchingProducts.length > 1) {
+    const exactMatch = matchingProducts.find((p) => 
+      p.nom.toLowerCase() === preferredName.toLowerCase() ||
+      p.nomsSecondaires.toLowerCase().includes(preferredName.toLowerCase())
+    );
+    if (exactMatch) return classifyProduct(exactMatch);
+  }
+  
+  // Return first match
+  return classifyProduct(matchingProducts[0]);
 }
 
 // Get classification label

@@ -51,3 +51,7 @@
 - [x] Créer les versions HTML pour publication sur GitHub Pages
 - [x] Ajouter les liens "Politique de confidentialité" et "Conditions d'utilisation" dans l'onglet "À propos"
 - [x] Créer les pages de visualisation avec bouton "Fermer"
+- [x] Bug : Scan photo et galerie ne fonctionnent pas (erreur d'analyse)
+- [x] Bug : Recherche "SWITCH" donne un résultat illisible
+- [x] Bug : Cliquer sur "Foly R" AMM 9900115 affiche "Centurion R" au lieu de "Foly R"
+- [x] Bug : Bouton "Ajouter au stock" inerte (dialogue ne s'affiche pas)
