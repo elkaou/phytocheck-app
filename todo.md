@@ -58,3 +58,5 @@
 - [x] Rendre la croix rouge cliquable pour supprimer un produit du stock
 - [x] Rediriger vers l'onglet "Recherche" après ajout d'un produit au stock
 - [x] Afficher le nom secondaire dans le stock (ex: "Centurion R (Foly R)")
+- [x] Bug persistant : Affichage vertical des noms courts (SWITCH, ALLIE) dans les résultats de recherche
+- [x] Bug persistant : Scan photo s'arrête immédiatement avec erreur d'analyse

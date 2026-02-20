@@ -359,13 +359,15 @@ const styles = StyleSheet.create({
   resultCardContent: {
     flex: 1,
     marginRight: 12,
-    minWidth: 0, // Allow text truncation
+    minWidth: 100, // Prevent vertical text wrapping for short names
+    flexDirection: "column",
   },
   resultName: {
     fontSize: 16,
     fontWeight: "600",
     color: "#1A1A1A",
-    flexShrink: 1,
+    flexShrink: 0,
+    flexWrap: "nowrap",
   },
   resultSecondary: {
     fontSize: 12,
