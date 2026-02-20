@@ -30,7 +30,7 @@ export default function ScanScreen() {
   const analyzeMutation = trpc.ocr.analyzeLabel.useMutation();
 
   const processImage = useCallback(
-    async (uri: string, providedBase64?: string) => {
+    async (uri: string) => {
       // Check search limit FIRST (before processing image)
       const canDo = await performSearch();
       if (!canDo) {
@@ -53,16 +53,12 @@ export default function ScanScreen() {
       try {
         console.log("[Scan] Starting image processing for URI:", uri);
         console.log("[Scan] Platform:", Platform.OS);
-        console.log("[Scan] Provided base64:", providedBase64 ? "YES (length: " + providedBase64.length + ")" : "NO");
         
         // Read image as base64
         let base64: string;
         
-        // If base64 was provided directly (from ImagePicker/Camera), use it
-        if (providedBase64) {
-          console.log("[Scan] Using provided base64 directly");
-          base64 = providedBase64;
-        } else if (Platform.OS === "web") {
+        if (Platform.OS === "web") {
+          // Web: use fetch + FileReader
           const response = await fetch(uri);
           const blob = await response.blob();
           base64 = await new Promise<string>((resolve) => {
@@ -74,26 +70,20 @@ export default function ScanScreen() {
             reader.readAsDataURL(blob);
           });
         } else {
-          // Native: use manipulateAsync to normalize the URI, then read with FileSystem
-          console.log("[Scan] Normalizing image with manipulateAsync...");
-          try {
-            // manipulateAsync copies the image to a local file:// URI that FileSystem can read
-            const manipResult = await manipulateAsync(
-              uri,
-              [], // No transformations, just copy
-              { compress: 0.8, format: SaveFormat.JPEG }
-            );
-            console.log("[Scan] Image normalized to:", manipResult.uri);
-            
-            // Now read the normalized file:// URI with FileSystem
-            base64 = await FileSystem.readAsStringAsync(manipResult.uri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            console.log("[Scan] File read successfully, base64 length:", base64.length);
-          } catch (fileError: any) {
-            console.error("[Scan] File reading error:", fileError);
-            throw new Error(`Erreur de lecture du fichier: ${fileError.message || fileError}`);
+          // Native: ALWAYS use manipulateAsync (works for both camera and gallery)
+          console.log("[Scan] Converting image with manipulateAsync...");
+          const manipResult = await manipulateAsync(
+            uri,
+            [{ resize: { width: 1200 } }], // Resize to reduce size
+            { compress: 0.8, format: SaveFormat.JPEG, base64: true }
+          );
+          
+          if (!manipResult.base64) {
+            throw new Error("manipulateAsync n'a pas retourné de base64");
           }
+          
+          console.log("[Scan] Image converted, base64 length:", manipResult.base64.length);
+          base64 = manipResult.base64;
         }
 
         setStatusText("Envoi au serveur d'analyse...");
@@ -207,10 +197,9 @@ export default function ScanScreen() {
     try {
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.7,
-        base64: true, // Request base64 directly
       });
       if (photo?.uri) {
-        await processImage(photo.uri, photo.base64);
+        await processImage(photo.uri);
       }
     } catch (error) {
       Alert.alert("Erreur", "Impossible de prendre la photo.");
@@ -221,10 +210,9 @@ export default function ScanScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.7,
-      base64: true, // Request base64 directly
     });
     if (!result.canceled && result.assets[0]?.uri) {
-      await processImage(result.assets[0].uri, result.assets[0].base64 || undefined);
+      await processImage(result.assets[0].uri);
     }
   }, [processImage]);
 

@@ -76,3 +76,7 @@
 
 - [x] Bug : Scan photo ne fonctionne toujours pas (erreur rapide même avec manipulateAsync) → utilisation de base64 direct depuis ImagePicker/Camera
 - [x] Modifier la date de mise à jour à 19/02/2026
+
+## Build 18 - Amélioration majeure
+
+- [x] Scan photo : utilisation systématique de manipulateAsync avec option base64:true pour convertir l'image (fonctionne pour caméra et galerie)
