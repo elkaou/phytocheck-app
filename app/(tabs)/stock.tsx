@@ -232,7 +232,7 @@ export default function StockScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     paddingHorizontal: 24,
     paddingTop: 8,
     paddingBottom: 20,
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   stockQuantityText: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#1A8A7D",
+    color: "#0a7ea5",
   },
   deleteButton: {
     width: 36,

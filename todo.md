@@ -44,3 +44,5 @@
 - [x] Ajouter focus automatique sur les résultats après recherche manuelle ou scan
 - [x] Modifier le label "Homologués" en "Homologués non CMR, non toxique" dans l'écran stock
 - [x] Ajouter des filtres cliquables sur les cartes statistiques (Homologués, PPNU, CMR, Toxiques)
+- [x] Modifier la couleur principale (primary) en bleu #0a7ea5
+- [x] Modifier la couleur de focus des onglets (tint) en orange #F4830B

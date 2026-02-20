@@ -214,7 +214,7 @@ export default function ScanScreen() {
             <View style={{ width: 24 }} />
           </View>
           <View style={styles.centerContent}>
-            <ActivityIndicator size="large" color="#1A8A7D" />
+            <ActivityIndicator size="large" color="#0a7ea5" />
           </View>
         </SafeAreaView>
       </View>
@@ -287,7 +287,7 @@ export default function ScanScreen() {
             <View style={{ width: 24 }} />
           </View>
           <View style={styles.centerContent}>
-            <ActivityIndicator size="large" color="#1A8A7D" />
+            <ActivityIndicator size="large" color="#0a7ea5" />
             <Text style={styles.processingText}>{statusText}</Text>
             <Text style={styles.processingSubtext}>
               Identification du nom et du numéro AMM
@@ -338,7 +338,7 @@ export default function ScanScreen() {
             ]}
             onPress={pickFromGallery}
           >
-            <IconSymbol name="doc.text.fill" size={24} color="#1A8A7D" />
+            <IconSymbol name="doc.text.fill" size={24} color="#0a7ea5" />
             <Text style={styles.gallerySmallText}>Galerie</Text>
           </Pressable>
 
@@ -362,7 +362,7 @@ export default function ScanScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
   },
   headerBar: {
     flexDirection: "row",
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
   },
   headerBarTitle: {
     fontSize: 18,
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   permissionButton: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 32,
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   },
   galleryButtonText: {
     fontSize: 14,
-    color: "#1A8A7D",
+    color: "#0a7ea5",
     textDecorationLine: "underline",
   },
   processingText: {

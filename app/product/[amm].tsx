@@ -307,7 +307,7 @@ export default function ProductDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
   },
   headerBar: {
     flexDirection: "row",
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
   },
   headerBarTitle: {
     fontSize: 18,
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   addButton: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     borderRadius: 14,
     paddingVertical: 18,
     marginHorizontal: 20,
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     alignItems: "center",
     justifyContent: "center",
   },

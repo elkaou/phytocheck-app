@@ -214,7 +214,7 @@ export default function SearchScreen() {
           {/* Results */}
           {isSearching && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#1A8A7D" />
+              <ActivityIndicator size="large" color="#0a7ea5" />
               <Text style={styles.loadingText}>Recherche en cours...</Text>
             </View>
           )}
@@ -253,7 +253,7 @@ export default function SearchScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     paddingHorizontal: 20,
     paddingBottom: 16,
     alignItems: "flex-start",
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   searchButton: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     borderRadius: 12,
     paddingVertical: 16,
     flexDirection: "row",
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   scanButton: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     borderRadius: 12,
     paddingVertical: 16,
     flexDirection: "row",
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   },
   resultSecondary: {
     fontSize: 12,
-    color: "#1A8A7D",
+    color: "#0a7ea5",
     fontStyle: "italic",
     marginTop: 1,
   },

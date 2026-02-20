@@ -93,7 +93,7 @@ export default function AboutScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     paddingHorizontal: 24,
     paddingTop: 8,
     paddingBottom: 24,
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   legalButton: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 20,
