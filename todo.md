@@ -55,3 +55,6 @@
 - [x] Bug : Recherche "SWITCH" donne un résultat illisible
 - [x] Bug : Cliquer sur "Foly R" AMM 9900115 affiche "Centurion R" au lieu de "Foly R"
 - [x] Bug : Bouton "Ajouter au stock" inerte (dialogue ne s'affiche pas)
+- [x] Rendre la croix rouge cliquable pour supprimer un produit du stock
+- [x] Rediriger vers l'onglet "Recherche" après ajout d'un produit au stock
+- [x] Afficher le nom secondaire dans le stock (ex: "Centurion R (Foly R)")
