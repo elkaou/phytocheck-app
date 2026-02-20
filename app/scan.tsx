@@ -54,37 +54,12 @@ export default function ScanScreen() {
         console.log("[Scan] Starting image processing for URI:", uri);
         console.log("[Scan] Platform:", Platform.OS);
         
-        // Read image as base64
-        let base64: string;
-        
-        if (Platform.OS === "web") {
-          // Web: use fetch + FileReader
-          const response = await fetch(uri);
-          const blob = await response.blob();
-          base64 = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              const result = reader.result as string;
-              resolve(result.split(",")[1] || result);
-            };
-            reader.readAsDataURL(blob);
-          });
-        } else {
-          // Native: ALWAYS use manipulateAsync (works for both camera and gallery)
-          console.log("[Scan] Converting image with manipulateAsync...");
-          const manipResult = await manipulateAsync(
-            uri,
-            [{ resize: { width: 1200 } }], // Resize to reduce size
-            { compress: 0.8, format: SaveFormat.JPEG, base64: true }
-          );
-          
-          if (!manipResult.base64) {
-            throw new Error("manipulateAsync n'a pas retourné de base64");
-          }
-          
-          console.log("[Scan] Image converted, base64 length:", manipResult.base64.length);
-          base64 = manipResult.base64;
-        }
+        // Read image as base64 (same method as label-scanner)
+        console.log("[Scan] Reading image as base64...");
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        console.log("[Scan] Base64 read successfully, length:", base64.length);
 
         setStatusText("Envoi au serveur d'analyse...");
 
@@ -196,7 +171,7 @@ export default function ScanScreen() {
     if (!cameraRef.current) return;
     try {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.7,
+        quality: 0.8,
       });
       if (photo?.uri) {
         await processImage(photo.uri);
@@ -209,7 +184,10 @@ export default function ScanScreen() {
   const pickFromGallery = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.7,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+      exif: false,
     });
     if (!result.canceled && result.assets[0]?.uri) {
       await processImage(result.assets[0].uri);

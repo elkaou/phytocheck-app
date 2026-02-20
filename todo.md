@@ -80,3 +80,7 @@
 ## Build 18 - Amélioration majeure
 
 - [x] Scan photo : utilisation systématique de manipulateAsync avec option base64:true pour convertir l'image (fonctionne pour caméra et galerie)
+
+## Build 19 - Amélioration de la reconnaissance
+
+- [x] Le scan photo ne reconnaît toujours pas les produits correctement → adoption de la méthode label-scanner : FileSystem.readAsStringAsync direct + allowsEditing
