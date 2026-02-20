@@ -49,3 +49,5 @@
 - [x] Créer la politique de confidentialité (Privacy Policy)
 - [x] Créer les conditions d'utilisation (Terms of Service) avec décharge de responsabilité
 - [x] Créer les versions HTML pour publication sur GitHub Pages
+- [x] Ajouter les liens "Politique de confidentialité" et "Conditions d'utilisation" dans l'onglet "À propos"
+- [x] Créer les pages de visualisation avec bouton "Fermer"

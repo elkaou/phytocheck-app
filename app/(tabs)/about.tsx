@@ -1,4 +1,5 @@
-import { ScrollView, Text, View, Pressable, StyleSheet, Linking } from "react-native";
+import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
+import { router } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { TOTAL_PRODUCTS, DB_UPDATE_DATE } from "@/lib/product-service";
@@ -33,9 +34,7 @@ export default function AboutScreen() {
               styles.legalButton,
               pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
             ]}
-            onPress={() => {
-              // TODO: Link to privacy policy
-            }}
+            onPress={() => router.push("/privacy-policy")}
           >
             <IconSymbol name="doc.text.fill" size={20} color="#FFFFFF" />
             <Text style={styles.legalButtonText}>
@@ -48,9 +47,7 @@ export default function AboutScreen() {
               styles.legalButton,
               pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
             ]}
-            onPress={() => {
-              // TODO: Link to terms
-            }}
+            onPress={() => router.push("/terms-of-service")}
           >
             <IconSymbol name="doc.text.fill" size={20} color="#FFFFFF" />
             <Text style={styles.legalButtonText}>
