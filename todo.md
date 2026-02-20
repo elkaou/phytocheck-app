@@ -46,3 +46,6 @@
 - [x] Ajouter des filtres cliquables sur les cartes statistiques (Homologués, PPNU, CMR, Toxiques)
 - [x] Modifier la couleur principale (primary) en bleu #0a7ea5
 - [x] Modifier la couleur de focus des onglets (tint) en orange #F4830B
+- [x] Créer la politique de confidentialité (Privacy Policy)
+- [x] Créer les conditions d'utilisation (Terms of Service) avec décharge de responsabilité
+- [x] Créer les versions HTML pour publication sur GitHub Pages

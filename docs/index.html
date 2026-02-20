@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhytoCheck - Documentation Légale</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #0a7ea5 0%, #0a5e7a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        h1 {
+            color: #0a7ea5;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #687076;
+            font-size: 1.1em;
+            margin-bottom: 40px;
+        }
+        .links {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .link-card {
+            background: #f5f5f5;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.3s ease;
+        }
+        .link-card:hover {
+            background: #0a7ea5;
+            border-color: #0a7ea5;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(10, 126, 165, 0.3);
+        }
+        .link-card h2 {
+            color: inherit;
+            font-size: 1.5em;
+            margin-bottom: 8px;
+        }
+        .link-card p {
+            color: inherit;
+            opacity: 0.8;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #687076;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PhytoCheck</h1>
+        <p class="subtitle">Documentation Légale</p>
+        
+        <div class="links">
+            <a href="privacy-policy.html" class="link-card">
+                <h2>🔒 Politique de Confidentialité</h2>
+                <p>Comment nous collectons et utilisons vos données</p>
+            </a>
+            
+            <a href="terms-of-service.html" class="link-card">
+                <h2>📄 Conditions d'Utilisation</h2>
+                <p>Règles d'utilisation et décharge de responsabilité</p>
+            </a>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; 2026 Franck Courrèges - Tous droits réservés</p>
+            <p>PhytoCheck v1.0.0</p>
+        </div>
+    </div>
+</body>
+</html>
