@@ -55,8 +55,8 @@ const IAPContext = createContext<IAPContextType>({
   subscriptionType: null,
   purchaseSubscription: async () => {},
   restorePurchases: async () => {},
-  monthlyPrice: "4,99 €",
-  yearlyPrice: "49,99 €",
+  monthlyPrice: "9,99 €",
+  yearlyPrice: "19,99 €",
   platformSupported: false,
 });
 
@@ -75,8 +75,8 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
   const [purchasing, setPurchasing] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [subscriptionType, setSubscriptionType] = useState<SubscriptionType>(null);
-  const [monthlyPrice, setMonthlyPrice] = useState("4,99 €");
-  const [yearlyPrice, setYearlyPrice] = useState("49,99 €");
+  const [monthlyPrice, setMonthlyPrice] = useState("9,99 €");
+  const [yearlyPrice, setYearlyPrice] = useState("19,99 €");
   const platformSupported = isPlatformSupported();
   
   // Ref pour les modules expo-iap (chargés dynamiquement)

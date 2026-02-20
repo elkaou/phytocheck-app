@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { searchProducts } from "@/lib/product-service";
 import { useApp } from "@/lib/app-context";
@@ -67,24 +68,20 @@ export default function ScanScreen() {
             reader.readAsDataURL(blob);
           });
         } else {
-          // Native: use fetch for content:// URIs (gallery) or FileSystem for file:// URIs (camera)
-          console.log("[Scan] Reading file with fetch (works for content:// URIs)...");
+          // Native: use manipulateAsync to normalize the URI, then read with FileSystem
+          console.log("[Scan] Normalizing image with manipulateAsync...");
           try {
-            // Use fetch which works with both content:// and file:// URIs on Android
-            const response = await fetch(uri);
-            const blob = await response.blob();
-            console.log("[Scan] Blob created, size:", blob.size);
+            // manipulateAsync copies the image to a local file:// URI that FileSystem can read
+            const manipResult = await manipulateAsync(
+              uri,
+              [], // No transformations, just copy
+              { compress: 0.8, format: SaveFormat.JPEG }
+            );
+            console.log("[Scan] Image normalized to:", manipResult.uri);
             
-            // Convert blob to base64
-            base64 = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                const result = reader.result as string;
-                const base64Data = result.split(",")[1] || result;
-                resolve(base64Data);
-              };
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
+            // Now read the normalized file:// URI with FileSystem
+            base64 = await FileSystem.readAsStringAsync(manipResult.uri, {
+              encoding: FileSystem.EncodingType.Base64,
             });
             console.log("[Scan] File read successfully, base64 length:", base64.length);
           } catch (fileError: any) {

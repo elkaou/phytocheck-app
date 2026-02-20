@@ -66,3 +66,8 @@
 - [x] Bug : Label "Homologué non CMR, non toxique" tronqué dans les résultats de recherche (affiche "Homologué non CMR, no")
 - [x] Bug : Modal d'ajout au stock avec champ quantité pré-rempli "1" et boutons "Annul" et "Ajo" tronqués
 - [x] Bug : Scan photo retourne toujours "Erreur d'analyse" malgré les corrections du build 15 (erreur immédiate = lecture fichier)
+
+## Build 16 - Nouvelles corrections
+
+- [x] Bug : Scan photo ne fonctionne toujours pas malgré l'utilisation de fetch() → utilisation de manipulateAsync pour normaliser l'URI
+- [x] Modifier les prix des abonnements : 9,99€/mois et 19,99€/an
