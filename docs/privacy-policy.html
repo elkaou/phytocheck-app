@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Politique de Confidentialité - PhytoCheck</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #0a7ea5;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        h2 {
+            color: #0a7ea5;
+            font-size: 1.8em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #0a7ea5;
+            padding-bottom: 10px;
+        }
+        h3 {
+            color: #333;
+            font-size: 1.3em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        ul {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .update-date {
+            color: #687076;
+            font-style: italic;
+            margin-bottom: 30px;
+        }
+        .highlight {
+            background-color: #fff7ed;
+            border-left: 4px solid #F4830B;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #687076;
+            font-size: 0.9em;
+        }
+        a {
+            color: #0a7ea5;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        strong {
+            color: #0a7ea5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Politique de Confidentialité</h1>
+        <p class="update-date"><strong>Dernière mise à jour : 20 février 2026</strong></p>
+
+        <h2>Introduction</h2>
+        <p>PhytoCheck est une application mobile développée par Franck Courrèges qui permet aux utilisateurs de vérifier l'homologation des produits phytosanitaires en France. Cette politique de confidentialité explique comment l'application collecte, utilise et protège vos données.</p>
+
+        <h2>Données collectées</h2>
+        
+        <h3>Données personnelles</h3>
+        <p>PhytoCheck <strong>ne collecte aucune donnée personnelle identifiable</strong>. L'application ne demande pas et ne stocke pas :</p>
+        <ul>
+            <li>Nom, prénom ou coordonnées</li>
+            <li>Adresse email (sauf pour la gestion des abonnements via Google Play)</li>
+            <li>Numéro de téléphone</li>
+            <li>Localisation géographique</li>
+            <li>Adresse IP</li>
+        </ul>
+
+        <h3>Données d'utilisation</h3>
+        <p>L'application stocke localement sur votre appareil :</p>
+        <ul>
+            <li><strong>Liste de produits en stock</strong> : Les produits que vous ajoutez à votre stock personnel sont stockés uniquement sur votre appareil via AsyncStorage (stockage local)</li>
+            <li><strong>Historique de recherches</strong> : Le compteur de recherches gratuites est stocké localement pour gérer la limite de 20 recherches</li>
+            <li><strong>Statut Premium</strong> : L'état de votre abonnement Premium est vérifié via Google Play Billing</li>
+        </ul>
+        <p>Ces données <strong>ne sont jamais transmises à des serveurs externes</strong> et restent sur votre appareil. Elles sont supprimées si vous désinstallez l'application.</p>
+
+        <h2>Permissions demandées</h2>
+
+        <h3>Appareil photo (android.permission.CAMERA)</h3>
+        <p>L'application demande l'accès à votre appareil photo <strong>uniquement pour scanner les étiquettes de produits phytosanitaires</strong>. Cette fonctionnalité vous permet de :</p>
+        <ul>
+            <li>Prendre une photo de l'étiquette d'un produit</li>
+            <li>Extraire automatiquement le nom du produit et son numéro AMM (Autorisation de Mise sur le Marché)</li>
+            <li>Rechercher le produit dans la base de données E-Phy</li>
+        </ul>
+
+        <div class="highlight">
+            <p><strong>Important :</strong></p>
+            <ul>
+                <li>Les photos ne sont <strong>jamais sauvegardées</strong> sur votre appareil</li>
+                <li>Les photos ne sont <strong>jamais envoyées à des serveurs tiers</strong></li>
+                <li>Les photos sont traitées temporairement en mémoire pour l'analyse OCR (reconnaissance de texte), puis immédiatement supprimées</li>
+                <li>Vous pouvez refuser cette permission et utiliser la recherche manuelle à la place</li>
+            </ul>
+        </div>
+
+        <h3>Stockage (android.permission.READ_EXTERNAL_STORAGE)</h3>
+        <p>Cette permission permet de sélectionner une photo depuis votre galerie pour scanner une étiquette. Elle est optionnelle et n'est utilisée que si vous choisissez cette option.</p>
+
+        <h2>Utilisation des données</h2>
+        <p>Les données sont utilisées exclusivement pour :</p>
+        <ol>
+            <li><strong>Vérifier l'homologation des produits</strong> : Recherche dans la base de données E-Phy (publique, fournie par le Ministère de l'Agriculture français)</li>
+            <li><strong>Gérer votre stock personnel</strong> : Stockage local des produits que vous ajoutez</li>
+            <li><strong>Gérer les abonnements Premium</strong> : Vérification du statut d'abonnement via Google Play Billing</li>
+        </ol>
+
+        <h2>Partage des données</h2>
+        <p>PhytoCheck <strong>ne partage aucune donnée avec des tiers</strong>. Les seules interactions externes sont :</p>
+        <ul>
+            <li><strong>Google Play Billing</strong> : Pour la gestion des abonnements Premium (conformément à la politique de confidentialité de Google)</li>
+            <li><strong>Serveur d'analyse OCR</strong> : Les photos scannées sont envoyées temporairement à un serveur sécurisé pour l'extraction de texte, puis immédiatement supprimées après traitement</li>
+        </ul>
+
+        <h2>Sécurité des données</h2>
+        <ul>
+            <li>Toutes les données sont stockées localement sur votre appareil de manière sécurisée</li>
+            <li>Les communications avec les serveurs externes (OCR) utilisent le protocole HTTPS</li>
+            <li>Aucune donnée n'est stockée sur des serveurs externes</li>
+        </ul>
+
+        <h2>Base de données E-Phy</h2>
+        <p>L'application utilise la base de données publique <strong>E-Phy</strong> fournie par le Ministère de l'Agriculture et de la Souveraineté alimentaire français. Cette base contient :</p>
+        <ul>
+            <li>Les produits phytosanitaires autorisés en France</li>
+            <li>Les produits retirés du marché (PPNU - Produits Phytosanitaires Non Utilisables)</li>
+            <li>Les phrases de risque associées (CMR, toxicité)</li>
+        </ul>
+        <p><strong>Source</strong> : <a href="https://ephy.anses.fr/" target="_blank">https://ephy.anses.fr/</a></p>
+        <p>La base de données est mise à jour régulièrement et intégrée dans l'application. Aucune connexion internet n'est requise pour consulter les produits (sauf pour la fonctionnalité de scan photo).</p>
+
+        <h2>Abonnements et paiements</h2>
+        <p>Les abonnements Premium sont gérés par <strong>Google Play Billing</strong>. PhytoCheck ne stocke pas vos informations de paiement. Pour plus d'informations sur la gestion de vos données de paiement, consultez la <a href="https://policies.google.com/privacy" target="_blank">Politique de confidentialité de Google Play</a>.</p>
+
+        <h2>Droits des utilisateurs</h2>
+        <p>Conformément au RGPD (Règlement Général sur la Protection des Données), vous avez le droit de :</p>
+        <ul>
+            <li><strong>Accéder</strong> à vos données : Toutes vos données sont stockées localement sur votre appareil et accessibles via l'application</li>
+            <li><strong>Supprimer</strong> vos données : Désinstallez l'application pour supprimer toutes les données locales</li>
+            <li><strong>Exporter</strong> vos données : Vous pouvez exporter votre liste de stock (fonctionnalité à venir)</li>
+        </ul>
+
+        <h2>Modifications de cette politique</h2>
+        <p>Cette politique de confidentialité peut être mise à jour occasionnellement. Toute modification sera publiée sur cette page avec une nouvelle date de mise à jour. Il est recommandé de consulter régulièrement cette page.</p>
+
+        <h2>Contact</h2>
+        <p>Pour toute question concernant cette politique de confidentialité, vous pouvez contacter le développeur :</p>
+        <p>
+            <strong>Franck Courrèges</strong><br>
+            Email : <a href="mailto:votre-email@example.com">votre-email@example.com</a><br>
+            Site web : <a href="https://github.com/elkaou/phytocheck-app" target="_blank">https://github.com/elkaou/phytocheck-app</a>
+        </p>
+
+        <h2>Conformité</h2>
+        <p>Cette application est conforme au :</p>
+        <ul>
+            <li><strong>RGPD</strong> (Règlement Général sur la Protection des Données - UE)</li>
+            <li><strong>Politique de confidentialité de Google Play</strong></li>
+            <li><strong>Loi Informatique et Libertés</strong> (France)</li>
+        </ul>
+
+        <div class="footer">
+            <p>Cette politique de confidentialité a été générée pour PhytoCheck v1.0.0</p>
+            <p>&copy; 2026 Franck Courrèges - Tous droits réservés</p>
+        </div>
+    </div>
+</body>
+</html>
