@@ -106,3 +106,12 @@
   * Envoi direct de la Data URL au LLM (pas d'upload S3)
   * Prompt système détaillé de l'ancienne version avec instructions précises
   * Côté client : création de Data URL `data:image/jpeg;base64,${base64}`
+
+## Build 25 - Ne fonctionne toujours pas
+
+- [x] Comparer label-scanner.tsx fonctionnel avec scan.tsx actuel pour identifier les différences exactes
+- [x] Appliquer les corrections identifiées
+  * Utilisation de FileSystem.readAsStringAsync directement (sans manipulateAsync)
+  * Ajout d'un endpoint analyzeLabel à la racine du router (comme dans l'ancienne version)
+  * Format de réponse avec { success, data: { productName, amm, function } }
+  * Adaptation du code client pour utiliser result.data.productName au lieu de result.nom

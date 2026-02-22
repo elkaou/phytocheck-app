@@ -27,7 +27,7 @@ export default function ScanScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusText, setStatusText] = useState("Analyse de l'étiquette en cours...");
 
-  const analyzeMutation = trpc.ocr.analyzeLabel.useMutation();
+  const analyzeMutation = trpc.analyzeLabel.useMutation();
 
   const processImage = useCallback(
     async (uri: string) => {
@@ -54,19 +54,11 @@ export default function ScanScreen() {
         console.log("[Scan] Starting image processing for URI:", uri);
         console.log("[Scan] Platform:", Platform.OS);
         
-        // Use manipulateAsync with base64:true to get base64 directly
-        console.log("[Scan] Processing image with manipulateAsync...");
-        const manipResult = await manipulateAsync(
-          uri,
-          [{ resize: { width: 1200 } }],
-          { compress: 0.8, format: SaveFormat.JPEG, base64: true }
-        );
-        
-        if (!manipResult.base64) {
-          throw new Error("manipulateAsync n'a pas retourné de base64");
-        }
-        
-        const base64 = manipResult.base64;
+        // Read file directly with FileSystem (same as working label-scanner)
+        console.log("[Scan] Reading file with FileSystem.readAsStringAsync...");
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
         console.log("[Scan] Base64 obtained successfully, length:", base64.length);
 
         setStatusText("Envoi au serveur d'analyse...");
@@ -83,20 +75,20 @@ export default function ScanScreen() {
         });
         console.log("[Scan] Server response:", result);
 
-        if (result.success && (result.nom || result.amm)) {
+        if (result.success && result.data && (result.data.productName || result.data.amm)) {
           // Try searching by name first, then by AMM
-          let results = searchProducts(result.nom || "");
-          let searchQuery = result.nom || "";
+          let results = searchProducts(result.data.productName || "");
+          let searchQuery = result.data.productName || "";
 
           // If no results by name, try by AMM
-          if (results.length === 0 && result.amm) {
-            results = searchProducts(result.amm);
-            searchQuery = result.amm;
+          if (results.length === 0 && result.data.amm) {
+            results = searchProducts(result.data.amm);
+            searchQuery = result.data.amm;
           }
 
           // If still no results and name has multiple words, try each word
-          if (results.length === 0 && result.nom) {
-            const words = result.nom.split(/\s+/).filter((w: string) => w.length >= 3);
+          if (results.length === 0 && result.data.productName) {
+            const words = result.data.productName.split(/\s+/).filter((w: string) => w.length >= 3);
             for (const word of words) {
               results = searchProducts(word);
               if (results.length > 0) {
@@ -129,10 +121,10 @@ export default function ScanScreen() {
             });
           } else {
             // No results found
-            const detectedInfo = result.nom
-              ? `Nom détecté : "${result.nom}"`
-              : result.amm
-                ? `AMM détecté : "${result.amm}"`
+            const detectedInfo = result.data?.productName
+              ? `Nom détecté : "${result.data.productName}"`
+              : result.data?.amm
+                ? `AMM détecté : "${result.data.amm}"`
                 : "";
             Alert.alert(
               "Produit non trouvé",
