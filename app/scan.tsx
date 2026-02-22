@@ -76,50 +76,13 @@ export default function ScanScreen() {
         console.log("[Scan] Server response:", result);
 
         if (result.success && result.data && (result.data.productName || result.data.amm)) {
-          // Try searching by name first, then by AMM
-          let results = searchProducts(result.data.productName || "");
-          let searchQuery = result.data.productName || "";
-
-          // If no results by name, try by AMM
-          if (results.length === 0 && result.data.amm) {
-            results = searchProducts(result.data.amm);
-            searchQuery = result.data.amm;
-          }
-
-          // If still no results and name has multiple words, try each word
-          if (results.length === 0 && result.data.productName) {
-            const words = result.data.productName.split(/\s+/).filter((w: string) => w.length >= 3);
-            for (const word of words) {
-              results = searchProducts(word);
-              if (results.length > 0) {
-                searchQuery = word;
-                break;
-              }
-            }
-          }
-
-          // Check if multiple AMMs exist for the same product name
-          const uniqueAMMs = [...new Set(results.map((r) => r.amm))];
-
-          if (results.length === 1) {
-            // Single result: go directly to product detail
-            router.replace({
-              pathname: "/product/[amm]" as any,
-              params: { amm: results[0].amm },
-            });
-          } else if (uniqueAMMs.length > 1) {
-            // Multiple AMMs: go to search so user can choose the right one
-            router.replace({
-              pathname: "/(tabs)/search" as any,
-              params: { q: searchQuery },
-            });
-          } else if (results.length > 0) {
-            // Same AMM, go to product detail
-            router.replace({
-              pathname: "/product/[amm]" as any,
-              params: { amm: results[0].amm },
-            });
-          } else {
+          // Use the exact same logic as manual search: redirect to search screen with detected name
+          const searchQuery = result.data.productName || result.data.amm || "";
+          
+          // Quick check if product exists
+          const results = searchProducts(searchQuery);
+          
+          if (results.length === 0) {
             // No results found
             const detectedInfo = result.data?.productName
               ? `Nom détecté : "${result.data.productName}"`
@@ -131,6 +94,12 @@ export default function ScanScreen() {
               `Aucun produit trouvé dans la base de données.\n${detectedInfo}\n\nEssayez la recherche manuelle.`,
               [{ text: "OK", onPress: () => setIsProcessing(false) }]
             );
+          } else {
+            // Redirect to search screen with detected name (same as manual search)
+            router.replace({
+              pathname: "/(tabs)/search" as any,
+              params: { q: searchQuery },
+            });
           }
         } else {
           Alert.alert(

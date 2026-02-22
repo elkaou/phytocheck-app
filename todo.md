@@ -171,3 +171,9 @@
 ## Build 38 - Champs mutuellement exclusifs
 
 - [x] Amélioration : Rendre les champs L et Kg mutuellement exclusifs dans la modal "Ajouter au stock" (si on remplit L, Kg se vide automatiquement et inversement)
+
+## Build 39 - Bug scan photo nom secondaire
+
+- [x] Bug critique : Le scan photo détecte "Belkar" mais affiche et stocke "Mozzar" (nom principal) au lieu du nom secondaire détecté par l'IA
+- [x] La recherche manuelle fonctionne correctement (affiche et stocke le nom secondaire)
+- [x] Solution : Rediriger vers l'écran de recherche avec le nom détecté par l'IA (même logique que la recherche manuelle)
