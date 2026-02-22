@@ -119,3 +119,8 @@
 ## Build 26 - Toujours la même erreur
 
 - [x] Ajouter des logs détaillés pour afficher l'erreur complète dans une alerte au lieu de "Erreur d'analyse"
+
+## Build 27 - Problème identifié : URL relative au lieu d'absolue
+
+- [x] Erreur "Invalid URL: /api/trpc/analyzeLabel?batch=1" → L'URL tRPC est relative au lieu d'être absolue (https://...) → Android ne sait pas quel serveur contacter
+  * Ajout de la variable d'environnement EXPO_PUBLIC_API_BASE_URL avec l'URL complète du serveur API
