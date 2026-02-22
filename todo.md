@@ -162,3 +162,8 @@
 - [x] Ajouter un bouton "Export en PDF" en haut de la page Stock
 - [x] Le bouton est actif uniquement pour les utilisateurs Premium
 - [x] Implémenter la génération du PDF avec la liste du stock (expo-print + expo-sharing)
+
+## Build 37 - Corrections modal et nom produit
+
+- [x] Bug : Modal "Ajouter au stock" doit avoir 2 champs de saisie (L et Kg) au lieu de boutons de sélection
+- [x] Bug : Le stock affiche le nom principal (GLOBUS) au lieu du nom détecté par l'IA (Rackam) quand c'est un nom secondaire → Inversé l'affichage pour montrer le nom secondaire en priorité

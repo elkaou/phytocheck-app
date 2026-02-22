@@ -289,7 +289,7 @@ export default function StockScreen() {
               >
                 <View style={styles.stockCardContent}>
                   <Text style={styles.stockName} numberOfLines={1}>
-                    {item.nom}{item.secondaryName ? ` (${item.secondaryName})` : ""}
+                    {item.secondaryName ? `${item.secondaryName} (${item.nom})` : item.nom}
                   </Text>
                   <Text style={styles.stockAMM}>AMM : {item.amm}</Text>
                   <View style={styles.stockCardBottom}>

@@ -24,14 +24,24 @@ export function QuantityModal({
   onCancel,
   onConfirm,
 }: QuantityModalProps) {
-  const [quantity, setQuantity] = useState("");
-  const [selectedUnit, setSelectedUnit] = useState<"L" | "Kg">("L");
+  const [quantityL, setQuantityL] = useState("");
+  const [quantityKg, setQuantityKg] = useState("");
 
   const handleConfirm = () => {
-    const qty = parseFloat(quantity) || 1;
-    onConfirm(qty, selectedUnit);
-    setQuantity(""); // Reset for next time
-    setSelectedUnit("L"); // Reset to default
+    const qtyL = parseFloat(quantityL) || 0;
+    const qtyKg = parseFloat(quantityKg) || 0;
+    
+    if (qtyL > 0) {
+      onConfirm(qtyL, "L");
+    } else if (qtyKg > 0) {
+      onConfirm(qtyKg, "Kg");
+    } else {
+      // Si aucune quantité n'est saisie, ne rien faire
+      return;
+    }
+    
+    setQuantityL(""); // Reset for next time
+    setQuantityKg(""); // Reset for next time
   };
 
   return (
@@ -55,46 +65,31 @@ export function QuantityModal({
               <Text style={styles.modalTitle}>Ajouter au stock</Text>
               <Text style={styles.modalSubtitle}>{productName}</Text>
 
-              <Text style={styles.label}>Quantité :</Text>
-              <TextInput
-                style={styles.input}
-                value={quantity}
-                onChangeText={setQuantity}
-                keyboardType="decimal-pad"
-                placeholder="1"
-                autoFocus
-                selectTextOnFocus
-              />
+              {/* Row 1: Two input fields for L and Kg */}
+              <View style={styles.inputRow}>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>L</Text>
+                  <TextInput
+                    style={styles.quantityInput}
+                    value={quantityL}
+                    onChangeText={setQuantityL}
+                    keyboardType="decimal-pad"
+                    placeholder="0"
+                    selectTextOnFocus
+                  />
+                </View>
 
-              {/* Row 1: L and Kg buttons */}
-              <View style={styles.unitRow}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.unitButton,
-                    selectedUnit === "L" && styles.unitButtonSelected,
-                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                  ]}
-                  onPress={() => setSelectedUnit("L")}
-                >
-                  <Text style={[
-                    styles.unitButtonText,
-                    selectedUnit === "L" && styles.unitButtonTextSelected,
-                  ]}>L</Text>
-                </Pressable>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.unitButton,
-                    selectedUnit === "Kg" && styles.unitButtonSelected,
-                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                  ]}
-                  onPress={() => setSelectedUnit("Kg")}
-                >
-                  <Text style={[
-                    styles.unitButtonText,
-                    selectedUnit === "Kg" && styles.unitButtonTextSelected,
-                  ]}>Kg</Text>
-                </Pressable>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Kg</Text>
+                  <TextInput
+                    style={styles.quantityInput}
+                    value={quantityKg}
+                    onChangeText={setQuantityKg}
+                    keyboardType="decimal-pad"
+                    placeholder="0"
+                    selectTextOnFocus
+                  />
+                </View>
               </View>
 
               {/* Row 2: Ajouter and Annuler buttons */}
@@ -183,7 +178,22 @@ const styles = StyleSheet.create({
     color: "#1A1A1A",
     marginBottom: 8,
   },
-  input: {
+  inputRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 20,
+  },
+  inputContainer: {
+    flex: 1,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  quantityInput: {
     backgroundColor: "#F5F5F5",
     borderRadius: 8,
     paddingHorizontal: 16,
@@ -192,33 +202,7 @@ const styles = StyleSheet.create({
     color: "#1A1A1A",
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    marginBottom: 20,
-  },
-  unitRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 10,
-  },
-  unitButton: {
-    flex: 1,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 8,
-    paddingVertical: 16,
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
-  },
-  unitButtonSelected: {
-    backgroundColor: "#0a7ea5",
-    borderColor: "#0a7ea5",
-  },
-  unitButtonText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#687076",
-  },
-  unitButtonTextSelected: {
-    color: "#FFFFFF",
+    textAlign: "center",
   },
   actionRow: {
     flexDirection: "row",
