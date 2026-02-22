@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   ScrollView,
   Text,
@@ -11,7 +11,7 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import {
@@ -65,6 +65,17 @@ export default function SearchScreen() {
       doSearch(params.q);
     }
   }, [params.q, autoSearchDone, doSearch]);
+
+  // Clear search field when tab is focused (unless coming from scan with q param)
+  useFocusEffect(
+    useCallback(() => {
+      if (!params.q) {
+        setQuery("");
+        setResults([]);
+        setHasSearched(false);
+      }
+    }, [params.q])
+  );
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return;
@@ -173,47 +184,51 @@ export default function SearchScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Search by name or AMM */}
-          <Text style={styles.sectionTitle}>Recherche par nom ou AMM</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Rechercher par nom ou AMM"
-            placeholderTextColor="#9BA1A6"
-            value={query}
-            onChangeText={setQuery}
-            returnKeyType="search"
-            onSubmitEditing={handleSearch}
-            autoCorrect={false}
-          />
-          <Pressable
-            style={({ pressed }) => [
-              styles.searchButton,
-              pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-            ]}
-            onPress={handleSearch}
-          >
-            <IconSymbol name="magnifyingglass" size={22} color="#FFFFFF" />
-            <Text style={styles.searchButtonText}>Rechercher</Text>
-          </Pressable>
+          {/* Search by name or AMM - Hidden when results are displayed */}
+          {!hasSearched && (
+            <>
+              <Text style={styles.sectionTitle}>Recherche par nom ou AMM</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Rechercher par nom ou AMM"
+                placeholderTextColor="#9BA1A6"
+                value={query}
+                onChangeText={setQuery}
+                returnKeyType="search"
+                onSubmitEditing={handleSearch}
+                autoCorrect={false}
+              />
+              <Pressable
+                style={({ pressed }) => [
+                  styles.searchButton,
+                  pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                ]}
+                onPress={handleSearch}
+              >
+                <IconSymbol name="magnifyingglass" size={22} color="#FFFFFF" />
+                <Text style={styles.searchButtonText}>Rechercher</Text>
+              </Pressable>
 
-          {/* Search by photo */}
-          <Text style={[styles.sectionTitle, { marginTop: 28 }]}>
-            Recherche par photo d'étiquette
-          </Text>
-          <Pressable
-            style={({ pressed }) => [
-              styles.scanButton,
-              pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-            ]}
-            onPress={handleScan}
-          >
-            <IconSymbol name="camera.fill" size={22} color="#FFFFFF" />
-            <Text style={styles.searchButtonText}>Scanner une étiquette</Text>
-          </Pressable>
-          <Text style={styles.scanHint}>
-            Prenez une photo de l'étiquette pour identifier le produit
-            automatiquement
-          </Text>
+              {/* Search by photo */}
+              <Text style={[styles.sectionTitle, { marginTop: 28 }]}>
+                Recherche par photo d'étiquette
+              </Text>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.scanButton,
+                  pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                ]}
+                onPress={handleScan}
+              >
+                <IconSymbol name="camera.fill" size={22} color="#FFFFFF" />
+                <Text style={styles.searchButtonText}>Scanner une étiquette</Text>
+              </Pressable>
+              <Text style={styles.scanHint}>
+                Prenez une photo de l'étiquette pour identifier le produit
+                automatiquement
+              </Text>
+            </>
+          )}
 
           {/* Results */}
           {isSearching && (

@@ -8,6 +8,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from "react-native";
 
 interface QuantityModalProps {
@@ -44,7 +45,11 @@ export function QuantityModal({
           style={styles.centeredView}
         >
           <Pressable onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalView}>
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.modalView}>
               <Text style={styles.modalTitle}>Ajouter au stock</Text>
               <Text style={styles.modalSubtitle}>{productName}</Text>
 
@@ -93,7 +98,8 @@ export function QuantityModal({
                   <Text style={styles.confirmButtonText}>Ajouter (Kg)</Text>
                 </Pressable>
               </View>
-            </View>
+              </View>
+            </ScrollView>
           </Pressable>
         </KeyboardAvoidingView>
       </Pressable>
@@ -109,9 +115,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   centeredView: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     width: "100%",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
   },
   modalView: {
     backgroundColor: "#FFFFFF",

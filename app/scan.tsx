@@ -167,8 +167,6 @@ export default function ScanScreen() {
   const takePicture = useCallback(async () => {
     try {
       const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [4, 3],
         quality: 0.8,
         exif: false,
       });
@@ -183,8 +181,6 @@ export default function ScanScreen() {
   const pickFromGallery = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [4, 3],
       quality: 0.8,
       exif: false,
     });
