@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   ScrollView,
   Text,
@@ -18,6 +18,8 @@ import {
 } from "@/lib/product-service";
 import { StockItem, FREE_STOCK_LIMIT } from "@/lib/store";
 
+type FilterType = "all" | "homologue" | "retire" | "homologue_cmr" | "homologue_toxique";
+
 export default function StockScreen() {
   const router = useRouter();
   const {
@@ -28,6 +30,8 @@ export default function StockScreen() {
     refreshStock,
     stockLimit,
   } = useApp();
+
+  const [filter, setFilter] = useState<FilterType>("all");
 
   useEffect(() => {
     refreshStock();
@@ -55,6 +59,16 @@ export default function StockScreen() {
 
   const maxDisplay = isPremium ? "∞" : String(FREE_STOCK_LIMIT);
 
+  // Filter stock based on selected filter
+  const filteredStock = useMemo(() => {
+    if (filter === "all") return stock;
+    return stock.filter((item) => item.classification === filter);
+  }, [stock, filter]);
+
+  const handleFilterToggle = useCallback((filterType: FilterType) => {
+    setFilter((current) => (current === filterType ? "all" : filterType));
+  }, []);
+
   return (
     <ScreenContainer containerClassName="bg-primary">
       {/* Header */}
@@ -72,45 +86,81 @@ export default function StockScreen() {
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Stats grid */}
+          {/* Stats grid with filters */}
           <View style={styles.statsGrid}>
-            <View style={[styles.statCard, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.statCard,
+                { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" },
+                filter === "homologue" && styles.statCardActive,
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={() => handleFilterToggle("homologue")}
+            >
               <Text style={[styles.statNumber, { color: "#16A34A" }]}>
                 {stockStats.homologues}
               </Text>
               <Text style={[styles.statLabel, { color: "#16A34A" }]}>
                 Homologués
               </Text>
-            </View>
-            <View style={[styles.statCard, { backgroundColor: "#FEF2F2", borderColor: "#FECACA" }]}>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.statCard,
+                { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
+                filter === "retire" && styles.statCardActive,
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={() => handleFilterToggle("retire")}
+            >
               <Text style={[styles.statNumber, { color: "#DC2626" }]}>
                 {stockStats.ppnu}
               </Text>
               <Text style={[styles.statLabel, { color: "#DC2626" }]}>PPNU</Text>
-            </View>
-            <View style={[styles.statCard, { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }]}>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.statCard,
+                { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" },
+                filter === "homologue_cmr" && styles.statCardActive,
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={() => handleFilterToggle("homologue_cmr")}
+            >
               <Text style={[styles.statNumber, { color: "#D97706" }]}>
                 {stockStats.cmr}
               </Text>
               <Text style={[styles.statLabel, { color: "#D97706" }]}>CMR</Text>
-            </View>
-            <View style={[styles.statCard, { backgroundColor: "#FFF7ED", borderColor: "#FED7AA" }]}>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.statCard,
+                { backgroundColor: "#FFF7ED", borderColor: "#FED7AA" },
+                filter === "homologue_toxique" && styles.statCardActive,
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={() => handleFilterToggle("homologue_toxique")}
+            >
               <Text style={[styles.statNumber, { color: "#C2410C" }]}>
                 {stockStats.toxiques}
               </Text>
               <Text style={[styles.statLabel, { color: "#C2410C" }]}>
                 Toxiques
               </Text>
-            </View>
+            </Pressable>
           </View>
 
           {/* Stock list */}
-          {stock.length === 0 ? (
+          {filteredStock.length === 0 ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>Aucun produit dans le stock</Text>
+              <Text style={styles.emptyText}>
+                {filter === "all"
+                  ? "Aucun produit dans le stock"
+                  : "Aucun produit dans cette catégorie"}
+              </Text>
             </View>
           ) : (
-            stock.map((item) => (
+            filteredStock.map((item) => (
               <Pressable
                 key={item.amm}
                 style={({ pressed }) => [
@@ -126,7 +176,7 @@ export default function StockScreen() {
               >
                 <View style={styles.stockCardContent}>
                   <Text style={styles.stockName} numberOfLines={1}>
-                    {item.nom}
+                    {item.nom}{item.secondaryName ? ` (${item.secondaryName})` : ""}
                   </Text>
                   <Text style={styles.stockAMM}>AMM : {item.amm}</Text>
                   <View style={styles.stockCardBottom}>
@@ -157,7 +207,7 @@ export default function StockScreen() {
                     </View>
                     <View style={styles.stockQuantityBadge}>
                       <Text style={styles.stockQuantityText}>
-                        Qté : {item.quantite || 1}
+                        Qté : {item.quantite || 1} {item.unite || "L"}
                       </Text>
                     </View>
                   </View>
@@ -182,7 +232,7 @@ export default function StockScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     paddingHorizontal: 24,
     paddingTop: 8,
     paddingBottom: 20,
@@ -221,6 +271,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 18,
     borderWidth: 1,
+  },
+  statCardActive: {
+    borderWidth: 3,
+    transform: [{ scale: 0.98 }],
   },
   statNumber: {
     fontSize: 32,
@@ -288,7 +342,7 @@ const styles = StyleSheet.create({
   stockQuantityText: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#1A8A7D",
+    color: "#0a7ea5",
   },
   deleteButton: {
     width: 36,

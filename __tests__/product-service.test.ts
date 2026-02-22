@@ -19,7 +19,7 @@ describe("product-service", () => {
 
   describe("DB_UPDATE_DATE", () => {
     it("should return the correct date", () => {
-      expect(DB_UPDATE_DATE).toBe("21/01/2026");
+      expect(DB_UPDATE_DATE).toBe("19/02/2026");
     });
   });
 
@@ -107,7 +107,7 @@ describe("product-service", () => {
 
   describe("getClassificationLabel", () => {
     it("should return correct labels", () => {
-      expect(getClassificationLabel("homologue")).toBe("Homologué");
+      expect(getClassificationLabel("homologue")).toBe("Homologué non CMR, non toxique");
       expect(getClassificationLabel("retire")).toBe("Retiré");
       expect(getClassificationLabel("homologue_cmr")).toBe("Homologué — CMR");
       expect(getClassificationLabel("homologue_toxique")).toBe("Homologué — Toxique");

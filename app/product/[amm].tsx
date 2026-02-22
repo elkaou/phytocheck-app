@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
+import { QuantityModal } from "@/components/quantity-modal";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -20,37 +21,57 @@ import {
 import { useApp } from "@/lib/app-context";
 
 export default function ProductDetailScreen() {
-  const { amm } = useLocalSearchParams<{ amm: string }>();
+  const { amm, name } = useLocalSearchParams<{ amm: string; name?: string }>();
   const router = useRouter();
   const { addProductToStock, isProductInStock, getProductQuantity, updateProductQuantity, isPremium, stock } = useApp();
 
   const [product, setProduct] = useState<ClassifiedProduct | null>(null);
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
   const inStock = amm ? isProductInStock(amm) : false;
 
   useEffect(() => {
     if (amm) {
-      const p = getProductByAMM(amm);
+      const p = getProductByAMM(amm, name);
       setProduct(p);
     }
-  }, [amm]);
+  }, [amm, name]);
 
   const currentQuantity = amm ? getProductQuantity(amm) : 0;
 
   const handleAddToStock = useCallback(async () => {
     if (!product) return;
+    setShowQuantityModal(true);
+  }, [product]);
 
-    const result = await addProductToStock(product, 1);
+  const handleQuantityConfirm = useCallback(async (quantity: number, unit: "L" | "Kg") => {
+    if (!product) return;
+    
+    setShowQuantityModal(false);
+    
+    // Pass secondary name if the product was accessed via a secondary name
+    const secondaryName = name && name !== product.nom ? name : undefined;
+    const result = await addProductToStock(product, quantity, unit, secondaryName);
     if (result === "added") {
-      Alert.alert("Ajouté", `"${product.nom}" a été ajouté à votre stock (quantité : 1).`);
+      Alert.alert("Ajouté", `"${product.nom}" a été ajouté à votre stock (${quantity} ${unit}).`, [
+        {
+          text: "OK",
+          onPress: () => router.push("/(tabs)/search"),
+        },
+      ]);
     } else if (result === "incremented") {
-      Alert.alert("Quantité mise à jour", `Quantité de "${product.nom}" augmentée.`);
+      Alert.alert("Quantité mise à jour", `Quantité de "${product.nom}" augmentée (+${quantity} ${unit}).`, [
+        {
+          text: "OK",
+          onPress: () => router.push("/(tabs)/search"),
+        },
+      ]);
     } else if (result === "limit") {
       Alert.alert(
         "Limite atteinte",
         "Vous avez atteint la limite de 20 produits en stock. Passez à Premium pour un stock illimité."
       );
     }
-  }, [product, addProductToStock]);
+  }, [product, addProductToStock, router]);
 
   if (!product) {
     return (
@@ -266,6 +287,14 @@ export default function ProductDetailScreen() {
           )}
         </ScrollView>
       </SafeAreaView>
+
+      {/* Quantity Modal */}
+      <QuantityModal
+        visible={showQuantityModal}
+        productName={product.nom}
+        onCancel={() => setShowQuantityModal(false)}
+        onConfirm={handleQuantityConfirm}
+      />
     </View>
   );
 }
@@ -273,7 +302,7 @@ export default function ProductDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
   },
   headerBar: {
     flexDirection: "row",
@@ -281,7 +310,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
   },
   headerBarTitle: {
     fontSize: 18,
@@ -412,7 +441,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   addButton: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     borderRadius: 14,
     paddingVertical: 18,
     marginHorizontal: 20,
@@ -461,7 +490,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     alignItems: "center",
     justifyContent: "center",
   },

@@ -45,6 +45,12 @@ export function getApiBaseUrl(): string {
     }
   }
 
+  // On native (iOS/Android), use hardcoded development server URL
+  // This will be replaced with production URL when deployed
+  if (ReactNative.Platform.OS !== "web") {
+    return "https://3000-ix0fvf3uapsj0prlqr0jt-46d68d43.us2.manus.computer";
+  }
+
   // Fallback to empty (will use relative URL)
   return "";
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   ScrollView,
   Text,
@@ -33,6 +33,8 @@ export default function SearchScreen() {
   const [results, setResults] = useState<ClassifiedProduct[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const resultsRef = useRef<View>(null);
 
   const doSearch = useCallback((searchQuery: string) => {
     setIsSearching(true);
@@ -41,6 +43,18 @@ export default function SearchScreen() {
       setResults(found);
       setHasSearched(true);
       setIsSearching(false);
+      
+      // Scroll to results after a short delay
+      setTimeout(() => {
+        resultsRef.current?.measureLayout(
+          // @ts-ignore
+          scrollViewRef.current?.getInnerViewNode?.(),
+          (_x: number, y: number) => {
+            scrollViewRef.current?.scrollTo({ y: y - 20, animated: true });
+          },
+          () => {}
+        );
+      }, 200);
     }, 100);
   }, []);
 
@@ -89,7 +103,10 @@ export default function SearchScreen() {
         onPress={() =>
           router.push({
             pathname: "/product/[amm]" as any,
-            params: { amm: item.amm },
+            params: { 
+              amm: item.amm,
+              name: item.matchedName || item.nom,
+            },
           })
         }
       >
@@ -124,6 +141,7 @@ export default function SearchScreen() {
               styles.badgeText,
               { color: getClassificationColor(item.classification) },
             ]}
+            numberOfLines={2}
           >
             {getClassificationLabel(item.classification)}
           </Text>
@@ -150,6 +168,7 @@ export default function SearchScreen() {
 
       <View style={styles.content}>
         <ScrollView
+          ref={scrollViewRef}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -199,7 +218,7 @@ export default function SearchScreen() {
           {/* Results */}
           {isSearching && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#1A8A7D" />
+              <ActivityIndicator size="large" color="#0a7ea5" />
               <Text style={styles.loadingText}>Recherche en cours...</Text>
             </View>
           )}
@@ -213,7 +232,7 @@ export default function SearchScreen() {
           )}
 
           {!isSearching && results.length > 0 && (
-            <View style={{ marginTop: 20 }}>
+            <View ref={resultsRef} style={{ marginTop: 20 }}>
               <Text style={styles.resultsCount}>
                 {results.length} résultat{results.length > 1 ? "s" : ""}
               </Text>
@@ -238,7 +257,7 @@ export default function SearchScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     paddingHorizontal: 20,
     paddingBottom: 16,
     alignItems: "flex-start",
@@ -278,7 +297,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   searchButton: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     borderRadius: 12,
     paddingVertical: 16,
     flexDirection: "row",
@@ -287,7 +306,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   scanButton: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     borderRadius: 12,
     paddingVertical: 16,
     flexDirection: "row",
@@ -341,15 +360,19 @@ const styles = StyleSheet.create({
   resultCardContent: {
     flex: 1,
     marginRight: 12,
+    minWidth: 100, // Prevent vertical text wrapping for short names
+    flexDirection: "column",
   },
   resultName: {
     fontSize: 16,
     fontWeight: "600",
     color: "#1A1A1A",
+    flexShrink: 0,
+    flexWrap: "nowrap",
   },
   resultSecondary: {
     fontSize: 12,
-    color: "#1A8A7D",
+    color: "#0a7ea5",
     fontStyle: "italic",
     marginTop: 1,
   },
@@ -357,6 +380,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#687076",
     marginTop: 2,
+    flexShrink: 1,
   },
   resultInfo: {
     fontSize: 12,
@@ -367,10 +391,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
+    flexShrink: 0,
+    maxWidth: 140,
   },
   badgeText: {
     fontSize: 11,
     fontWeight: "bold",
+    textAlign: "center",
   },
   hintCard: {
     backgroundColor: "#FFFFFF",
