@@ -54,36 +54,30 @@ export default function ScanScreen() {
         console.log("[Scan] Starting image processing for URI:", uri);
         console.log("[Scan] Platform:", Platform.OS);
         
-        // Normalize URI with manipulateAsync first (works for camera URIs)
-        console.log("[Scan] Normalizing image URI with manipulateAsync...");
+        // Use manipulateAsync with base64:true to get base64 directly
+        console.log("[Scan] Processing image with manipulateAsync...");
         const manipResult = await manipulateAsync(
           uri,
           [{ resize: { width: 1200 } }],
-          { compress: 0.8, format: SaveFormat.JPEG }
+          { compress: 0.8, format: SaveFormat.JPEG, base64: true }
         );
-        console.log("[Scan] Image normalized, new URI:", manipResult.uri);
         
-        // Now read the normalized URI as base64
-        console.log("[Scan] Reading normalized image as base64...");
-        const base64 = await FileSystem.readAsStringAsync(manipResult.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        console.log("[Scan] Base64 read successfully, length:", base64.length);
+        if (!manipResult.base64) {
+          throw new Error("manipulateAsync n'a pas retourné de base64");
+        }
+        
+        const base64 = manipResult.base64;
+        console.log("[Scan] Base64 obtained successfully, length:", base64.length);
 
         setStatusText("Envoi au serveur d'analyse...");
-
-        // Determine MIME type
-        const mimeType = uri.toLowerCase().includes("png")
-          ? "image/png"
-          : "image/jpeg";
-        console.log("[Scan] MIME type:", mimeType);
+        console.log("[Scan] Sending base64 to server, length:", base64.length);
 
         // Call server OCR via tRPC
         setStatusText("Identification du produit...");
         console.log("[Scan] Calling analyzeMutation.mutateAsync...");
         const result = await analyzeMutation.mutateAsync({
           imageBase64: base64,
-          mimeType,
+          mimeType: "image/jpeg", // Always JPEG after manipulateAsync
         });
         console.log("[Scan] Server response:", result);
 

@@ -93,3 +93,7 @@
 ## Build 22 - Diagnostic clé trouvé
 
 - [x] L'ancienne version fonctionnelle demandait de recadrer la photo (allowsEditing), la nouvelle non → Remplacement de CameraView par ImagePicker.launchCameraAsync avec allowsEditing: true pour caméra ET galerie
+
+## Build 23 - Erreur après recadrage
+
+- [x] Le recadrage fonctionne mais erreur "une erreur est survenue lors de l'analyse de l'image" après → utilisation de manipulateAsync avec base64:true pour obtenir un base64 fiable directement (sans FileSystem.readAsStringAsync qui peut corrompre)
