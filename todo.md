@@ -89,3 +89,7 @@
 
 - [x] Créer un build APK (au lieu de AAB) pour permettre l'installation directe et le débogage avec Chrome DevTools
 - [x] Erreur immédiate après prise de photo → FileSystem.readAsStringAsync() ne peut pas lire l'URI caméra directement → utilisation de manipulateAsync pour normaliser l'URI puis FileSystem pour lire le base64
+
+## Build 22 - Diagnostic clé trouvé
+
+- [x] L'ancienne version fonctionnelle demandait de recadrer la photo (allowsEditing), la nouvelle non → Remplacement de CameraView par ImagePicker.launchCameraAsync avec allowsEditing: true pour caméra ET galerie

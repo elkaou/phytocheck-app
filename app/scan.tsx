@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
@@ -23,7 +23,7 @@ export default function ScanScreen() {
   const router = useRouter();
   const { performSearch } = useApp();
   const [permission, requestPermission] = useCameraPermissions();
-  const cameraRef = useRef<CameraView>(null);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusText, setStatusText] = useState("Analyse de l'étiquette en cours...");
 
@@ -177,13 +177,15 @@ export default function ScanScreen() {
   );
 
   const takePicture = useCallback(async () => {
-    if (!cameraRef.current) return;
     try {
-      const photo = await cameraRef.current.takePictureAsync({
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
         quality: 0.8,
+        exif: false,
       });
-      if (photo?.uri) {
-        await processImage(photo.uri);
+      if (!result.canceled && result.assets[0]?.uri) {
+        await processImage(result.assets[0].uri);
       }
     } catch (error) {
       Alert.alert("Erreur", "Impossible de prendre la photo.");
@@ -317,47 +319,40 @@ export default function ScanScreen() {
           <View style={{ width: 24 }} />
         </View>
 
-        <View style={styles.cameraContainer}>
-          <CameraView ref={cameraRef} style={styles.camera} facing="back">
-            {/* Overlay guide */}
-            <View style={styles.overlay}>
-              <View style={styles.scanFrame}>
-                <View style={[styles.corner, styles.cornerTL]} />
-                <View style={[styles.corner, styles.cornerTR]} />
-                <View style={[styles.corner, styles.cornerBL]} />
-                <View style={[styles.corner, styles.cornerBR]} />
-              </View>
-              <Text style={styles.guideText}>
-                Cadrez l'étiquette du produit
-              </Text>
-            </View>
-          </CameraView>
-        </View>
-
-        {/* Controls */}
-        <View style={styles.controls}>
+        <View style={styles.centerContent}>
+          <IconSymbol name="camera.fill" size={80} color="#0a7ea5" />
+          <Text style={styles.instructionText}>
+            Prenez une photo de l'étiquette du produit
+          </Text>
+          <Text style={styles.instructionSubtext}>
+            Vous pourrez recadrer la photo après la prise
+          </Text>
+          
           <Pressable
             style={({ pressed }) => [
-              styles.gallerySmallButton,
+              styles.cameraButton,
+              pressed && { opacity: 0.85 },
+            ]}
+            onPress={takePicture}
+          >
+            <IconSymbol name="camera.fill" size={24} color="#FFFFFF" />
+            <Text style={styles.cameraButtonText}>
+              Prendre une photo
+            </Text>
+          </Pressable>
+          
+          <Pressable
+            style={({ pressed }) => [
+              styles.galleryButton,
               pressed && { opacity: 0.7 },
             ]}
             onPress={pickFromGallery}
           >
             <IconSymbol name="doc.text.fill" size={24} color="#0a7ea5" />
-            <Text style={styles.gallerySmallText}>Galerie</Text>
+            <Text style={styles.galleryButtonText}>
+              Choisir depuis la galerie
+            </Text>
           </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.captureButton,
-              pressed && { transform: [{ scale: 0.93 }] },
-            ]}
-            onPress={takePicture}
-          >
-            <View style={styles.captureInner} />
-          </Pressable>
-
-          <View style={{ width: 60 }} />
         </View>
       </SafeAreaView>
     </View>
@@ -411,8 +406,38 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFFFFF",
   },
+  instructionText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    textAlign: "center",
+    marginTop: 16,
+  },
+  instructionSubtext: {
+    fontSize: 14,
+    color: "#687076",
+    textAlign: "center",
+  },
+  cameraButton: {
+    backgroundColor: "#0a7ea5",
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  cameraButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
   galleryButton: {
     paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   galleryButtonText: {
     fontSize: 14,
