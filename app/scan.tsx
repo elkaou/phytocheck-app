@@ -76,11 +76,26 @@ export default function ScanScreen() {
         console.log("[Scan] Server response:", result);
 
         if (result.success && result.data && (result.data.productName || result.data.amm)) {
-          // Use the exact same logic as manual search: redirect to search screen with detected name
-          const searchQuery = result.data.productName || result.data.amm || "";
+          let searchQuery = result.data.productName || result.data.amm || "";
+          let results = searchProducts(searchQuery);
           
-          // Quick check if product exists
-          const results = searchProducts(searchQuery);
+          // If no results with full name, try each word individually (for names like "Belkar™ Arylex™ active")
+          if (results.length === 0 && result.data.productName) {
+            const words = result.data.productName.split(/\s+/).filter((w: string) => w.length >= 3);
+            for (const word of words) {
+              results = searchProducts(word);
+              if (results.length > 0) {
+                searchQuery = word;
+                break;
+              }
+            }
+          }
+          
+          // If still no results, try by AMM
+          if (results.length === 0 && result.data.amm) {
+            results = searchProducts(result.data.amm);
+            searchQuery = result.data.amm;
+          }
           
           if (results.length === 0) {
             // No results found

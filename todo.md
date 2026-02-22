@@ -177,3 +177,8 @@
 - [x] Bug critique : Le scan photo détecte "Belkar" mais affiche et stocke "Mozzar" (nom principal) au lieu du nom secondaire détecté par l'IA
 - [x] La recherche manuelle fonctionne correctement (affiche et stocke le nom secondaire)
 - [x] Solution : Rediriger vers l'écran de recherche avec le nom détecté par l'IA (même logique que la recherche manuelle)
+
+## Build 40 - Amélioration détection nom produit
+
+- [x] Problème : L'IA détecte "Belkar™ Arylex™ active" au lieu de juste "Belkar", donc la recherche échoue
+- [x] Solution : Essayer plusieurs stratégies de recherche (nom complet, puis chaque mot individuellement jusqu'à trouver un résultat)
