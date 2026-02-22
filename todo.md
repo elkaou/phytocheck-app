@@ -144,3 +144,7 @@
 - [x] Bug : Texte en bas de l'écran Premium (informations abonnement Google Play) peu lisible (bleu foncé sur fond bleu) → texte blanc avec fond semi-transparent
 - [x] Amélioration : Vider le champ de saisie "nom ou AMM" quand on clique sur l'onglet "Recherche"
 - [x] Amélioration : Masquer la section de recherche après validation et afficher uniquement les résultats
+
+## Build 32 - Bug couleur iOS
+
+- [x] Bug : La page d'accueil iOS s'affiche avec un fond vert au lieu du fond bleu utilisé sur les autres pages (remplacé bg-primary par couleur bleue directe)

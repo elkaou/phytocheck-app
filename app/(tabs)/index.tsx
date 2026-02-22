@@ -8,7 +8,7 @@ export default function HomeScreen() {
   const router = useRouter();
 
   return (
-    <ScreenContainer containerClassName="bg-primary">
+    <ScreenContainer containerClassName="" style={{ backgroundColor: '#0a7ea5' }}>
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
