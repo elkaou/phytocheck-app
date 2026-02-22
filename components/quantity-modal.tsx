@@ -72,7 +72,10 @@ export function QuantityModal({
                   <TextInput
                     style={styles.quantityInput}
                     value={quantityL}
-                    onChangeText={setQuantityL}
+                    onChangeText={(text) => {
+                      setQuantityL(text);
+                      if (text) setQuantityKg(""); // Vider Kg si L est rempli
+                    }}
                     keyboardType="decimal-pad"
                     placeholder="0"
                     selectTextOnFocus
@@ -84,7 +87,10 @@ export function QuantityModal({
                   <TextInput
                     style={styles.quantityInput}
                     value={quantityKg}
-                    onChangeText={setQuantityKg}
+                    onChangeText={(text) => {
+                      setQuantityKg(text);
+                      if (text) setQuantityL(""); // Vider L si Kg est rempli
+                    }}
                     keyboardType="decimal-pad"
                     placeholder="0"
                     selectTextOnFocus

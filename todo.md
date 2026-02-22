@@ -167,3 +167,7 @@
 
 - [x] Bug : Modal "Ajouter au stock" doit avoir 2 champs de saisie (L et Kg) au lieu de boutons de sélection
 - [x] Bug : Le stock affiche le nom principal (GLOBUS) au lieu du nom détecté par l'IA (Rackam) quand c'est un nom secondaire → Inversé l'affichage pour montrer le nom secondaire en priorité
+
+## Build 38 - Champs mutuellement exclusifs
+
+- [x] Amélioration : Rendre les champs L et Kg mutuellement exclusifs dans la modal "Ajouter au stock" (si on remplit L, Kg se vide automatiquement et inversement)
