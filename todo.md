@@ -135,3 +135,11 @@
 - [x] La recherche actuelle cherche uniquement dans les noms principaux
 - [x] Corriger la logique de recherche pour inclure les noms secondaires des produits
 - [x] Améliorer la normalisation pour supprimer les symboles ®, ™, ©, etc.
+
+## Build 31 - Améliorations UX après tests réels
+
+- [x] Bug : Le produit ajouté au stock affiche le nom principal au lieu du nom secondaire détecté (ex: affiche nom principal au lieu de "MOVENTO")
+- [x] Bug : Disposition de la fenêtre "Ajouter au stock" - les boutons "Ajouter (L)" et "Ajouter (Kg)" sont mal positionnés avec le clavier numérique (ajout ScrollView)
+- [x] Amélioration : Supprimer l'étape de redimensionnement (allowsEditing) lors du scan photo pour éviter le double recadrage
+- [x] Bug : Texte en bas de l'écran Premium (informations abonnement Google Play) peu lisible (bleu foncé sur fond bleu) → texte blanc avec fond semi-transparent
+- [x] Amélioration : Vider le champ de saisie "nom ou AMM" quand on clique sur l'onglet "Recherche"

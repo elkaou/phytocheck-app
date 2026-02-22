@@ -370,12 +370,14 @@ const styles = StyleSheet.create({
   legalSection: {
     marginTop: 24,
     paddingTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 12,
   },
   legalText: {
     fontSize: 12,
-    color: "#687076",
+    color: "#FFFFFF",
     lineHeight: 18,
     textAlign: "center",
   },

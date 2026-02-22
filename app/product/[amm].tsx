@@ -50,16 +50,17 @@ export default function ProductDetailScreen() {
     
     // Pass secondary name if the product was accessed via a secondary name
     const secondaryName = name && name !== product.nom ? name : undefined;
+    const displayName = secondaryName || product.nom;
     const result = await addProductToStock(product, quantity, unit, secondaryName);
     if (result === "added") {
-      Alert.alert("Ajouté", `"${product.nom}" a été ajouté à votre stock (${quantity} ${unit}).`, [
+      Alert.alert("Ajouté", `"${displayName}" a été ajouté à votre stock (${quantity} ${unit}).`, [
         {
           text: "OK",
           onPress: () => router.push("/(tabs)/search"),
         },
       ]);
     } else if (result === "incremented") {
-      Alert.alert("Quantité mise à jour", `Quantité de "${product.nom}" augmentée (+${quantity} ${unit}).`, [
+      Alert.alert("Quantité mise à jour", `Quantité de "${displayName}" augmentée (+${quantity} ${unit}).`, [
         {
           text: "OK",
           onPress: () => router.push("/(tabs)/search"),

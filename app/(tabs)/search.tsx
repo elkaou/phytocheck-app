@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   ScrollView,
   Text,
@@ -11,7 +11,7 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import {
@@ -65,6 +65,17 @@ export default function SearchScreen() {
       doSearch(params.q);
     }
   }, [params.q, autoSearchDone, doSearch]);
+
+  // Clear search field when tab is focused (unless coming from scan with q param)
+  useFocusEffect(
+    useCallback(() => {
+      if (!params.q) {
+        setQuery("");
+        setResults([]);
+        setHasSearched(false);
+      }
+    }, [params.q])
+  );
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return;
