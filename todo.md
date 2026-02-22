@@ -156,3 +156,9 @@
 ## Build 35 - Amélioration disposition modal stock
 
 - [x] Réorganiser la modal "Ajouter au stock" en grille 2x2 : ligne 1 (L | Kg), ligne 2 (Ajouter | Annuler)
+
+## Build 36 - Export PDF du stock (Premium)
+
+- [x] Ajouter un bouton "Export en PDF" en haut de la page Stock
+- [x] Le bouton est actif uniquement pour les utilisateurs Premium
+- [x] Implémenter la génération du PDF avec la liste du stock (expo-print + expo-sharing)
