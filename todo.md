@@ -152,3 +152,7 @@
 ## Build 34 - Amélioration UX recherche
 
 - [x] Ajouter un bouton "Nouvelle recherche" fixe en haut de l'écran de recherche pour réinitialiser après affichage des résultats
+
+## Build 35 - Amélioration disposition modal stock
+
+- [x] Réorganiser la modal "Ajouter au stock" en grille 2x2 : ligne 1 (L | Kg), ligne 2 (Ajouter | Annuler)
