@@ -54,9 +54,18 @@ export default function ScanScreen() {
         console.log("[Scan] Starting image processing for URI:", uri);
         console.log("[Scan] Platform:", Platform.OS);
         
-        // Read image as base64 (same method as label-scanner)
-        console.log("[Scan] Reading image as base64...");
-        const base64 = await FileSystem.readAsStringAsync(uri, {
+        // Normalize URI with manipulateAsync first (works for camera URIs)
+        console.log("[Scan] Normalizing image URI with manipulateAsync...");
+        const manipResult = await manipulateAsync(
+          uri,
+          [{ resize: { width: 1200 } }],
+          { compress: 0.8, format: SaveFormat.JPEG }
+        );
+        console.log("[Scan] Image normalized, new URI:", manipResult.uri);
+        
+        // Now read the normalized URI as base64
+        console.log("[Scan] Reading normalized image as base64...");
+        const base64 = await FileSystem.readAsStringAsync(manipResult.uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
         console.log("[Scan] Base64 read successfully, length:", base64.length);

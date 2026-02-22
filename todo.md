@@ -84,3 +84,8 @@
 ## Build 19 - Amélioration de la reconnaissance
 
 - [x] Le scan photo ne reconnaît toujours pas les produits correctement → adoption de la méthode label-scanner : FileSystem.readAsStringAsync direct + allowsEditing
+
+## Build 21 - Build APK pour débogage
+
+- [x] Créer un build APK (au lieu de AAB) pour permettre l'installation directe et le débogage avec Chrome DevTools
+- [x] Erreur immédiate après prise de photo → FileSystem.readAsStringAsync() ne peut pas lire l'URI caméra directement → utilisation de manipulateAsync pour normaliser l'URI puis FileSystem pour lire le base64
