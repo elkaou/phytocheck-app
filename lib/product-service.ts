@@ -97,7 +97,8 @@ export function searchProducts(query: string, limit = 50): ClassifiedProduct[] {
     .trim()
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[®™©℠]/g, "");
 
   const results: ClassifiedProduct[] = [];
 
@@ -107,12 +108,14 @@ export function searchProducts(query: string, limit = 50): ClassifiedProduct[] {
     const normalizedName = product.nom
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[®™©℠]/g, "");
     const normalizedAMM = product.amm.toLowerCase();
     const normalizedSecondary = product.nomsSecondaires
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[®™©℠]/g, "");
 
     let matched = false;
     let matchedSecondaryName: string | undefined;
@@ -125,7 +128,7 @@ export function searchProducts(query: string, limit = 50): ClassifiedProduct[] {
       if (product.nomsSecondaires) {
         const secondaryNames = product.nomsSecondaires.split(" | ");
         for (const sn of secondaryNames) {
-          const normalizedSN = sn.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          const normalizedSN = sn.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[®™©℠]/g, "");
           if (normalizedSN.includes(normalizedQuery)) {
             matchedSecondaryName = sn.trim();
             break;

@@ -128,3 +128,10 @@
 ## Build 28 - Même erreur : variable d'environnement non incluse dans le build
 
 - [x] La variable EXPO_PUBLIC_API_BASE_URL n'est pas incluse dans les builds EAS → Codé en dur l'URL du serveur API dans oauth.ts (ligne 50-52)
+
+## Build 29 - Scan fonctionne mais ne trouve pas les noms secondaires
+
+- [x] L'IA détecte correctement les noms (Belkar, Rackam) mais la recherche ne trouve pas les produits
+- [x] La recherche actuelle cherche uniquement dans les noms principaux
+- [x] Corriger la logique de recherche pour inclure les noms secondaires des produits
+- [x] Améliorer la normalisation pour supprimer les symboles ®, ™, ©, etc.
