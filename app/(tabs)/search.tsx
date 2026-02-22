@@ -178,6 +178,23 @@ export default function SearchScreen() {
       </View>
 
       <View style={styles.content}>
+        {/* New Search Button - Shown when results are displayed */}
+        {hasSearched && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.newSearchButton,
+              pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+            ]}
+            onPress={() => {
+              setQuery("");
+              setResults([]);
+              setHasSearched(false);
+            }}
+          >
+            <IconSymbol name="plus.circle.fill" size={20} color="#FFFFFF" />
+            <Text style={styles.newSearchButtonText}>Nouvelle recherche</Text>
+          </Pressable>
+        )}
         <ScrollView
           ref={scrollViewRef}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
@@ -331,6 +348,22 @@ const styles = StyleSheet.create({
   },
   searchButtonText: {
     fontSize: 18,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  newSearchButton: {
+    backgroundColor: "#0a7ea5",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: 16,
+  },
+  newSearchButtonText: {
+    fontSize: 16,
     fontWeight: "600",
     color: "#FFFFFF",
   },

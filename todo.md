@@ -148,3 +148,7 @@
 ## Build 32 - Bug couleur iOS
 
 - [x] Bug : La page d'accueil iOS s'affiche avec un fond vert au lieu du fond bleu utilisé sur les autres pages (remplacé bg-primary par couleur bleue directe)
+
+## Build 34 - Amélioration UX recherche
+
+- [x] Ajouter un bouton "Nouvelle recherche" fixe en haut de l'écran de recherche pour réinitialiser après affichage des résultats
