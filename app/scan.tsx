@@ -70,14 +70,16 @@ export default function ScanScreen() {
         console.log("[Scan] Base64 obtained successfully, length:", base64.length);
 
         setStatusText("Envoi au serveur d'analyse...");
-        console.log("[Scan] Sending base64 to server, length:", base64.length);
+        
+        // Create Data URL (same format as working label-scanner)
+        const imageUrl = `data:image/jpeg;base64,${base64}`;
+        console.log("[Scan] Data URL created, length:", imageUrl.length);
 
         // Call server OCR via tRPC
         setStatusText("Identification du produit...");
         console.log("[Scan] Calling analyzeMutation.mutateAsync...");
         const result = await analyzeMutation.mutateAsync({
-          imageBase64: base64,
-          mimeType: "image/jpeg", // Always JPEG after manipulateAsync
+          imageUrl: imageUrl,
         });
         console.log("[Scan] Server response:", result);
 

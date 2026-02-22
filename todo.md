@@ -97,3 +97,12 @@
 ## Build 23 - Erreur après recadrage
 
 - [x] Le recadrage fonctionne mais erreur "une erreur est survenue lors de l'analyse de l'image" après → utilisation de manipulateAsync avec base64:true pour obtenir un base64 fiable directement (sans FileSystem.readAsStringAsync qui peut corrompre)
+
+## Build 24 - Analyse de l'ancienne version fonctionnelle
+
+- [x] Comparer routers.ts et trpc.ts de l'ancienne version avec la version actuelle pour identifier la différence critique
+- [x] Appliquer uniquement la correction nécessaire au scan photo sans modifier le reste de l'application
+  * Changement de imageBase64 à imageUrl (Data URL) dans le endpoint ocr.analyzeLabel
+  * Envoi direct de la Data URL au LLM (pas d'upload S3)
+  * Prompt système détaillé de l'ancienne version avec instructions précises
+  * Côté client : création de Data URL `data:image/jpeg;base64,${base64}`

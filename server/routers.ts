@@ -24,45 +24,67 @@ export const appRouter = router({
     analyzeLabel: publicProcedure
       .input(
         z.object({
-          imageBase64: z.string().min(1),
-          mimeType: z.string().default("image/jpeg"),
+          imageUrl: z.string().url(),
         })
       )
       .mutation(async ({ input }) => {
         try {
-          // 1. Upload image to S3 first (required for LLM image analysis)
-          const randomSuffix = Math.random().toString(36).substring(2, 10);
-          const ext = input.mimeType.includes("png") ? "png" : "jpg";
-          const fileKey = `ocr-scans/scan-${Date.now()}-${randomSuffix}.${ext}`;
-
-          const imageBuffer = Buffer.from(input.imageBase64, "base64");
-          const { url: imageUrl } = await storagePut(
-            fileKey,
-            imageBuffer,
-            input.mimeType
-          );
-
-          // 2. Call LLM with the S3 image URL
+          // Call LLM directly with the Data URL
           const response = await invokeLLM({
             messages: [
               {
                 role: "system",
-                content:
-                  "Tu es un assistant spécialisé dans la lecture d'étiquettes de produits phytosanitaires. Tu dois extraire le nom commercial du produit et/ou le numéro AMM (Autorisation de Mise sur le Marché) visible sur l'étiquette. Réponds UNIQUEMENT avec un JSON valide.",
+                content: `Tu es un expert en analyse d'étiquettes de produits phytosanitaires français.
+
+Ta mission : extraire EXACTEMENT les informations telles qu'elles apparaissent sur l'étiquette.
+
+INFORMATIONS À EXTRAIRE :
+
+1. **Nom commercial** (OBLIGATOIRE) :
+   - C'est le nom de marque du produit, généralement en GROS caractères en haut de l'étiquette
+   - Copie-le EXACTEMENT comme il est écrit (majuscules, minuscules, espaces, tirets, apostrophes)
+   - Exemples : "ROUNDUP ULTRA", "Glyphos 360", "CALYPSO SC 480", "CINCH PRO"
+   - ATTENTION : Ne confonds PAS les lettres similaires :
+     * C et N sont différents
+     * I et l (L minuscule) sont différents
+     * O et 0 (zéro) sont différents
+   - Vérifie lettre par lettre avant de répondre
+
+2. **Numéro AMM** (OBLIGATOIRE) :
+   - Format : EXACTEMENT 7 chiffres (exemple : 2150918, 8800006, 9800336)
+   - Cherche "AMM" ou "N° AMM" ou "Autorisation de Mise sur le Marché" sur l'étiquette
+   - Le numéro AMM est généralement près du bas de l'étiquette ou dans une section "Informations réglementaires"
+   - Vérifie chaque chiffre individuellement (0 vs O, 1 vs I, 2 vs Z, 5 vs S, 8 vs B)
+   - Si tu ne trouves pas de numéro à 7 chiffres, mets ""
+   - IMPORTANT : Ne confonds PAS le numéro AMM avec d'autres numéros (lot, code-barres, etc.)
+
+RÉPONSE ATTENDUE (JSON) :
+{
+  "nom": "NOM EXACT DU PRODUIT",
+  "amm": "7 chiffres ou chaîne vide"
+}
+
+ATTENTION :
+- Ne modifie JAMAIS le nom commercial (pas de correction, pas de traduction)
+- Si l'étiquette est floue ou illisible, mets "" pour les champs concernés
+- Sois précis et exact
+- Vérifie chaque lettre et chaque chiffre individuellement
+- Pour les lettres : évite les confusions (C vs N, I vs l, O vs 0)
+- Pour les chiffres de l'AMM : vérifie deux fois (0 vs O, 1 vs I, 2 vs Z, 5 vs S, 8 vs B, 9 vs g)
+- Le numéro AMM doit être cohérent avec le nom du produit`,
               },
               {
                 role: "user",
                 content: [
                   {
                     type: "text",
-                    text: 'Analyse cette image d\'étiquette de produit phytosanitaire. Extrais le nom commercial du produit et/ou le numéro AMM (Autorisation de Mise sur le Marché). Le numéro AMM est souvent au format "XXXXXXX" (7 chiffres). Réponds UNIQUEMENT avec un JSON au format: {"nom": "NOM_DU_PRODUIT", "amm": "NUMERO_AMM"}. Si tu ne trouves qu\'un seul des deux, laisse l\'autre comme chaîne vide. Si tu ne trouves rien, réponds {"nom": "", "amm": ""}.',
+                    text: "Analyse cette \u00e9tiquette de produit phytosanitaire et extrait le nom commercial et le num\u00e9ro AMM.",
                   },
                   {
-                    type: "image_url",
-                    image_url: {
-                      url: imageUrl,
-                      detail: "high",
-                    },
+                  type: "image_url",
+                  image_url: {
+                    url: input.imageUrl,
+                  },
                   },
                 ],
               },
