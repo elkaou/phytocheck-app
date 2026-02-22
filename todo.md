@@ -124,3 +124,7 @@
 
 - [x] Erreur "Invalid URL: /api/trpc/analyzeLabel?batch=1" → L'URL tRPC est relative au lieu d'être absolue (https://...) → Android ne sait pas quel serveur contacter
   * Ajout de la variable d'environnement EXPO_PUBLIC_API_BASE_URL avec l'URL complète du serveur API
+
+## Build 28 - Même erreur : variable d'environnement non incluse dans le build
+
+- [x] La variable EXPO_PUBLIC_API_BASE_URL n'est pas incluse dans les builds EAS → Codé en dur l'URL du serveur API dans oauth.ts (ligne 50-52)
