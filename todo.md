@@ -143,3 +143,4 @@
 - [x] Amélioration : Supprimer l'étape de redimensionnement (allowsEditing) lors du scan photo pour éviter le double recadrage
 - [x] Bug : Texte en bas de l'écran Premium (informations abonnement Google Play) peu lisible (bleu foncé sur fond bleu) → texte blanc avec fond semi-transparent
 - [x] Amélioration : Vider le champ de saisie "nom ou AMM" quand on clique sur l'onglet "Recherche"
+- [x] Amélioration : Masquer la section de recherche après validation et afficher uniquement les résultats
