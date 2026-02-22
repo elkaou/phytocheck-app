@@ -8,7 +8,7 @@ export default function HomeScreen() {
   const router = useRouter();
 
   return (
-    <ScreenContainer containerClassName="bg-primary">
+    <ScreenContainer containerClassName="" style={{ backgroundColor: '#0a7ea5' }}>
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
@@ -77,7 +77,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 24,
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   actionButton: {
-    backgroundColor: "#1A8A7D",
+    backgroundColor: "#0a7ea5",
     borderRadius: 16,
     paddingVertical: 24,
     paddingHorizontal: 24,
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   infoCardTitle: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#1A8A7D",
+    color: "#0a7ea5",
     letterSpacing: 0.5,
     marginBottom: 8,
   },

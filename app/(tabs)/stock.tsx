@@ -6,7 +6,10 @@ import {
   Pressable,
   StyleSheet,
   Alert,
+  Platform,
 } from "react-native";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useApp } from "@/lib/app-context";
@@ -69,6 +72,82 @@ export default function StockScreen() {
     setFilter((current) => (current === filterType ? "all" : filterType));
   }, []);
 
+  const handleExportPDF = useCallback(async () => {
+    try {
+      // Generate HTML for PDF
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { color: #0a7ea5; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #0a7ea5; color: white; }
+            .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+            .homologue { background-color: #F0FDF4; color: #16A34A; }
+            .retire { background-color: #FEF2F2; color: #DC2626; }
+            .cmr { background-color: #FFFBEB; color: #D97706; }
+            .toxique { background-color: #FFF7ED; color: #C2410C; }
+          </style>
+        </head>
+        <body>
+          <h1>PhytoCheck - Stock des Produits</h1>
+          <p>Date d'export : ${new Date().toLocaleDateString("fr-FR")}</p>
+          <p>Nombre de produits : ${stock.length}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>AMM</th>
+                <th>Quantité</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${stock.map(item => `
+                <tr>
+                  <td>${item.nom}</td>
+                  <td>${item.amm}</td>
+                  <td>${item.quantite} ${item.unite}</td>
+                  <td><span class="badge ${item.classification}">${getClassificationLabel(item.classification as ProductClassification)}</span></td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `;
+
+      // Generate PDF
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+
+      // Share PDF
+      if (Platform.OS === "web") {
+        // On web, download the file
+        const link = document.createElement("a");
+        link.href = uri;
+        link.download = `PhytoCheck-Stock-${new Date().toISOString().split("T")[0]}.pdf`;
+        link.click();
+      } else {
+        // On mobile, share the file
+        await Sharing.shareAsync(uri, {
+          mimeType: "application/pdf",
+          dialogTitle: "Exporter le stock en PDF",
+          UTI: "com.adobe.pdf",
+        });
+      }
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      Alert.alert(
+        "Erreur",
+        "Une erreur est survenue lors de l'export du PDF. Veuillez réessayer."
+      );
+    }
+  }, [stock]);
+
   return (
     <ScreenContainer containerClassName="bg-primary">
       {/* Header */}
@@ -82,6 +161,40 @@ export default function StockScreen() {
       </View>
 
       <View style={styles.content}>
+        {/* Export PDF Button */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.exportButton,
+            !isPremium && styles.exportButtonDisabled,
+            pressed && isPremium && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+          ]}
+          onPress={() => {
+            if (!isPremium) {
+              Alert.alert(
+                "Fonctionnalité Premium",
+                "L'export PDF est réservé aux utilisateurs Premium. Passez à Premium pour débloquer cette fonctionnalité.",
+                [
+                  { text: "Annuler", style: "cancel" },
+                  {
+                    text: "Voir Premium",
+                    onPress: () => router.push("/premium" as any),
+                  },
+                ]
+              );
+            } else {
+              handleExportPDF();
+            }
+          }}
+          disabled={!isPremium}
+        >
+          <Text style={[
+            styles.exportButtonText,
+            !isPremium && styles.exportButtonTextDisabled,
+          ]}>
+            {isPremium ? "📄 Export en PDF" : "🔒 Export en PDF (Premium)"}
+          </Text>
+        </Pressable>
+
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
@@ -259,6 +372,26 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
     paddingHorizontal: 20,
     paddingTop: 20,
+  },
+  exportButton: {
+    backgroundColor: "#0a7ea5",
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  exportButtonDisabled: {
+    backgroundColor: "#E5E7EB",
+    opacity: 0.6,
+  },
+  exportButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  exportButtonTextDisabled: {
+    color: "#9BA1A6",
   },
   statsGrid: {
     flexDirection: "row",

@@ -25,11 +25,13 @@ export function QuantityModal({
   onConfirm,
 }: QuantityModalProps) {
   const [quantity, setQuantity] = useState("");
+  const [selectedUnit, setSelectedUnit] = useState<"L" | "Kg">("L");
 
-  const handleConfirm = (unit: "L" | "Kg") => {
+  const handleConfirm = () => {
     const qty = parseFloat(quantity) || 1;
-    onConfirm(qty, unit);
+    onConfirm(qty, selectedUnit);
     setQuantity(""); // Reset for next time
+    setSelectedUnit("L"); // Reset to default
   };
 
   return (
@@ -64,38 +66,59 @@ export function QuantityModal({
                 selectTextOnFocus
               />
 
-              <View style={styles.buttonRow}>
+              {/* Row 1: L and Kg buttons */}
+              <View style={styles.unitRow}>
                 <Pressable
                   style={({ pressed }) => [
-                    styles.button,
+                    styles.unitButton,
+                    selectedUnit === "L" && styles.unitButtonSelected,
+                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                  ]}
+                  onPress={() => setSelectedUnit("L")}
+                >
+                  <Text style={[
+                    styles.unitButtonText,
+                    selectedUnit === "L" && styles.unitButtonTextSelected,
+                  ]}>L</Text>
+                </Pressable>
+
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.unitButton,
+                    selectedUnit === "Kg" && styles.unitButtonSelected,
+                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                  ]}
+                  onPress={() => setSelectedUnit("Kg")}
+                >
+                  <Text style={[
+                    styles.unitButtonText,
+                    selectedUnit === "Kg" && styles.unitButtonTextSelected,
+                  ]}>Kg</Text>
+                </Pressable>
+              </View>
+
+              {/* Row 2: Ajouter and Annuler buttons */}
+              <View style={styles.actionRow}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.actionButton,
+                    styles.confirmButton,
+                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                  ]}
+                  onPress={handleConfirm}
+                >
+                  <Text style={styles.confirmButtonText}>Ajouter</Text>
+                </Pressable>
+
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.actionButton,
                     styles.cancelButton,
                     pressed && { opacity: 0.7 },
                   ]}
                   onPress={onCancel}
                 >
                   <Text style={styles.cancelButtonText}>Annuler</Text>
-                </Pressable>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.button,
-                    styles.confirmButton,
-                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                  ]}
-                  onPress={() => handleConfirm("L")}
-                >
-                  <Text style={styles.confirmButtonText}>Ajouter (L)</Text>
-                </Pressable>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.button,
-                    styles.confirmButton,
-                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                  ]}
-                  onPress={() => handleConfirm("Kg")}
-                >
-                  <Text style={styles.confirmButtonText}>Ajouter (Kg)</Text>
                 </Pressable>
               </View>
               </View>
@@ -171,12 +194,38 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     marginBottom: 20,
   },
-  buttonRow: {
-    flexDirection: "column",
+  unitRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 10,
+  },
+  unitButton: {
+    flex: 1,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
+  },
+  unitButtonSelected: {
+    backgroundColor: "#0a7ea5",
+    borderColor: "#0a7ea5",
+  },
+  unitButtonText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#687076",
+  },
+  unitButtonTextSelected: {
+    color: "#FFFFFF",
+  },
+  actionRow: {
+    flexDirection: "row",
     gap: 10,
   },
-  button: {
-    width: "100%",
+  actionButton: {
+    flex: 1,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: "center",

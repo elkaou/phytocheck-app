@@ -144,3 +144,21 @@
 - [x] Bug : Texte en bas de l'écran Premium (informations abonnement Google Play) peu lisible (bleu foncé sur fond bleu) → texte blanc avec fond semi-transparent
 - [x] Amélioration : Vider le champ de saisie "nom ou AMM" quand on clique sur l'onglet "Recherche"
 - [x] Amélioration : Masquer la section de recherche après validation et afficher uniquement les résultats
+
+## Build 32 - Bug couleur iOS
+
+- [x] Bug : La page d'accueil iOS s'affiche avec un fond vert au lieu du fond bleu utilisé sur les autres pages (remplacé bg-primary par couleur bleue directe)
+
+## Build 34 - Amélioration UX recherche
+
+- [x] Ajouter un bouton "Nouvelle recherche" fixe en haut de l'écran de recherche pour réinitialiser après affichage des résultats
+
+## Build 35 - Amélioration disposition modal stock
+
+- [x] Réorganiser la modal "Ajouter au stock" en grille 2x2 : ligne 1 (L | Kg), ligne 2 (Ajouter | Annuler)
+
+## Build 36 - Export PDF du stock (Premium)
+
+- [x] Ajouter un bouton "Export en PDF" en haut de la page Stock
+- [x] Le bouton est actif uniquement pour les utilisateurs Premium
+- [x] Implémenter la génération du PDF avec la liste du stock (expo-print + expo-sharing)
