@@ -115,3 +115,7 @@
   * Ajout d'un endpoint analyzeLabel à la racine du router (comme dans l'ancienne version)
   * Format de réponse avec { success, data: { productName, amm, function } }
   * Adaptation du code client pour utiliser result.data.productName au lieu de result.nom
+
+## Build 26 - Toujours la même erreur
+
+- [x] Ajouter des logs détaillés pour afficher l'erreur complète dans une alerte au lieu de "Erreur d'analyse"

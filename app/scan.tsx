@@ -154,7 +154,7 @@ export default function ScanScreen() {
         
         Alert.alert(
           "Erreur d'analyse",
-          userMessage,
+          `${userMessage}\n\nDétails techniques :\n${errorMessage}`,
           [{ text: "OK", onPress: () => setIsProcessing(false) }]
         );
       } finally {
