@@ -98,6 +98,15 @@ ATTENTION :
         // Clean content: remove markdown code blocks and trim
         content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
 
+        // CRITICAL: Clean JSON content BEFORE parsing to avoid parse errors
+        // Remove problematic characters that break JSON.parse
+        content = content
+          .replace(/<[^>]*>/g, "") // Remove HTML/XML tags like <active>
+          .replace(/[™®©]/g, "") // Remove trademark symbols
+          .replace(/[\u2018\u2019]/g, "'") // Replace smart quotes with regular quotes
+          .replace(/[\u201C\u201D]/g, '"') // Replace smart double quotes
+          .replace(/[\u2013\u2014]/g, "-"); // Replace em/en dashes
+
         // Parse the JSON response
         try {
           const parsed = JSON.parse(content);
@@ -115,7 +124,8 @@ ATTENTION :
             },
             raw: content,
           };
-        } catch {
+        } catch (parseError: any) {
+          console.error("[analyzeLabel] JSON parse error:", parseError.message, "Content:", content);
           // Try to extract JSON from the response
           const jsonMatch = content.match(/\{[^}]+\}/);
           if (jsonMatch) {
@@ -141,7 +151,7 @@ ATTENTION :
           return {
             success: false,
             data: { productName: "", amm: "", function: "" },
-            error: "Failed to parse response",
+            error: `Failed to parse response: ${parseError.message}`,
             raw: content,
           };
         }

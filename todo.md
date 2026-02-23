@@ -188,3 +188,9 @@
 - [x] Bug UX : Modal "Ajouter au stock" trop basse, le pavé numérique cache les boutons "Ajouter" et "Annuler" → Repositionnée en haut de l'écran
 - [x] Bug affichage : Dans la modal "Ajouter au stock", le nom du produit principal est affiché au lieu du nom secondaire pour les produits secondaires → Corrigé
 - [x] Bug critique : Erreur JSON Parse "Unexpected character: <" lors de l'analyse IA (caractères spéciaux dans la réponse) → Nettoyage des caractères spéciaux côté serveur
+
+## Build 42 - Correction définitive JSON Parse
+
+- [x] Bug critique persistant : L'erreur JSON Parse "Unexpected character: <" apparaît toujours sur iPhone et Android malgré le build 41
+- [x] Cause identifiée : Le nettoyage se faisait APRÈS le parsing JSON, donc trop tard
+- [x] Solution : Nettoyer le contenu JSON AVANT le parsing (suppression des balises HTML, symboles trademark, guillemets intelligents)
