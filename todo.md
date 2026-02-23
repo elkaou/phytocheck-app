@@ -194,3 +194,19 @@
 - [x] Bug critique persistant : L'erreur JSON Parse "Unexpected character: <" apparaît toujours sur iPhone et Android malgré le build 41
 - [x] Cause identifiée : Le nettoyage se faisait APRÈS le parsing JSON, donc trop tard
 - [x] Solution : Nettoyer le contenu JSON AVANT le parsing (suppression des balises HTML, symboles trademark, guillemets intelligents)
+
+## Investigation - Erreur JSON Parse persistante
+
+- [ ] L'erreur "JSON Parse error: Unexpected character: <" persiste même avec une image blanche
+- [ ] Vérifier que le serveur a bien été redémarré avec le nouveau code du build 42
+- [ ] Vérifier quelle version de l'app est installée sur les appareils de test
+- [ ] Le problème peut venir du fait que les modifications serveur ne sont pas encore déployées
+
+## Build 43 - Déploiement serveur backend sur Railway
+
+- [ ] Préparer les fichiers de configuration Railway (railway.json, Procfile)
+- [ ] Créer un compte Railway.app
+- [ ] Déployer le serveur backend sur Railway
+- [ ] Récupérer l'URL de production Railway
+- [ ] Configurer EXPO_PUBLIC_API_BASE_URL avec l'URL de production
+- [ ] Relancer les builds 43 Android et iOS avec l'URL de production
