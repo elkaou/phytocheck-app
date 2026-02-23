@@ -292,7 +292,7 @@ export default function ProductDetailScreen() {
       {/* Quantity Modal */}
       <QuantityModal
         visible={showQuantityModal}
-        productName={product.nom}
+        productName={name && name !== product.nom ? name : product.nom}
         onCancel={() => setShowQuantityModal(false)}
         onConfirm={handleQuantityConfirm}
       />

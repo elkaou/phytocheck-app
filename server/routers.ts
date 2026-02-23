@@ -93,15 +93,23 @@ ATTENTION :
         });
 
         const messageContent = response.choices?.[0]?.message?.content;
-        const content = typeof messageContent === "string" ? messageContent : "";
+        let content = typeof messageContent === "string" ? messageContent : "";
+
+        // Clean content: remove markdown code blocks and trim
+        content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
 
         // Parse the JSON response
         try {
           const parsed = JSON.parse(content);
+          // Clean productName: remove special characters except letters, numbers, spaces, and hyphens
+          const cleanProductName = (parsed.productName || parsed.nom || "")
+            .replace(/[^\w\s\-]/g, " ") // Remove special chars except word chars, spaces, hyphens
+            .replace(/\s+/g, " ") // Normalize multiple spaces
+            .trim();
           return {
             success: true,
             data: {
-              productName: parsed.productName || parsed.nom || "",
+              productName: cleanProductName,
               amm: parsed.amm || "",
               function: parsed.function || "",
             },
@@ -111,16 +119,24 @@ ATTENTION :
           // Try to extract JSON from the response
           const jsonMatch = content.match(/\{[^}]+\}/);
           if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            return {
-              success: true,
-              data: {
-                productName: parsed.productName || parsed.nom || "",
-                amm: parsed.amm || "",
-                function: parsed.function || "",
-              },
-              raw: content,
-            };
+            try {
+              const parsed = JSON.parse(jsonMatch[0]);
+              const cleanProductName = (parsed.productName || parsed.nom || "")
+                .replace(/[^\w\s\-]/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+              return {
+                success: true,
+                data: {
+                  productName: cleanProductName,
+                  amm: parsed.amm || "",
+                  function: parsed.function || "",
+                },
+                raw: content,
+              };
+            } catch {
+              // Ignore nested parse error
+            }
           }
           return {
             success: false,

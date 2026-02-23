@@ -182,3 +182,9 @@
 
 - [x] Problème : L'IA détecte "Belkar™ Arylex™ active" au lieu de juste "Belkar", donc la recherche échoue
 - [x] Solution : Essayer plusieurs stratégies de recherche (nom complet, puis chaque mot individuellement jusqu'à trouver un résultat)
+
+## Build 41 - Corrections UX et erreur JSON
+
+- [x] Bug UX : Modal "Ajouter au stock" trop basse, le pavé numérique cache les boutons "Ajouter" et "Annuler" → Repositionnée en haut de l'écran
+- [x] Bug affichage : Dans la modal "Ajouter au stock", le nom du produit principal est affiché au lieu du nom secondaire pour les produits secondaires → Corrigé
+- [x] Bug critique : Erreur JSON Parse "Unexpected character: <" lors de l'analyse IA (caractères spéciaux dans la réponse) → Nettoyage des caractères spéciaux côté serveur

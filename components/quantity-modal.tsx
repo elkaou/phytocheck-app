@@ -140,15 +140,16 @@ const styles = StyleSheet.create({
   },
   centeredView: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "flex-start",
     alignItems: "center",
     width: "100%",
+    paddingTop: 80,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "center",
+    justifyContent: "flex-start",
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: 20,
   },
   modalView: {
     backgroundColor: "#FFFFFF",
