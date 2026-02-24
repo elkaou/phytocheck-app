@@ -1,4 +1,4 @@
-import "dotenv/config";
+// dotenv/config removed - Railway injects env vars directly
 import express from "express";
 import { createServer } from "http";
 import net from "net";
