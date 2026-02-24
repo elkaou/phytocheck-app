@@ -210,3 +210,10 @@
 - [ ] Récupérer l'URL de production Railway
 - [ ] Configurer EXPO_PUBLIC_API_BASE_URL avec l'URL de production
 - [ ] Relancer les builds 43 Android et iOS avec l'URL de production
+
+## Build 47 - Déploiement backend Render et mise à jour URL production
+
+- [x] Mettre à jour constants/oauth.ts avec l'URL Render (https://phytocheck-backend.onrender.com)
+- [x] Incrémenter versionCode et buildNumber à 47
+- [ ] Lancer les builds EAS Android et iOS
+- [ ] Configurer les variables d'environnement Render pour l'IA (BUILT_IN_FORGE_API_URL, BUILT_IN_FORGE_API_KEY, etc.)
