@@ -42,7 +42,8 @@ const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
   version: "1.0.0",
-  orientation: "portrait",
+  // Pas de restriction d'orientation pour compatibilité grand écran (Android 16+)
+  orientation: "default",
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
   userInterfaceStyle: "automatic",
@@ -50,20 +51,21 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    buildNumber: "50",
+    buildNumber: "51",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
     },
   },
   android: {
-    versionCode: 50,
+    versionCode: 51,
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
       foregroundImage: "./assets/images/android-icon-foreground.png",
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
-    edgeToEdgeEnabled: true,
+    // edgeToEdgeEnabled retiré (obsolète dans Android 15)
+    // L'app utilise SafeAreaView pour gérer les zones sûres
     predictiveBackGestureEnabled: false,
     package: env.androidPackage,
     permissions: ["POST_NOTIFICATIONS"],
@@ -102,12 +104,8 @@ const config: ExpoConfig = {
         cameraPermission: "Autoriser PhytoCheck à prendre des photos pour scanner les étiquettes.",
       },
     ],
-    [
-      "expo-audio",
-      {
-        microphonePermission: "Allow $(PRODUCT_NAME) to access your microphone.",
-      },
-    ],
+    // expo-audio retiré pour éviter les services de premier plan Android 15+
+    // PhytoCheck n'utilise pas l'audio en arrière-plan
     [
       "expo-video",
       {

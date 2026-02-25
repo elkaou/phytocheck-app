@@ -255,3 +255,10 @@
 - [x] Mettre à jour les product IDs iOS pour correspondre à App Store Connect : `phytocheck.premium.monthly` et `phytocheck.premium.yearly` (avec points, pas underscores)
 - [x] Adapter le code IAP pour gérer les product IDs différents entre iOS (avec points) et Android (avec underscores)
 - [x] Mettre à jour les tests unitaires pour utiliser les nouveaux noms de constantes
+
+## Build 51 - Correction services de premier plan Android 15+
+
+- [x] Retirer les services audio de premier plan (foreground services) qui causent l'avertissement Google Play
+- [x] Retirer expo-audio de app.config.ts et package.json (PhytoCheck n'utilise pas l'audio)
+- [x] Corriger les API obsolètes pour l'affichage de bord à bord (edge-to-edge) dans Android 15 - Retiré edgeToEdgeEnabled
+- [x] Supprimer les restrictions de redimensionnement et d'orientation pour appareils à grand écran (Android 16) - Orientation changée de "portrait" à "default"
