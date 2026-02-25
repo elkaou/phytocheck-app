@@ -249,3 +249,9 @@
 - [ ] **Guideline 2.1** : Soumettre les produits IAP pour review dans App Store Connect avec screenshots
 - [x] **Guideline 2.1** : Corriger le bug "érreur après tap sur Souscrire maintenant" (problème IAP iOS) - Corrigé dans Build 48
 - [x] **Guideline 2.5.4** : Retirer "audio" de UIBackgroundModes dans Info.plist (pas de feature audio persistante)
+
+## Build 50 - Correction product IDs iOS
+
+- [x] Mettre à jour les product IDs iOS pour correspondre à App Store Connect : `phytocheck.premium.monthly` et `phytocheck.premium.yearly` (avec points, pas underscores)
+- [x] Adapter le code IAP pour gérer les product IDs différents entre iOS (avec points) et Android (avec underscores)
+- [x] Mettre à jour les tests unitaires pour utiliser les nouveaux noms de constantes

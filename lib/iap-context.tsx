@@ -8,8 +8,10 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { Platform, Alert } from "react-native";
 import {
-  IAP_PRODUCTS,
+  IAP_PRODUCTS_ANDROID,
+  IAP_PRODUCTS_IOS,
   IAP_BASE_PLANS,
+  getProductIds,
   savePremiumStatus,
   loadPremiumStatus,
   isPlatformSupported,
@@ -120,7 +122,12 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
             // Le base plan est dans purchase.subscriptionOfferDetails ou purchase.basePlanId
             let subType: SubscriptionType = null;
             
-            if (purchase.productId === IAP_PRODUCTS.PREMIUM) {
+            // Déterminer le product ID selon la plateforme
+            const productIdMatch = Platform.OS === "android" 
+              ? (purchase as any).productId === IAP_PRODUCTS_ANDROID.PREMIUM
+              : ((purchase as any).productId === IAP_PRODUCTS_IOS.PREMIUM_MONTHLY || (purchase as any).productId === IAP_PRODUCTS_IOS.PREMIUM_YEARLY);
+            
+            if (productIdMatch) {
               // Déterminer le type d'abonnement à partir du base plan
               const basePlanId = (purchase as any).basePlanId || (purchase as any).subscriptionOfferDetails?.basePlanId;
               
@@ -180,19 +187,18 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
 
         // Charger les produits
         try {
-          // Pour Google Play Billing v5+, on charge l'abonnement de base
-          // qui contient tous les base plans (monthly, yearly)
-          const fetchedProducts = await iap.fetchProducts({
-            skus: [IAP_PRODUCTS.PREMIUM],
-          });
+          const mappedProducts: IAPProduct[] = [];
+          
+          if (Platform.OS === "android") {
+            // Android : Un seul product ID avec plusieurs base plans
+            const fetchedProducts = await iap.fetchProducts({
+              skus: [IAP_PRODUCTS_ANDROID.PREMIUM],
+            });
 
-          console.log("Fetched products:", fetchedProducts);
+            console.log("Fetched products (Android):", fetchedProducts);
 
-          if (fetchedProducts && fetchedProducts.length > 0) {
-            const product = fetchedProducts[0];
-            const mappedProducts: IAPProduct[] = [];
-
-            if (Platform.OS === "android") {
+            if (fetchedProducts && fetchedProducts.length > 0) {
+              const product = fetchedProducts[0];
               // Sur Android avec Billing v5+, les base plans sont dans subscriptionOfferDetails
               const offerDetails = (product as any).subscriptionOfferDetails || [];
               
@@ -203,7 +209,7 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
                 
                 if (basePlanId === IAP_BASE_PLANS.MONTHLY) {
                   mappedProducts.push({
-                    id: IAP_PRODUCTS.PREMIUM,
+                    id: IAP_PRODUCTS_ANDROID.PREMIUM,
                     basePlanId: basePlanId,
                     offerToken: offer.offerToken,
                     title: "PhytoCheck Premium Mensuel",
@@ -215,7 +221,7 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
                   setMonthlyPrice(price);
                 } else if (basePlanId === IAP_BASE_PLANS.YEARLY) {
                   mappedProducts.push({
-                    id: IAP_PRODUCTS.PREMIUM,
+                    id: IAP_PRODUCTS_ANDROID.PREMIUM,
                     basePlanId: basePlanId,
                     offerToken: offer.offerToken,
                     title: "PhytoCheck Premium Annuel",
@@ -227,31 +233,39 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
                   setYearlyPrice(price);
                 }
               }
-            } else {
-              // Sur iOS, on crée deux entrées manuellement
-              // (iOS ne supporte pas les base plans de la même manière)
-              mappedProducts.push(
-                {
-                  id: IAP_PRODUCTS.PREMIUM,
-                  title: "PhytoCheck Premium Mensuel",
-                  description: "Abonnement mensuel - Toutes les fonctionnalités",
-                  price: product.displayPrice || (product as any).localizedPrice || "4,99 €",
-                  currency: product.currency || "EUR",
-                  subscriptionType: "monthly",
-                },
-                {
-                  id: IAP_PRODUCTS.PREMIUM,
-                  title: "PhytoCheck Premium Annuel",
-                  description: "Abonnement annuel - Économisez 17%",
-                  price: product.displayPrice || (product as any).localizedPrice || "49,99 €",
-                  currency: product.currency || "EUR",
-                  subscriptionType: "yearly",
-                }
-              );
             }
+          } else {
+            // iOS : Deux product IDs séparés
+            const fetchedProducts = await iap.fetchProducts({
+              skus: [IAP_PRODUCTS_IOS.PREMIUM_MONTHLY, IAP_PRODUCTS_IOS.PREMIUM_YEARLY],
+            });
 
-            setProducts(mappedProducts);
+            console.log("Fetched products (iOS):", fetchedProducts);
+
+            if (fetchedProducts && fetchedProducts.length > 0) {
+              for (const product of fetchedProducts) {
+                const isMonthly = (product as any).productId === IAP_PRODUCTS_IOS.PREMIUM_MONTHLY;
+                const price = product.displayPrice || (product as any).localizedPrice || (isMonthly ? "4,99 €" : "49,99 €");
+                
+                mappedProducts.push({
+                  id: (product as any).productId,
+                  title: isMonthly ? "PhytoCheck Premium Mensuel" : "PhytoCheck Premium Annuel",
+                  description: isMonthly ? "Abonnement mensuel - Toutes les fonctionnalités" : "Abonnement annuel - Économisez 17%",
+                  price: price,
+                  currency: product.currency || "EUR",
+                  subscriptionType: isMonthly ? "monthly" : "yearly",
+                });
+                
+                if (isMonthly) {
+                  setMonthlyPrice(price);
+                } else {
+                  setYearlyPrice(price);
+                }
+              }
+            }
           }
+
+          setProducts(mappedProducts);
         } catch (productError) {
           console.warn("Impossible de charger les produits IAP:", productError);
         }
@@ -260,20 +274,46 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
         try {
           const availablePurchases = await iap.getAvailablePurchases();
           if (availablePurchases) {
-            const premiumPurchase = availablePurchases.find(
-              (p: any) => p.productId === IAP_PRODUCTS.PREMIUM
-            );
-            if (premiumPurchase && !isPremium) {
-              // Déterminer le type d'abonnement
-              const basePlanId = (premiumPurchase as any).basePlanId || (premiumPurchase as any).subscriptionOfferDetails?.basePlanId;
-              let subType: SubscriptionType = "monthly"; // Fallback
+            let premiumPurchase: any = null;
+            let subType: SubscriptionType = null;
+            
+            if (Platform.OS === "android") {
+              // Android : chercher l'abonnement avec l'ID de base
+              premiumPurchase = availablePurchases.find(
+                (p: any) => p.productId === IAP_PRODUCTS_ANDROID.PREMIUM
+              );
               
-              if (basePlanId === IAP_BASE_PLANS.MONTHLY) {
+              if (premiumPurchase) {
+                // Déterminer le type d'abonnement à partir du base plan
+                const basePlanId = (premiumPurchase as any).basePlanId || (premiumPurchase as any).subscriptionOfferDetails?.basePlanId;
+                
+                if (basePlanId === IAP_BASE_PLANS.MONTHLY) {
+                  subType = "monthly";
+                } else if (basePlanId === IAP_BASE_PLANS.YEARLY) {
+                  subType = "yearly";
+                } else {
+                  subType = "monthly"; // Fallback
+                }
+              }
+            } else {
+              // iOS : chercher l'un des deux product IDs
+              const monthlyPurchase = availablePurchases.find(
+                (p: any) => p.productId === IAP_PRODUCTS_IOS.PREMIUM_MONTHLY
+              );
+              const yearlyPurchase = availablePurchases.find(
+                (p: any) => p.productId === IAP_PRODUCTS_IOS.PREMIUM_YEARLY
+              );
+              
+              if (monthlyPurchase) {
+                premiumPurchase = monthlyPurchase;
                 subType = "monthly";
-              } else if (basePlanId === IAP_BASE_PLANS.YEARLY) {
+              } else if (yearlyPurchase) {
+                premiumPurchase = yearlyPurchase;
                 subType = "yearly";
               }
-              
+            }
+            
+            if (premiumPurchase && subType && !isPremium) {
               // Calculer la date d'expiration
               const expiresAt = new Date();
               if (subType === "monthly") {
@@ -333,35 +373,45 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
       setPurchasing(true);
 
       try {
+        const targetProduct = products.find(p => p.subscriptionType === type);
+        
+        if (!targetProduct) {
+          throw new Error("Produit non trouvé");
+        }
+        
         if (Platform.OS === "android") {
           // Sur Android avec Billing v5+, on doit spécifier le base plan via offerToken
-          const targetProduct = products.find(p => p.subscriptionType === type);
-          
-          if (!targetProduct || !targetProduct.offerToken) {
-            throw new Error("Produit non trouvé ou offerToken manquant");
+          if (!targetProduct.offerToken) {
+            throw new Error("offerToken manquant pour Android");
           }
 
-          console.log("Requesting purchase:", {
-            productId: IAP_PRODUCTS.PREMIUM,
+          console.log("Requesting purchase (Android):", {
+            productId: IAP_PRODUCTS_ANDROID.PREMIUM,
             basePlanId: type === "monthly" ? IAP_BASE_PLANS.MONTHLY : IAP_BASE_PLANS.YEARLY,
             offerToken: targetProduct.offerToken,
           });
 
           await iapModuleRef.current.requestPurchase({
             request: {
-              apple: { sku: IAP_PRODUCTS.PREMIUM },
+              apple: { sku: IAP_PRODUCTS_ANDROID.PREMIUM },
               google: { 
-                skus: [IAP_PRODUCTS.PREMIUM],
+                skus: [IAP_PRODUCTS_ANDROID.PREMIUM],
                 offerToken: targetProduct.offerToken,
               },
             },
           });
         } else {
-          // Sur iOS, utiliser l'ID de produit directement
+          // Sur iOS, utiliser le product ID spécifique (mensuel ou annuel)
+          const iosSku = type === "monthly" ? IAP_PRODUCTS_IOS.PREMIUM_MONTHLY : IAP_PRODUCTS_IOS.PREMIUM_YEARLY;
+          
+          console.log("Requesting purchase (iOS):", {
+            productId: iosSku,
+          });
+          
           await iapModuleRef.current.requestPurchase({
             request: {
-              apple: { sku: IAP_PRODUCTS.PREMIUM },
-              google: { skus: [IAP_PRODUCTS.PREMIUM] },
+              apple: { sku: iosSku },
+              google: { skus: [IAP_PRODUCTS_ANDROID.PREMIUM] }, // Fallback (not used on iOS)
             },
           });
         }
@@ -395,20 +445,46 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
     try {
       const availablePurchases = await iapModuleRef.current.getAvailablePurchases();
       if (availablePurchases) {
-        const premiumPurchase = availablePurchases.find(
-          (p: any) => p.productId === IAP_PRODUCTS.PREMIUM
-        );
-        if (premiumPurchase) {
-          // Déterminer le type d'abonnement
-          const basePlanId = (premiumPurchase as any).basePlanId || (premiumPurchase as any).subscriptionOfferDetails?.basePlanId;
-          let subType: SubscriptionType = "monthly"; // Fallback
+        let premiumPurchase: any = null;
+        let subType: SubscriptionType = null;
+        
+        if (Platform.OS === "android") {
+          // Android : chercher l'abonnement avec l'ID de base
+          premiumPurchase = availablePurchases.find(
+            (p: any) => p.productId === IAP_PRODUCTS_ANDROID.PREMIUM
+          );
           
-          if (basePlanId === IAP_BASE_PLANS.MONTHLY) {
+          if (premiumPurchase) {
+            // Déterminer le type d'abonnement à partir du base plan
+            const basePlanId = (premiumPurchase as any).basePlanId || (premiumPurchase as any).subscriptionOfferDetails?.basePlanId;
+            
+            if (basePlanId === IAP_BASE_PLANS.MONTHLY) {
+              subType = "monthly";
+            } else if (basePlanId === IAP_BASE_PLANS.YEARLY) {
+              subType = "yearly";
+            } else {
+              subType = "monthly"; // Fallback
+            }
+          }
+        } else {
+          // iOS : chercher l'un des deux product IDs
+          const monthlyPurchase = availablePurchases.find(
+            (p: any) => p.productId === IAP_PRODUCTS_IOS.PREMIUM_MONTHLY
+          );
+          const yearlyPurchase = availablePurchases.find(
+            (p: any) => p.productId === IAP_PRODUCTS_IOS.PREMIUM_YEARLY
+          );
+          
+          if (monthlyPurchase) {
+            premiumPurchase = monthlyPurchase;
             subType = "monthly";
-          } else if (basePlanId === IAP_BASE_PLANS.YEARLY) {
+          } else if (yearlyPurchase) {
+            premiumPurchase = yearlyPurchase;
             subType = "yearly";
           }
-          
+        }
+        
+        if (premiumPurchase && subType) {
           // Calculer la date d'expiration
           const expiresAt = new Date();
           if (subType === "monthly") {
