@@ -262,3 +262,4 @@
 - [x] Retirer expo-audio de app.config.ts et package.json (PhytoCheck n'utilise pas l'audio)
 - [x] Corriger les API obsolètes pour l'affichage de bord à bord (edge-to-edge) dans Android 15 - Retiré edgeToEdgeEnabled
 - [x] Supprimer les restrictions de redimensionnement et d'orientation pour appareils à grand écran (Android 16) - Orientation changée de "portrait" à "default"
+- [x] Régénérer pnpm-lock.yaml après suppression d'expo-audio pour corriger l'erreur de build EAS
