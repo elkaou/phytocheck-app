@@ -241,3 +241,11 @@
 - [x] Solution : Utiliser uniquement l'ID de base (phytocheck_premium) et spécifier le base plan via offerToken lors de l'achat
 - [x] Refonte complète de iap-service.ts et iap-context.tsx pour supporter Google Play Billing v5+ avec base plans
 - [x] Correction des tests unitaires pour utiliser les nouveaux noms de constantes
+
+## Apple App Review - Build 34 refusé (24 février 2026)
+
+- [x] **Guideline 5.1.1** : Changer le bouton "Autoriser" en "Continuer" ou "Next" dans la demande de permission caméra
+- [ ] **Guideline 2.3.3** : Créer de vrais screenshots iPad (actuellement ce sont des screenshots iPhone étirés)
+- [ ] **Guideline 2.1** : Soumettre les produits IAP pour review dans App Store Connect avec screenshots
+- [x] **Guideline 2.1** : Corriger le bug "érreur après tap sur Souscrire maintenant" (problème IAP iOS) - Corrigé dans Build 48
+- [x] **Guideline 2.5.4** : Retirer "audio" de UIBackgroundModes dans Info.plist (pas de feature audio persistante)

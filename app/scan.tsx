@@ -224,7 +224,7 @@ export default function ScanScreen() {
               onPress={requestPermission}
             >
               <Text style={styles.permissionButtonText}>
-                Autoriser l'appareil photo
+                Continuer
               </Text>
             </Pressable>
             <Pressable

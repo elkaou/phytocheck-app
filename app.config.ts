@@ -50,13 +50,13 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    buildNumber: "48",
+    buildNumber: "49",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
     },
   },
   android: {
-    versionCode: 48,
+    versionCode: 49,
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
       foregroundImage: "./assets/images/android-icon-foreground.png",
@@ -111,7 +111,6 @@ const config: ExpoConfig = {
     [
       "expo-video",
       {
-        supportsBackgroundPlayback: true,
         supportsPictureInPicture: true,
       },
     ],
