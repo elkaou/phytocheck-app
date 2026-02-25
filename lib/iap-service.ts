@@ -7,13 +7,17 @@ import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Product IDs - à configurer dans Google Play Console et App Store Connect
+// Pour Google Play Billing v5+, utiliser l'ID de base de l'abonnement
+// Les base plans (monthly/yearly) sont gérés par Google Play Console
 export const IAP_PRODUCTS = {
-  PREMIUM_MONTHLY: "phytocheck_premium:monthly", // Abonnement mensuel
-  PREMIUM_YEARLY: "phytocheck_premium:yearly",   // Abonnement annuel
+  PREMIUM: "phytocheck_premium", // ID de base de l'abonnement (contient les plans monthly et yearly)
 } as const;
 
-// Base product ID (sans le base plan)
-export const IAP_BASE_PRODUCT = "phytocheck_premium";
+// Base plans IDs (définis dans Google Play Console)
+export const IAP_BASE_PLANS = {
+  MONTHLY: "monthly",
+  YEARLY: "yearly",
+} as const;
 
 const PREMIUM_STORAGE_KEY = "@phytocheck_premium_status";
 

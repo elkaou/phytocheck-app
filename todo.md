@@ -215,5 +215,29 @@
 
 - [x] Mettre à jour constants/oauth.ts avec l'URL Render (https://phytocheck-backend.onrender.com)
 - [x] Incrémenter versionCode et buildNumber à 47
-- [ ] Lancer les builds EAS Android et iOS
+- [x] Lancer les builds EAS Android et iOS (Android versionCode 32, iOS buildNumber 36)
 - [ ] Configurer les variables d'environnement Render pour l'IA (BUILT_IN_FORGE_API_URL, BUILT_IN_FORGE_API_KEY, etc.)
+
+## Nouveau bug - Erreur "Aborted" lors du scan photo
+
+- [ ] Bug : Le scan photo retourne "Erreur d'analyse - Aborted" après ~30 secondes d'attente
+- [ ] Vérifier que le backend Render est bien en ligne et répond
+- [ ] Vérifier que les variables d'environnement Render sont configurées (notamment BUILT_IN_FORGE_API_KEY)
+- [ ] Vérifier les logs Render pour voir l'erreur exacte
+- [ ] Tester l'endpoint /api/trpc/analyzeLabel directement avec curl
+
+## Nouveaux bugs - Achat Premium et avertissement Android 15
+
+- [ ] Bug : Erreur "L'abonnement n'a pas pu être finalisé" lors de l'achat Premium
+- [ ] Vérifier la configuration des product IDs dans Google Play Console
+- [ ] Vérifier que les abonnements sont bien publiés et actifs
+- [ ] Avertissement Google Play : Services de premier plan restreints (Android 15) - expo-audio
+- [ ] Retirer expo-audio des dépendances si non utilisé
+
+## Build 48 - Correction format Google Play Billing v5+
+
+- [x] Bug critique : L'achat d'abonnement Premium échoue avec "L'abonnement n'a pas pu être finalisé"
+- [x] Cause identifiée : Format incorrect des product IDs (phytocheck_premium:monthly au lieu du format Google Play Billing v5+)
+- [x] Solution : Utiliser uniquement l'ID de base (phytocheck_premium) et spécifier le base plan via offerToken lors de l'achat
+- [x] Refonte complète de iap-service.ts et iap-context.tsx pour supporter Google Play Billing v5+ avec base plans
+- [x] Correction des tests unitaires pour utiliser les nouveaux noms de constantes

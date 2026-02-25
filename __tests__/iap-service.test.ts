@@ -27,7 +27,7 @@ import {
   resetPremiumStatus,
   isPlatformSupported,
   IAP_PRODUCTS,
-  IAP_BASE_PRODUCT,
+  IAP_BASE_PLANS,
 } from "../lib/iap-service";
 
 describe("IAP Service", () => {
@@ -36,9 +36,9 @@ describe("IAP Service", () => {
   });
 
   it("devrait avoir les bons product IDs pour les abonnements", () => {
-    expect(IAP_PRODUCTS.PREMIUM_MONTHLY).toBe("phytocheck_premium:monthly");
-    expect(IAP_PRODUCTS.PREMIUM_YEARLY).toBe("phytocheck_premium:yearly");
-    expect(IAP_BASE_PRODUCT).toBe("phytocheck_premium");
+    expect(IAP_PRODUCTS.PREMIUM).toBe("phytocheck_premium");
+    expect(IAP_BASE_PLANS.MONTHLY).toBe("monthly");
+    expect(IAP_BASE_PLANS.YEARLY).toBe("yearly");
   });
 
   it("devrait détecter les plateformes supportées", () => {
