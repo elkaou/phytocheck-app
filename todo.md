@@ -272,5 +272,5 @@
 
 ## Build 52 - Refonte graphique modal "Ajouter au stock"
 
-- [ ] Créer un checkpoint de sauvegarde avant modifications
-- [ ] Refaire le modal quantity-modal.tsx avec le style original (fond semi-transparent, design épuré)
+- [x] Créer un checkpoint de sauvegarde avant modifications
+- [x] Refaire le modal quantity-modal.tsx avec le style original (fond semi-transparent, design épuré, sélecteur d'unité avec boutons L/Kg)

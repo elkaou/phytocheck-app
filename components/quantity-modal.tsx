@@ -4,12 +4,11 @@ import {
   View,
   Text,
   TextInput,
-  Pressable,
+  TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
 } from "react-native";
+import { useColors } from "@/hooks/use-colors";
 
 interface QuantityModalProps {
   visible: boolean;
@@ -24,24 +23,18 @@ export function QuantityModal({
   onCancel,
   onConfirm,
 }: QuantityModalProps) {
-  const [quantityL, setQuantityL] = useState("");
-  const [quantityKg, setQuantityKg] = useState("");
+  const colors = useColors();
+  const [quantity, setQuantity] = useState("");
+  const [unit, setUnit] = useState<"L" | "Kg">("L");
 
   const handleConfirm = () => {
-    const qtyL = parseFloat(quantityL) || 0;
-    const qtyKg = parseFloat(quantityKg) || 0;
-    
-    if (qtyL > 0) {
-      onConfirm(qtyL, "L");
-    } else if (qtyKg > 0) {
-      onConfirm(qtyKg, "Kg");
-    } else {
-      // Si aucune quantité n'est saisie, ne rien faire
+    const qty = parseFloat(quantity);
+    if (isNaN(qty) || qty <= 0) {
       return;
     }
     
-    setQuantityL(""); // Reset for next time
-    setQuantityKg(""); // Reset for next time
+    onConfirm(qty, unit);
+    setQuantity(""); // Reset for next time
   };
 
   return (
@@ -51,82 +44,113 @@ export function QuantityModal({
       animationType="fade"
       onRequestClose={onCancel}
     >
-      <Pressable style={styles.overlay} onPress={onCancel}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.centeredView}
-        >
-          <Pressable onPress={(e) => e.stopPropagation()}>
-            <ScrollView
-              contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
+      <View style={styles.overlay}>
+        <View style={[styles.modalView, { backgroundColor: colors.background }]}>
+          <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+            Quantité en stock
+          </Text>
+
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>
+              QUANTITÉ
+            </Text>
+            <TextInput
+              style={[
+                styles.quantityInput,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.foreground,
+                },
+              ]}
+              placeholder="Ex: 25"
+              keyboardType="decimal-pad"
+              value={quantity}
+              onChangeText={setQuantity}
+              autoFocus
+              placeholderTextColor={colors.muted}
+            />
+          </View>
+
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>
+              UNITÉ
+            </Text>
+            <View style={styles.unitRow}>
+              <TouchableOpacity
+                onPress={() => setUnit("L")}
+                style={[
+                  styles.unitButton,
+                  {
+                    backgroundColor: unit === "L" ? colors.primary : colors.surface,
+                    borderColor: unit === "L" ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.unitButtonText,
+                    {
+                      color: unit === "L" ? "white" : colors.foreground,
+                    },
+                  ]}
+                >
+                  Litres (L)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setUnit("Kg")}
+                style={[
+                  styles.unitButton,
+                  {
+                    backgroundColor: unit === "Kg" ? colors.primary : colors.surface,
+                    borderColor: unit === "Kg" ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.unitButtonText,
+                    {
+                      color: unit === "Kg" ? "white" : colors.foreground,
+                    },
+                  ]}
+                >
+                  Kilogrammes (kg)
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              onPress={onCancel}
+              style={[
+                styles.actionButton,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
             >
-              <View style={styles.modalView}>
-              <Text style={styles.modalTitle}>Ajouter au stock</Text>
-              <Text style={styles.modalSubtitle}>{productName}</Text>
+              <Text style={[styles.cancelButtonText, { color: colors.foreground }]}>
+                Annuler
+              </Text>
+            </TouchableOpacity>
 
-              {/* Row 1: Two input fields for L and Kg */}
-              <View style={styles.inputRow}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>L</Text>
-                  <TextInput
-                    style={styles.quantityInput}
-                    value={quantityL}
-                    onChangeText={(text) => {
-                      setQuantityL(text);
-                      if (text) setQuantityKg(""); // Vider Kg si L est rempli
-                    }}
-                    keyboardType="decimal-pad"
-                    placeholder="0"
-                    selectTextOnFocus
-                  />
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Kg</Text>
-                  <TextInput
-                    style={styles.quantityInput}
-                    value={quantityKg}
-                    onChangeText={(text) => {
-                      setQuantityKg(text);
-                      if (text) setQuantityL(""); // Vider L si Kg est rempli
-                    }}
-                    keyboardType="decimal-pad"
-                    placeholder="0"
-                    selectTextOnFocus
-                  />
-                </View>
-              </View>
-
-              {/* Row 2: Ajouter and Annuler buttons */}
-              <View style={styles.actionRow}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    styles.confirmButton,
-                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                  ]}
-                  onPress={handleConfirm}
-                >
-                  <Text style={styles.confirmButtonText}>Ajouter</Text>
-                </Pressable>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    styles.cancelButton,
-                    pressed && { opacity: 0.7 },
-                  ]}
-                  onPress={onCancel}
-                >
-                  <Text style={styles.cancelButtonText}>Annuler</Text>
-                </Pressable>
-              </View>
-              </View>
-            </ScrollView>
-          </Pressable>
-        </KeyboardAvoidingView>
-      </Pressable>
+            <TouchableOpacity
+              onPress={handleConfirm}
+              style={[
+                styles.actionButton,
+                { backgroundColor: colors.primary },
+              ]}
+            >
+              <Text style={styles.confirmButtonText}>Ajouter</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
     </Modal>
   );
 }
@@ -134,29 +158,17 @@ export function QuantityModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-  },
-  centeredView: {
-    flex: 1,
-    justifyContent: "flex-start",
-    alignItems: "center",
-    width: "100%",
-    paddingTop: 80,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "flex-start",
-    alignItems: "center",
-    paddingVertical: 20,
+    paddingHorizontal: 24,
   },
   modalView: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    padding: 24,
-    width: "85%",
-    maxWidth: 400,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    width: "100%",
+    gap: 16,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -167,74 +179,59 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
-    color: "#1A1A1A",
-    marginBottom: 8,
-    textAlign: "center",
   },
-  modalSubtitle: {
-    fontSize: 14,
-    color: "#687076",
-    marginBottom: 20,
-    textAlign: "center",
+  section: {
+    gap: 8,
   },
-  label: {
-    fontSize: 14,
+  sectionLabel: {
+    fontSize: 12,
     fontWeight: "600",
-    color: "#1A1A1A",
-    marginBottom: 8,
-  },
-  inputRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 20,
-  },
-  inputContainer: {
-    flex: 1,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    marginBottom: 8,
-    textAlign: "center",
   },
   quantityInput: {
-    backgroundColor: "#F5F5F5",
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: "#1A1A1A",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+  },
+  unitRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  unitButton: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+  },
+  unitButtonText: {
     textAlign: "center",
+    fontWeight: "600",
+    fontSize: 14,
   },
   actionRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 12,
+    marginTop: 8,
   },
   actionButton: {
     flex: 1,
     borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  cancelButton: {
-    backgroundColor: "#F5F5F5",
+    paddingVertical: 12,
+    borderWidth: 1,
   },
   cancelButtonText: {
-    fontSize: 14,
+    textAlign: "center",
     fontWeight: "600",
-    color: "#687076",
-  },
-  confirmButton: {
-    backgroundColor: "#0a7ea5",
+    fontSize: 16,
   },
   confirmButtonText: {
-    fontSize: 14,
+    textAlign: "center",
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: "white",
+    fontSize: 16,
   },
 });
