@@ -263,3 +263,14 @@
 - [x] Corriger les API obsolètes pour l'affichage de bord à bord (edge-to-edge) dans Android 15 - Retiré edgeToEdgeEnabled
 - [x] Supprimer les restrictions de redimensionnement et d'orientation pour appareils à grand écran (Android 16) - Orientation changée de "portrait" à "default"
 - [x] Régénérer pnpm-lock.yaml après suppression d'expo-audio pour corriger l'erreur de build EAS
+
+## Build 52 - Correction configuration IAP Android/iOS
+
+- [ ] Corriger les product IDs pour correspondre à la structure Google Play Console : un abonnement `phytocheck_premium` avec deux base plans `monthly` et `yearly`
+- [ ] Vérifier et corriger la logique de chargement des produits pour Android (Google Play Billing v5+)
+- [ ] Vérifier et corriger la logique de chargement des produits pour iOS (StoreKit)
+
+## Build 52 - Refonte graphique modal "Ajouter au stock"
+
+- [ ] Créer un checkpoint de sauvegarde avant modifications
+- [ ] Refaire le modal quantity-modal.tsx avec le style original (fond semi-transparent, design épuré)
