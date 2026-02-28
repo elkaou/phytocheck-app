@@ -323,3 +323,10 @@
 - [x] Trier le stock par ordre alphabétique
 - [x] Système identifiant appareil : table devices MySQL + endpoints tRPC device.sync et device.incrementSearch
 - [x] Intégration expo-application côté app + synchronisation compteur avec backend
+
+## Mise à jour base de données E-PHY - 28/02/2026
+
+- [x] Mise à jour products.json avec les nouveaux CSV E-PHY (15052 → 15058 produits, +6 nouveaux)
+- [x] Mise à jour risk-phrases.json (2472 → 2478 AMM avec phrases de risque, +6)
+- [x] Mise à jour DB_UPDATE_DATE à "28/02/2026" dans product-service.ts
+- [x] Script de conversion CSV→JSON créé (convert_ephy_to_json.py) et intégré dans le projet
