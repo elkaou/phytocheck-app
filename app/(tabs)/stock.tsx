@@ -178,9 +178,11 @@ export default function StockScreen() {
 
             /* BADGES */
             .badge {
-              display: inline-block; padding: 4px 10px;
-              border-radius: 20px; font-size: 11px; font-weight: 700;
-              letter-spacing: 0.2px; white-space: nowrap;
+              display: inline-block; padding: 3px 7px;
+              border-radius: 10px; font-size: 9px; font-weight: 700;
+              letter-spacing: 0.1px; white-space: normal;
+              word-break: break-word; text-align: center;
+              line-height: 1.4; max-width: 130px;
             }
             .badge-homologue { background: #dcfce7; color: #15803d; }
             .badge-retire { background: #fee2e2; color: #b91c1c; }
@@ -248,9 +250,9 @@ export default function StockScreen() {
                     <th style="width:35%">Nom du produit</th>
                     <th style="width:15%">N° AMM</th>
                     <th style="width:12%">Quantité</th>
-                    <th style="width:18%">Titulaire</th>
+                    <th style="width:13%">Titulaire</th>
                     <th style="width:12%">Date ajout</th>
-                    <th style="width:8%">Statut</th>
+                    <th style="width:18%">Statut</th>
                   </tr>
                 </thead>
                 <tbody>
