@@ -316,10 +316,3 @@
 
 - [x] Remonter le modal en haut de l'écran pour que les boutons restent visibles avec le clavier
 - [x] Réduire les boutons d'unité à "L" et "Kg" seulement (plus compacts)
-
-## Corrections et nouvelles fonctionnalités - 28 février 2026
-
-- [x] Vérifier et corriger la limite recherches/stock pour Premium (doit être infinie côté logique)
-- [x] Trier le stock par ordre alphabétique
-- [x] Système identifiant appareil : table devices MySQL + endpoints tRPC device.sync et device.incrementSearch
-- [x] Intégration expo-application côté app + synchronisation compteur avec backend

@@ -62,14 +62,10 @@ export default function StockScreen() {
 
 
 
-  // Filter and sort stock alphabetically
+  // Filter stock based on selected filter
   const filteredStock = useMemo(() => {
-    const filtered = filter === "all" ? stock : stock.filter((item) => item.classification === filter);
-    return [...filtered].sort((a, b) => {
-      const nameA = (a.secondaryName || a.nom).toLowerCase();
-      const nameB = (b.secondaryName || b.nom).toLowerCase();
-      return nameA.localeCompare(nameB, "fr", { sensitivity: "base" });
-    });
+    if (filter === "all") return stock;
+    return stock.filter((item) => item.classification === filter);
   }, [stock, filter]);
 
   const handleFilterToggle = useCallback((filterType: FilterType) => {

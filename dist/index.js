@@ -57,19 +57,6 @@ var users = (0, import_mysql_core.mysqlTable)("users", {
   updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: (0, import_mysql_core.timestamp)("lastSignedIn").defaultNow().notNull()
 });
-var devices = (0, import_mysql_core.mysqlTable)("devices", {
-  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-  /** Identifiant unique de l'appareil (androidId ou idfv iOS) */
-  deviceId: (0, import_mysql_core.varchar)("deviceId", { length: 255 }).notNull().unique(),
-  /** Nombre total de recherches effectuées sur cet appareil */
-  searchCount: (0, import_mysql_core.int)("searchCount").default(0).notNull(),
-  /** L'appareil a-t-il un abonnement Premium actif ? */
-  isPremium: (0, import_mysql_core.boolean)("isPremium").default(false).notNull(),
-  /** Première utilisation de l'app sur cet appareil */
-  firstSeen: (0, import_mysql_core.timestamp)("firstSeen").defaultNow().notNull(),
-  /** Dernière synchronisation avec le serveur */
-  lastSeen: (0, import_mysql_core.timestamp)("lastSeen").defaultNow().onUpdateNow().notNull()
-});
 
 // server/_core/env.ts
 var ENV = {
@@ -152,43 +139,6 @@ async function getUserByOpenId(openId) {
   }
   const result = await db.select().from(users).where((0, import_drizzle_orm.eq)(users.openId, openId)).limit(1);
   return result.length > 0 ? result[0] : void 0;
-}
-async function syncDevice(deviceId, isPremium) {
-  const db = await getDb();
-  if (!db) return null;
-  try {
-    await db.insert(devices).values({ deviceId, isPremium, searchCount: 0 }).onDuplicateKeyUpdate({ set: { isPremium, lastSeen: /* @__PURE__ */ new Date() } });
-    const result = await db.select().from(devices).where((0, import_drizzle_orm.eq)(devices.deviceId, deviceId)).limit(1);
-    return result.length > 0 ? result[0] : null;
-  } catch (error) {
-    console.error("[Database] syncDevice error:", error);
-    return null;
-  }
-}
-async function incrementDeviceSearch(deviceId, limit) {
-  const db = await getDb();
-  if (!db) return { allowed: true, searchCount: 0 };
-  try {
-    const result = await db.select().from(devices).where((0, import_drizzle_orm.eq)(devices.deviceId, deviceId)).limit(1);
-    if (result.length === 0) {
-      await db.insert(devices).values({ deviceId, searchCount: 1, isPremium: false });
-      return { allowed: true, searchCount: 1 };
-    }
-    const device = result[0];
-    if (device.isPremium) {
-      await db.update(devices).set({ searchCount: device.searchCount + 1 }).where((0, import_drizzle_orm.eq)(devices.deviceId, deviceId));
-      return { allowed: true, searchCount: device.searchCount + 1 };
-    }
-    if (device.searchCount >= limit) {
-      return { allowed: false, searchCount: device.searchCount };
-    }
-    const newCount = device.searchCount + 1;
-    await db.update(devices).set({ searchCount: newCount }).where((0, import_drizzle_orm.eq)(devices.deviceId, deviceId));
-    return { allowed: true, searchCount: newCount };
-  } catch (error) {
-    console.error("[Database] incrementDeviceSearch error:", error);
-    return { allowed: true, searchCount: 0 };
-  }
 }
 
 // server/_core/cookies.ts
@@ -867,7 +817,6 @@ var systemRouter = router({
 });
 
 // server/routers.ts
-var FREE_SEARCH_LIMIT = 15;
 var appRouter = router({
   system: systemRouter,
   auth: router({
@@ -1107,47 +1056,6 @@ ATTENTION :
           raw: error?.message || "Unknown error"
         };
       }
-    })
-  }),
-  // ─── Device tracking endpoints ─────────────────────────────────────────────
-  device: router({
-    /**
-     * Synchronise l'appareil au démarrage de l'app.
-     * Crée l'entrée si absente, met à jour isPremium.
-     * Retourne { searchCount, isPremium }.
-     */
-    sync: publicProcedure.input(
-      import_zod2.z.object({
-        deviceId: import_zod2.z.string().min(1).max(255),
-        isPremium: import_zod2.z.boolean()
-      })
-    ).mutation(async ({ input }) => {
-      const device = await syncDevice(input.deviceId, input.isPremium);
-      if (!device) {
-        return { searchCount: 0, isPremium: input.isPremium, offline: true };
-      }
-      return {
-        searchCount: device.searchCount,
-        isPremium: device.isPremium,
-        offline: false
-      };
-    }),
-    /**
-     * Incrémente le compteur de recherche côté serveur.
-     * Retourne { allowed, searchCount }.
-     * Si allowed = false, l'app doit bloquer la recherche et proposer Premium.
-     */
-    incrementSearch: publicProcedure.input(
-      import_zod2.z.object({
-        deviceId: import_zod2.z.string().min(1).max(255),
-        isPremium: import_zod2.z.boolean()
-      })
-    ).mutation(async ({ input }) => {
-      if (input.isPremium) {
-        return { allowed: true, searchCount: -1 };
-      }
-      const result = await incrementDeviceSearch(input.deviceId, FREE_SEARCH_LIMIT);
-      return result;
     })
   })
 });

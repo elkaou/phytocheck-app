@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, devices, Device } from "../drizzle/schema";
+import { InsertUser, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,68 +89,4 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// ─── Device tracking (Freemium counter) ──────────────────────────────────────
-
-/**
- * Synchronise un appareil avec le serveur.
- * Crée l'entrée si absente, met à jour isPremium et lastSeen si présente.
- * Retourne l'état actuel de l'appareil (searchCount, isPremium).
- */
-export async function syncDevice(deviceId: string, isPremium: boolean): Promise<Device | null> {
-  const db = await getDb();
-  if (!db) return null;
-  try {
-    await db
-      .insert(devices)
-      .values({ deviceId, isPremium, searchCount: 0 })
-      .onDuplicateKeyUpdate({ set: { isPremium, lastSeen: new Date() } });
-    const result = await db.select().from(devices).where(eq(devices.deviceId, deviceId)).limit(1);
-    return result.length > 0 ? result[0] : null;
-  } catch (error) {
-    console.error("[Database] syncDevice error:", error);
-    return null;
-  }
-}
-
-/**
- * Incrémente le compteur de recherche pour un appareil.
- * Retourne { allowed, searchCount }.
- * En mode dégradé (pas de DB), retourne allowed: true pour ne pas bloquer l'utilisateur.
- */
-export async function incrementDeviceSearch(
-  deviceId: string,
-  limit: number
-): Promise<{ allowed: boolean; searchCount: number }> {
-  const db = await getDb();
-  if (!db) return { allowed: true, searchCount: 0 }; // mode offline : autorisé
-
-  try {
-    const result = await db.select().from(devices).where(eq(devices.deviceId, deviceId)).limit(1);
-
-    if (result.length === 0) {
-      // Appareil inconnu : créer et autoriser
-      await db.insert(devices).values({ deviceId, searchCount: 1, isPremium: false });
-      return { allowed: true, searchCount: 1 };
-    }
-
-    const device = result[0];
-
-    // Si Premium côté serveur, toujours autorisé
-    if (device.isPremium) {
-      await db.update(devices).set({ searchCount: device.searchCount + 1 }).where(eq(devices.deviceId, deviceId));
-      return { allowed: true, searchCount: device.searchCount + 1 };
-    }
-
-    // Vérifier la limite
-    if (device.searchCount >= limit) {
-      return { allowed: false, searchCount: device.searchCount };
-    }
-
-    const newCount = device.searchCount + 1;
-    await db.update(devices).set({ searchCount: newCount }).where(eq(devices.deviceId, deviceId));
-    return { allowed: true, searchCount: newCount };
-  } catch (error) {
-    console.error("[Database] incrementDeviceSearch error:", error);
-    return { allowed: true, searchCount: 0 }; // mode dégradé : autorisé
-  }
-}
+// TODO: add feature queries here as your schema grows.

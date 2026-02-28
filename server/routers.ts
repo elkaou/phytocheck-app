@@ -5,9 +5,6 @@ import { invokeLLM } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { storagePut } from "./storage";
-import { syncDevice, incrementDeviceSearch } from "./db";
-
-const FREE_SEARCH_LIMIT = 15;
 
 export const appRouter = router({
   system: systemRouter,
@@ -282,53 +279,6 @@ ATTENTION :
             raw: error?.message || "Unknown error",
           };
         }
-      }),
-  }),
-
-  // ─── Device tracking endpoints ─────────────────────────────────────────────
-  device: router({
-    /**
-     * Synchronise l'appareil au démarrage de l'app.
-     * Crée l'entrée si absente, met à jour isPremium.
-     * Retourne { searchCount, isPremium }.
-     */
-    sync: publicProcedure
-      .input(
-        z.object({
-          deviceId: z.string().min(1).max(255),
-          isPremium: z.boolean(),
-        })
-      )
-      .mutation(async ({ input }) => {
-        const device = await syncDevice(input.deviceId, input.isPremium);
-        if (!device) {
-          return { searchCount: 0, isPremium: input.isPremium, offline: true };
-        }
-        return {
-          searchCount: device.searchCount,
-          isPremium: device.isPremium,
-          offline: false,
-        };
-      }),
-
-    /**
-     * Incrémente le compteur de recherche côté serveur.
-     * Retourne { allowed, searchCount }.
-     * Si allowed = false, l'app doit bloquer la recherche et proposer Premium.
-     */
-    incrementSearch: publicProcedure
-      .input(
-        z.object({
-          deviceId: z.string().min(1).max(255),
-          isPremium: z.boolean(),
-        })
-      )
-      .mutation(async ({ input }) => {
-        if (input.isPremium) {
-          return { allowed: true, searchCount: -1 };
-        }
-        const result = await incrementDeviceSearch(input.deviceId, FREE_SEARCH_LIMIT);
-        return result;
       }),
   }),
 });
