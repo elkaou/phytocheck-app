@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { useColors } from "@/hooks/use-colors";
@@ -32,9 +33,8 @@ export function QuantityModal({
     if (isNaN(qty) || qty <= 0) {
       return;
     }
-    
     onConfirm(qty, unit);
-    setQuantity(""); // Reset for next time
+    setQuantity("");
   };
 
   return (
@@ -44,7 +44,11 @@ export function QuantityModal({
       animationType="fade"
       onRequestClose={onCancel}
     >
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      >
         <View style={[styles.modalView, { backgroundColor: colors.background }]}>
           <Text style={[styles.modalTitle, { color: colors.foreground }]}>
             Quantité en stock
@@ -68,6 +72,8 @@ export function QuantityModal({
               value={quantity}
               onChangeText={setQuantity}
               autoFocus
+              returnKeyType="done"
+              onSubmitEditing={handleConfirm}
               placeholderTextColor={colors.muted}
             />
           </View>
@@ -90,12 +96,10 @@ export function QuantityModal({
                 <Text
                   style={[
                     styles.unitButtonText,
-                    {
-                      color: unit === "L" ? "white" : colors.foreground,
-                    },
+                    { color: unit === "L" ? "white" : colors.foreground },
                   ]}
                 >
-                  Litres (L)
+                  L
                 </Text>
               </TouchableOpacity>
 
@@ -112,12 +116,10 @@ export function QuantityModal({
                 <Text
                   style={[
                     styles.unitButtonText,
-                    {
-                      color: unit === "Kg" ? "white" : colors.foreground,
-                    },
+                    { color: unit === "Kg" ? "white" : colors.foreground },
                   ]}
                 >
-                  Kilogrammes (kg)
+                  Kg
                 </Text>
               </TouchableOpacity>
             </View>
@@ -141,16 +143,13 @@ export function QuantityModal({
 
             <TouchableOpacity
               onPress={handleConfirm}
-              style={[
-                styles.actionButton,
-                { backgroundColor: colors.primary },
-              ]}
+              style={[styles.actionButton, { backgroundColor: colors.primary }]}
             >
               <Text style={styles.confirmButtonText}>Ajouter</Text>
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -159,9 +158,10 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     alignItems: "center",
     paddingHorizontal: 24,
+    paddingTop: 80,
   },
   modalView: {
     borderRadius: 16,
@@ -170,10 +170,7 @@ const styles = StyleSheet.create({
     width: "100%",
     gap: 16,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
@@ -209,13 +206,13 @@ const styles = StyleSheet.create({
   },
   unitButtonText: {
     textAlign: "center",
-    fontWeight: "600",
-    fontSize: 14,
+    fontWeight: "700",
+    fontSize: 16,
   },
   actionRow: {
     flexDirection: "row",
     gap: 12,
-    marginTop: 8,
+    marginTop: 4,
   },
   actionButton: {
     flex: 1,

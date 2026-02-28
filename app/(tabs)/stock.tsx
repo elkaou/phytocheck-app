@@ -60,12 +60,16 @@ export default function StockScreen() {
     [removeProductFromStock]
   );
 
-  const maxDisplay = isPremium ? "∞" : String(FREE_STOCK_LIMIT);
 
-  // Filter stock based on selected filter
+
+  // Filter and sort stock alphabetically
   const filteredStock = useMemo(() => {
-    if (filter === "all") return stock;
-    return stock.filter((item) => item.classification === filter);
+    const filtered = filter === "all" ? stock : stock.filter((item) => item.classification === filter);
+    return [...filtered].sort((a, b) => {
+      const nameA = (a.secondaryName || a.nom).toLowerCase();
+      const nameB = (b.secondaryName || b.nom).toLowerCase();
+      return nameA.localeCompare(nameB, "fr", { sensitivity: "base" });
+    });
   }, [stock, filter]);
 
   const handleFilterToggle = useCallback((filterType: FilterType) => {
@@ -74,49 +78,223 @@ export default function StockScreen() {
 
   const handleExportPDF = useCallback(async () => {
     try {
-      // Generate HTML for PDF
+      const exportDate = new Date().toLocaleDateString("fr-FR", {
+        weekday: "long", year: "numeric", month: "long", day: "numeric"
+      });
+      const exportTime = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+      const statsHomologue = stock.filter(i => i.classification === "homologue").length;
+      const statsPPNU = stock.filter(i => i.classification === "retire").length;
+      const statsCMR = stock.filter(i => i.classification === "homologue_cmr").length;
+      const statsToxique = stock.filter(i => i.classification === "homologue_toxique").length;
+
       const htmlContent = `
         <!DOCTYPE html>
-        <html>
+        <html lang="fr">
         <head>
           <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>PhytoCheck - Inventaire des produits phytosanitaires</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            h1 { color: #0a7ea5; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #0a7ea5; color: white; }
-            .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-            .homologue { background-color: #F0FDF4; color: #16A34A; }
-            .retire { background-color: #FEF2F2; color: #DC2626; }
-            .cmr { background-color: #FFFBEB; color: #D97706; }
-            .toxique { background-color: #FFF7ED; color: #C2410C; }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f8fafc; color: #1e293b; font-size: 13px; }
+
+            /* PAGE HEADER */
+            .page-header {
+              background: linear-gradient(135deg, #0a7ea4 0%, #065f7c 100%);
+              color: white;
+              padding: 32px 40px 24px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+            }
+            .brand { display: flex; align-items: center; gap: 16px; }
+            .brand-icon {
+              width: 52px; height: 52px;
+              background: rgba(255,255,255,0.2);
+              border-radius: 12px;
+              display: flex; align-items: center; justify-content: center;
+              font-size: 28px;
+            }
+            .brand-name { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+            .brand-tagline { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+            .export-meta { text-align: right; font-size: 12px; opacity: 0.9; line-height: 1.6; }
+            .export-meta strong { font-size: 14px; display: block; margin-bottom: 4px; }
+
+            /* SUMMARY STRIP */
+            .summary-strip {
+              background: white;
+              border-bottom: 1px solid #e2e8f0;
+              padding: 20px 40px;
+              display: flex;
+              gap: 24px;
+              align-items: center;
+            }
+            .summary-title { font-size: 15px; font-weight: 700; color: #0a7ea4; flex: 1; }
+            .stat-pill {
+              display: flex; align-items: center; gap: 6px;
+              background: #f1f5f9; border-radius: 20px;
+              padding: 6px 14px; font-size: 12px; font-weight: 600;
+            }
+            .stat-dot { width: 8px; height: 8px; border-radius: 50%; }
+            .dot-green { background: #16a34a; }
+            .dot-red { background: #dc2626; }
+            .dot-amber { background: #d97706; }
+            .dot-orange { background: #c2410c; }
+            .stat-total {
+              background: #0a7ea4; color: white;
+              border-radius: 20px; padding: 6px 16px;
+              font-size: 13px; font-weight: 700;
+            }
+
+            /* MAIN CONTENT */
+            .main { padding: 24px 40px 40px; }
+
+            /* TABLE */
+            .table-wrapper {
+              background: white;
+              border-radius: 12px;
+              overflow: hidden;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+            }
+            table { width: 100%; border-collapse: collapse; }
+            thead tr { background: #0a7ea4; }
+            thead th {
+              color: white; font-size: 11px; font-weight: 700;
+              text-transform: uppercase; letter-spacing: 0.5px;
+              padding: 14px 16px; text-align: left;
+            }
+            thead th:last-child { text-align: center; }
+            tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.1s; }
+            tbody tr:last-child { border-bottom: none; }
+            tbody tr:nth-child(even) { background: #fafbfc; }
+            tbody td { padding: 13px 16px; vertical-align: middle; }
+            .col-nom { font-weight: 600; color: #1e293b; font-size: 13px; }
+            .col-nom .secondary { font-size: 11px; color: #64748b; font-weight: 400; margin-top: 2px; }
+            .col-amm { font-family: monospace; font-size: 12px; color: #475569; background: #f1f5f9; padding: 3px 8px; border-radius: 4px; display: inline-block; }
+            .col-qty { font-weight: 600; color: #334155; }
+            .col-date { font-size: 11px; color: #94a3b8; }
+            .col-status { text-align: center; }
+
+            /* BADGES */
+            .badge {
+              display: inline-block; padding: 4px 10px;
+              border-radius: 20px; font-size: 11px; font-weight: 700;
+              letter-spacing: 0.2px; white-space: nowrap;
+            }
+            .badge-homologue { background: #dcfce7; color: #15803d; }
+            .badge-retire { background: #fee2e2; color: #b91c1c; }
+            .badge-cmr { background: #fef9c3; color: #a16207; }
+            .badge-toxique { background: #ffedd5; color: #c2410c; }
+
+            /* FOOTER */
+            .page-footer {
+              margin-top: 32px;
+              padding: 20px 40px;
+              border-top: 1px solid #e2e8f0;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-size: 11px;
+              color: #94a3b8;
+            }
+            .footer-left { line-height: 1.6; }
+            .footer-right { text-align: right; line-height: 1.6; }
+            .footer-brand { font-weight: 700; color: #0a7ea4; font-size: 12px; }
+
+            /* EMPTY STATE */
+            .empty-state {
+              text-align: center; padding: 60px 40px;
+              color: #94a3b8; font-size: 15px;
+            }
           </style>
         </head>
         <body>
-          <h1>PhytoCheck - Stock des Produits</h1>
-          <p>Date d'export : ${new Date().toLocaleDateString("fr-FR")}</p>
-          <p>Nombre de produits : ${stock.length}</p>
-          <table>
-            <thead>
-              <tr>
-                <th>Nom</th>
-                <th>AMM</th>
-                <th>Quantité</th>
-                <th>Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${stock.map(item => `
-                <tr>
-                  <td>${item.nom}</td>
-                  <td>${item.amm}</td>
-                  <td>${item.quantite} ${item.unite}</td>
-                  <td><span class="badge ${item.classification}">${getClassificationLabel(item.classification as ProductClassification)}</span></td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
+
+          <!-- EN-TÊTE -->
+          <div class="page-header">
+            <div class="brand">
+              <div class="brand-icon">🌿</div>
+              <div>
+                <div class="brand-name">PhytoCheck</div>
+                <div class="brand-tagline">Inventaire des produits phytosanitaires</div>
+              </div>
+            </div>
+            <div class="export-meta">
+              <strong>Rapport d'inventaire</strong>
+              ${exportDate}<br>
+              Exporté à ${exportTime}
+            </div>
+          </div>
+
+          <!-- BANDE DE RÉSUMÉ -->
+          <div class="summary-strip">
+            <span class="summary-title">Résumé du stock</span>
+            <span class="stat-pill"><span class="stat-dot dot-green"></span>${statsHomologue} Homologué${statsHomologue > 1 ? "s" : ""}</span>
+            <span class="stat-pill"><span class="stat-dot dot-red"></span>${statsPPNU} PPNU</span>
+            <span class="stat-pill"><span class="stat-dot dot-amber"></span>${statsCMR} CMR</span>
+            <span class="stat-pill"><span class="stat-dot dot-orange"></span>${statsToxique} Toxique${statsToxique > 1 ? "s" : ""}</span>
+            <span class="stat-total">${stock.length} produit${stock.length > 1 ? "s" : ""}</span>
+          </div>
+
+          <!-- TABLEAU PRINCIPAL -->
+          <div class="main">
+            <div class="table-wrapper">
+              ${stock.length === 0
+                ? `<div class="empty-state">Aucun produit dans le stock</div>`
+                : `<table>
+                <thead>
+                  <tr>
+                    <th style="width:35%">Nom du produit</th>
+                    <th style="width:15%">N° AMM</th>
+                    <th style="width:12%">Quantité</th>
+                    <th style="width:18%">Titulaire</th>
+                    <th style="width:12%">Date ajout</th>
+                    <th style="width:8%">Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${stock.map((item, index) => {
+                    const badgeClass = {
+                      homologue: "badge-homologue",
+                      retire: "badge-retire",
+                      homologue_cmr: "badge-cmr",
+                      homologue_toxique: "badge-toxique",
+                    }[item.classification] ?? "badge-homologue";
+                    const dateAjout = item.dateAjout
+                      ? new Date(item.dateAjout).toLocaleDateString("fr-FR")
+                      : "—";
+                    const nomDisplay = item.secondaryName
+                      ? `${item.secondaryName}<div class="secondary">${item.nom}</div>`
+                      : item.nom;
+                    return `
+                    <tr>
+                      <td class="col-nom">${nomDisplay}</td>
+                      <td><span class="col-amm">${item.amm}</span></td>
+                      <td class="col-qty">${item.quantite ?? 1} ${item.unite ?? "L"}</td>
+                      <td style="font-size:11px;color:#475569">${item.titulaire ?? "—"}</td>
+                      <td class="col-date">${dateAjout}</td>
+                      <td class="col-status"><span class="badge ${badgeClass}">${getClassificationLabel(item.classification as ProductClassification)}</span></td>
+                    </tr>`;
+                  }).join("")}
+                </tbody>
+              </table>`
+              }
+            </div>
+          </div>
+
+          <!-- PIED DE PAGE -->
+          <div class="page-footer">
+            <div class="footer-left">
+              Document généré automatiquement par <span class="footer-brand">PhytoCheck</span><br>
+              Ce document est confidentiel et destiné à un usage professionnel.
+            </div>
+            <div class="footer-right">
+              <span class="footer-brand">PhytoCheck Premium</span><br>
+              ${exportDate} — ${exportTime}
+            </div>
+          </div>
+
         </body>
         </html>
       `;
@@ -155,7 +333,9 @@ export default function StockScreen() {
         <Text style={styles.headerTitle}>Gestion du stock</Text>
         <View style={styles.counterBadge}>
           <Text style={styles.counterText}>
-            Produits: {stock.length} / {maxDisplay}
+            {isPremium
+              ? `${stock.length} produit${stock.length > 1 ? "s" : ""} en stock`
+              : `Produits : ${stock.length} / ${FREE_STOCK_LIMIT}`}
           </Text>
         </View>
       </View>
@@ -191,7 +371,7 @@ export default function StockScreen() {
             styles.exportButtonText,
             !isPremium && styles.exportButtonTextDisabled,
           ]}>
-            {isPremium ? "📄 Export en PDF" : "🔒 Export en PDF (Premium)"}
+            {isPremium ? "📄 Exporter le stock en PDF" : "🔒 Export PDF (Premium)"}
           </Text>
         </Pressable>
 

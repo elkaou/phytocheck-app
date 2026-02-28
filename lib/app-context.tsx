@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import { Platform } from "react-native";
+import * as Application from "expo-application";
 import {
   getStock,
   addToStock,
@@ -15,6 +17,7 @@ import {
   FREE_STOCK_LIMIT,
 } from "./store";
 import { ClassifiedProduct } from "./product-service";
+import { trpc } from "./trpc";
 
 interface AppContextType {
   stock: StockItem[];
@@ -23,6 +26,7 @@ interface AppContextType {
   isPremium: boolean;
   remainingSearches: number;
   stockLimit: number;
+  deviceId: string | null;
   addProductToStock: (product: ClassifiedProduct, quantity?: number, unite?: "L" | "Kg", secondaryName?: string) => Promise<"added" | "incremented" | "limit" | "error">;
   removeProductFromStock: (amm: string) => Promise<boolean>;
   updateProductQuantity: (amm: string, quantity: number) => Promise<boolean>;
@@ -35,6 +39,21 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | null>(null);
 
+/** Récupère l'identifiant unique de l'appareil selon la plateforme */
+async function getDeviceId(): Promise<string | null> {
+  try {
+    if (Platform.OS === "android") {
+      return Application.getAndroidId();
+    } else if (Platform.OS === "ios") {
+      return await Application.getIosIdForVendorAsync();
+    }
+    // Web : pas d'identifiant fiable
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [stock, setStock] = useState<StockItem[]>([]);
   const [stockStats, setStockStats] = useState<StockStats>({
@@ -46,13 +65,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [searchCount, setSearchCount] = useState(0);
   const [isPremium, setIsPremiumState] = useState(false);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
 
   const remainingSearches = isPremium
     ? Infinity
     : Math.max(0, FREE_SEARCH_LIMIT - searchCount);
   const stockLimit = isPremium ? Infinity : FREE_STOCK_LIMIT;
 
-  // Load initial data
+  // tRPC mutations pour le tracking appareil
+  const syncDeviceMutation = trpc.device.sync.useMutation();
+  const incrementSearchMutation = trpc.device.incrementSearch.useMutation();
+
+  // Load initial data + synchronisation appareil au démarrage
   useEffect(() => {
     (async () => {
       const [s, sc, ip] = await Promise.all([
@@ -61,11 +85,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         getIsPremium(),
       ]);
       setStock(s);
-      setSearchCount(sc);
       setIsPremiumState(ip);
       const stats = await getStockStats();
       setStockStats(stats);
+
+      // Récupérer l'identifiant appareil
+      const id = await getDeviceId();
+      setDeviceId(id);
+
+      if (id) {
+        try {
+          // Synchroniser avec le serveur : le serveur retourne le vrai searchCount
+          const result = await syncDeviceMutation.mutateAsync({ deviceId: id, isPremium: ip });
+          if (!result.offline) {
+            // Utiliser le compteur serveur (plus fiable que le local)
+            setSearchCount(result.searchCount);
+          } else {
+            // Mode offline : utiliser le compteur local
+            setSearchCount(sc);
+          }
+        } catch {
+          // Serveur inaccessible : utiliser le compteur local
+          setSearchCount(sc);
+        }
+      } else {
+        setSearchCount(sc);
+      }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const refreshStock = useCallback(async () => {
@@ -123,19 +170,66 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [stock]
   );
 
+  /**
+   * Vérifie si une recherche est autorisée et incrémente le compteur.
+   * Côté serveur : si le serveur dit "non autorisé", bloque même si le local dit oui.
+   * Mode dégradé (pas de réseau) : se rabat sur le compteur local.
+   */
   const performSearch = useCallback(async (): Promise<boolean> => {
-    if (!isPremium && searchCount >= FREE_SEARCH_LIMIT) {
+    // Premium : toujours autorisé
+    if (isPremium) {
+      // Incrémenter quand même côté local pour cohérence
+      const newCount = await incrementSearchCount();
+      setSearchCount(newCount);
+      return true;
+    }
+
+    // Vérification locale d'abord (réponse instantanée)
+    if (searchCount >= FREE_SEARCH_LIMIT) {
       return false;
     }
+
+    // Vérification côté serveur (source de vérité)
+    if (deviceId) {
+      try {
+        const result = await incrementSearchMutation.mutateAsync({ deviceId, isPremium });
+        if (!result.allowed) {
+          // Le serveur dit non : bloquer même si le local dit oui
+          setSearchCount(FREE_SEARCH_LIMIT); // Mettre à jour l'affichage local
+          return false;
+        }
+        // Mettre à jour le compteur local avec la valeur serveur
+        if (result.searchCount >= 0) {
+          setSearchCount(result.searchCount);
+          await incrementSearchCount(); // Synchroniser local aussi
+        }
+        return true;
+      } catch {
+        // Serveur inaccessible : utiliser la logique locale
+        const newCount = await incrementSearchCount();
+        setSearchCount(newCount);
+        return true;
+      }
+    }
+
+    // Pas de deviceId (web) : logique locale uniquement
     const newCount = await incrementSearchCount();
     setSearchCount(newCount);
     return true;
-  }, [isPremium, searchCount]);
+  }, [isPremium, searchCount, deviceId, incrementSearchMutation]);
 
   const setPremium = useCallback(async (value: boolean) => {
     await setIsPremiumStorage(value);
     setIsPremiumState(value);
-  }, []);
+    // Synchroniser le statut Premium avec le serveur
+    if (deviceId) {
+      try {
+        await syncDeviceMutation.mutateAsync({ deviceId, isPremium: value });
+      } catch {
+        // Ignorer les erreurs réseau
+      }
+    }
+  }, [deviceId, syncDeviceMutation]);
 
   return (
     <AppContext.Provider
@@ -146,6 +240,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isPremium,
         remainingSearches,
         stockLimit,
+        deviceId,
         addProductToStock,
         removeProductFromStock,
         updateProductQuantity,

@@ -1,8 +1,15 @@
-import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
+import { ScrollView, Text, View, Pressable, StyleSheet, Platform } from "react-native";
 import { router } from "expo-router";
+import Constants from "expo-constants";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { TOTAL_PRODUCTS, DB_UPDATE_DATE } from "@/lib/product-service";
+// Numéro de build lu dynamiquement depuis expo-constants
+// Android : nativeAppVersion/nativeBuildVersion (versionCode géré par EAS)
+// iOS : buildNumber
+const BUILD_NUMBER = Platform.OS === "android"
+  ? (Constants.expoConfig?.android?.versionCode ?? Constants.nativeBuildVersion ?? "?")
+  : (Constants.expoConfig?.ios?.buildNumber ?? Constants.nativeBuildVersion ?? "?");
 
 export default function AboutScreen() {
   return (
@@ -23,7 +30,9 @@ export default function AboutScreen() {
           {/* Version card */}
           <View style={styles.card}>
             <Text style={styles.cardLabel}>VERSION</Text>
-            <Text style={styles.versionText}>Version 1.0.0</Text>
+            <Text style={styles.versionText}>
+              Version 1.0.0 (Build {BUILD_NUMBER})
+            </Text>
           </View>
 
           {/* Legal documents */}

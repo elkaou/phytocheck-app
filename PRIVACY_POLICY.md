@@ -4,7 +4,7 @@
 
 ## Introduction
 
-PhytoCheck est une application mobile développée par Franck Courrèges qui permet aux utilisateurs de vérifier l'homologation des produits phytosanitaires en France. Cette politique de confidentialité explique comment l'application collecte, utilise et protège vos données.
+PhytoCheck est une application mobile développée par François Courouble qui permet aux utilisateurs de vérifier l'homologation des produits phytosanitaires en France. Cette politique de confidentialité explique comment l'application collecte, utilise et protège vos données.
 
 ## Données collectées
 
@@ -94,9 +94,9 @@ Cette politique de confidentialité peut être mise à jour occasionnellement. T
 
 Pour toute question concernant cette politique de confidentialité, vous pouvez contacter le développeur :
 
-**Franck Courrèges**  
-Email : [votre-email@example.com]  
-Site web : https://github.com/elkaou/phytocheck-app
+**François Courouble**  
+Email : francois@siteswebs.fr  
+Site web : https://siteswebs.fr/application-phytocheck
 
 ## Conformité
 

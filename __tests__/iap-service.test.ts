@@ -54,10 +54,9 @@ describe("IAP Service", () => {
     expect(initial.isPremium).toBe(false);
     expect(initial.subscriptionType).toBe(null);
 
-    // Activer premium mensuel
-    const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + 1);
-    await savePremiumStatus(true, "monthly", expiresAt.toISOString());
+    // Activer premium mensuel avec transactionDate
+    const transactionDate = new Date().toISOString();
+    await savePremiumStatus(true, "monthly", transactionDate);
     const afterActivation = await loadPremiumStatus();
     expect(afterActivation.isPremium).toBe(true);
     expect(afterActivation.subscriptionType).toBe("monthly");
@@ -70,30 +69,16 @@ describe("IAP Service", () => {
   });
 
   it("devrait sauvegarder et charger le statut premium avec abonnement annuel", async () => {
-    const expiresAt = new Date();
-    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-    await savePremiumStatus(true, "yearly", expiresAt.toISOString());
+    const transactionDate = new Date().toISOString();
+    await savePremiumStatus(true, "yearly", transactionDate);
     const status = await loadPremiumStatus();
     expect(status.isPremium).toBe(true);
     expect(status.subscriptionType).toBe("yearly");
-    expect(status.expiresAt).toBeDefined();
-  });
-
-  it("devrait détecter un abonnement expiré", async () => {
-    // Créer un abonnement expiré (hier)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() - 1);
-    await savePremiumStatus(true, "monthly", expiresAt.toISOString());
-    
-    const status = await loadPremiumStatus();
-    expect(status.isPremium).toBe(false); // Expiré
-    expect(status.subscriptionType).toBe(null);
+    expect(status.transactionDate).toBeDefined();
   });
 
   it("devrait réinitialiser le statut premium", async () => {
-    const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + 1);
-    await savePremiumStatus(true, "monthly", expiresAt.toISOString());
+    await savePremiumStatus(true, "monthly", new Date().toISOString());
     const before = await loadPremiumStatus();
     expect(before.isPremium).toBe(true);
 
@@ -103,15 +88,13 @@ describe("IAP Service", () => {
     expect(after.subscriptionType).toBe(null);
   });
 
-  it("devrait stocker la date d'achat et le type d'abonnement", async () => {
-    const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + 1);
-    await savePremiumStatus(true, "monthly", expiresAt.toISOString());
+  it("devrait stocker la date de transaction et le type d'abonnement", async () => {
+    const transactionDate = new Date().toISOString();
+    await savePremiumStatus(true, "monthly", transactionDate);
     const data = JSON.parse(mockStore["@phytocheck_premium_status"]);
     expect(data.isPremium).toBe(true);
     expect(data.subscriptionType).toBe("monthly");
-    expect(data.purchasedAt).toBeDefined();
-    expect(data.expiresAt).toBeDefined();
-    expect(new Date(data.purchasedAt).getTime()).toBeGreaterThan(0);
+    expect(data.transactionDate).toBeDefined();
+    expect(new Date(data.transactionDate).getTime()).toBeGreaterThan(0);
   });
 });

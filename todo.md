@@ -274,3 +274,52 @@
 
 - [x] Créer un checkpoint de sauvegarde avant modifications
 - [x] Refaire le modal quantity-modal.tsx avec le style original (fond semi-transparent, design épuré, sélecteur d'unité avec boutons L/Kg)
+
+## Build 53 - Logs de débogage IAP
+
+- [x] Ajouter des logs console.log détaillés dans iap-context.tsx pour diagnostiquer le problème "Produit non trouvé"
+- [x] Logger les product IDs demandés, les produits reçus, et les erreurs exactes de Google Play Billing
+- [x] Ajouter une alerte avec le message d'erreur complet pour faciliter le débogage
+
+## Build 54 : Écran de débogage IAP avec informations visibles
+
+- [x] Créer l'écran de débogage IAP (app/iap-debug.tsx)
+- [x] Afficher le statut général (plateforme, connexion IAP, statut Premium)
+- [x] Afficher les product IDs configurés (Android et iOS)
+- [x] Afficher les produits chargés depuis Google Play / App Store
+- [x] Afficher les prix détectés (mensuel et annuel)
+- [x] Afficher les diagnostics et recommandations
+- [x] Ajouter un bouton "Débogage IAP" dans l'écran Premium
+- [x] Incrémenter versionCode et buildNumber à 54
+
+## Build 55 : Affichage du numéro de build et écran de débogage IAP
+
+- [x] Ajouter le numéro de build dans l'écran À propos (ex: "Version 1.0.0 (Build 55)")
+- [x] Vérifier que l'écran de débogage IAP existe (app/iap-debug.tsx)
+- [x] Vérifier que le bouton "🔧 Débogage IAP" est présent dans l'écran Premium
+- [x] Incrémenter versionCode et buildNumber à 55
+
+## Build 56 : Correction affichage buildNumber sur Android
+
+- [x] Corriger app/(tabs)/about.tsx pour lire android.versionCode au lieu de ios.buildNumber
+- [x] Tester que le buildNumber s'affiche correctement sur Android
+- [x] Incrémenter versionCode à 56
+
+## Build 58 : Correction IAP type 'subs' + nom développeur
+
+- [x] Ajouter type: 'subs' dans fetchProducts Android (cause racine du problème IAP)
+- [x] Incrémenter versionCode et buildNumber à 58
+- [x] Remplacer le nom incorrect par "François Courouble" dans PRIVACY_POLICY.md
+- [x] Remplacer le nom incorrect par "François Courouble" dans TERMS_OF_SERVICE.md
+
+## Build 58 (suite) : Correction modal "Ajouter au stock"
+
+- [x] Remonter le modal en haut de l'écran pour que les boutons restent visibles avec le clavier
+- [x] Réduire les boutons d'unité à "L" et "Kg" seulement (plus compacts)
+
+## Corrections et nouvelles fonctionnalités - 28 février 2026
+
+- [x] Vérifier et corriger la limite recherches/stock pour Premium (doit être infinie côté logique)
+- [x] Trier le stock par ordre alphabétique
+- [x] Système identifiant appareil : table devices MySQL + endpoints tRPC device.sync et device.incrementSearch
+- [x] Intégration expo-application côté app + synchronisation compteur avec backend

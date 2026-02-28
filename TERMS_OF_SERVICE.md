@@ -102,7 +102,7 @@ Il est strictement interdit de :
 
 ### 6.1 Droits d'auteur
 
-L'application PhytoCheck, son code source, son design et son contenu (hors base de données E-Phy) sont la propriété exclusive de Franck Courrèges et sont protégés par les lois françaises et internationales sur la propriété intellectuelle.
+L'application PhytoCheck, son code source, son design et son contenu (hors base de données E-Phy) sont la propriété exclusive de François Courouble et sont protégés par les lois françaises et internationales sur la propriété intellectuelle.
 
 ### 6.2 Base de données E-Phy
 
@@ -190,9 +190,9 @@ Le fait de ne pas exercer un droit prévu par les présentes CGU ne constitue pa
 
 Pour toute question concernant ces Conditions Générales d'Utilisation, vous pouvez contacter :
 
-**Franck Courrèges**  
-Email : [votre-email@example.com]  
-Site web : https://github.com/elkaou/phytocheck-app
+**François Courouble**  
+Email : francois@siteswebs.fr  
+Site web : https://siteswebs.fr/application-phytocheck
 
 ## 13. RAPPEL IMPORTANT
 

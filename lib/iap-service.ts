@@ -48,8 +48,13 @@ export type SubscriptionType = "monthly" | "yearly" | null;
 export interface PremiumStatus {
   isPremium: boolean;
   subscriptionType: SubscriptionType;
-  purchasedAt: string;
-  expiresAt?: string; // Pour les abonnements
+  /**
+   * Date de la transaction d'achat (ISO string).
+   * Fournie par Google Play / App Store via purchase.transactionDate.
+   * N'est PAS une date d'expiration — la validité est déterminée
+   * dynamiquement via getAvailablePurchases() à chaque démarrage.
+   */
+  transactionDate: string;
 }
 
 /**
@@ -60,19 +65,20 @@ export function isPlatformSupported(): boolean {
 }
 
 /**
- * Sauvegarde le statut premium localement
+ * Sauvegarde le statut premium localement.
+ * La date d'expiration n'est PAS stockée localement : la validité
+ * est vérifiée dynamiquement via getAvailablePurchases() au démarrage.
  */
 export async function savePremiumStatus(
   isPremium: boolean,
   subscriptionType: SubscriptionType = null,
-  expiresAt?: string
+  transactionDate?: string
 ): Promise<void> {
   try {
     const status: PremiumStatus = {
       isPremium,
       subscriptionType,
-      purchasedAt: new Date().toISOString(),
-      expiresAt,
+      transactionDate: transactionDate ?? new Date().toISOString(),
     };
     await AsyncStorage.setItem(PREMIUM_STORAGE_KEY, JSON.stringify(status));
   } catch (error) {
@@ -81,39 +87,28 @@ export async function savePremiumStatus(
 }
 
 /**
- * Charge le statut premium depuis le stockage local
+ * Charge le statut premium depuis le stockage local.
+ * Ce statut est un cache — il est toujours re-vérifié via
+ * getAvailablePurchases() au démarrage de l'app.
  */
 export async function loadPremiumStatus(): Promise<PremiumStatus> {
   try {
     const data = await AsyncStorage.getItem(PREMIUM_STORAGE_KEY);
     if (data) {
       const parsed: PremiumStatus = JSON.parse(data);
-      // Vérifier si l'abonnement n'a pas expiré
-      if (parsed.expiresAt) {
-        const now = new Date();
-        const expires = new Date(parsed.expiresAt);
-        if (now > expires) {
-          // Abonnement expiré
-          return {
-            isPremium: false,
-            subscriptionType: null,
-            purchasedAt: parsed.purchasedAt,
-          };
-        }
-      }
       return parsed;
     }
     return {
       isPremium: false,
       subscriptionType: null,
-      purchasedAt: new Date().toISOString(),
+      transactionDate: new Date().toISOString(),
     };
   } catch (error) {
     console.error("Erreur chargement statut premium:", error);
     return {
       isPremium: false,
       subscriptionType: null,
-      purchasedAt: new Date().toISOString(),
+      transactionDate: new Date().toISOString(),
     };
   }
 }

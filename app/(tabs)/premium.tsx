@@ -1,11 +1,13 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert, Platform } from "react-native";
+import { ScrollView, Text, View, Pressable, StyleSheet, Platform, Alert } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useApp } from "@/lib/app-context";
 import { useIAPContext } from "@/lib/iap-context";
 import type { SubscriptionType } from "@/lib/iap-service";
+import { useRouter } from "expo-router";
 
 export default function PremiumScreen() {
+  const router = useRouter();
   const { isPremium: appIsPremium, setPremium } = useApp();
   const {
     connected,
@@ -205,6 +207,17 @@ export default function PremiumScreen() {
             >
               <Text style={styles.restoreText}>Restaurer mes achats</Text>
             </Pressable>
+
+            {/* Debug button */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.debugButton,
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={() => router.push("/iap-debug")}
+            >
+              <Text style={styles.debugText}>🔧 Débogage IAP</Text>
+            </Pressable>
           </View>
 
           {/* Legal text */}
@@ -367,6 +380,16 @@ const styles = StyleSheet.create({
     color: "#0a7ea4",
     fontWeight: "500",
   },
+  debugButton: {
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  debugText: {
+    fontSize: 14,
+    color: "#687076",
+    fontWeight: "500",
+  },
   legalSection: {
     marginTop: 24,
     paddingTop: 24,
@@ -407,7 +430,7 @@ const styles = StyleSheet.create({
   },
   manageText: {
     fontSize: 14,
-    color: "#687076",
+    color: "rgba(255,255,255,0.9)",
     textAlign: "center",
     marginBottom: 16,
   },
