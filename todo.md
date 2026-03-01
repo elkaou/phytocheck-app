@@ -348,3 +348,9 @@
 - [x] Bug critique : IAP "Produit non trouvé" → iap-context.tsx restauré à la version exacte du build 58 (subscriptionOfferDetails sans "Android") + révocation Premium conservée
 - [x] Bug : Numéro de build absent dans "À propos" → utilisation de Constants.nativeBuildVersion (valeur réelle EAS) au lieu de expoConfig.android.versionCode (valeur statique)
 - [x] Incrémenter versionCode à 60 dans app.config.ts
+
+## Build 61 - Correction IAP réintroduite par erreur
+
+- [x] Bug : subscriptionOfferDetailsAndroid rétabli (avec fallback sur subscriptionOfferDetails)
+- [x] Bug : requestPurchase corrigé avec type:'subs' + subscriptionOffers:[{sku, offerToken}]
+- [x] Incrémenter versionCode à 61

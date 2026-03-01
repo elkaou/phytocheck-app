@@ -205,7 +205,7 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
             if (fetchedProducts && fetchedProducts.length > 0) {
               const product = fetchedProducts[0];
               // Sur Android avec Billing v5+, les base plans sont dans subscriptionOfferDetails
-              const offerDetails = (product as any).subscriptionOfferDetails || [];
+              const offerDetails = (product as any).subscriptionOfferDetailsAndroid || (product as any).subscriptionOfferDetails || [];
               
               for (const offer of offerDetails) {
                 const basePlanId = offer.basePlanId;
@@ -421,11 +421,14 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
           });
 
           await iapModuleRef.current.requestPurchase({
+            type: 'subs',
             request: {
-              apple: { sku: IAP_PRODUCTS_ANDROID.PREMIUM },
               google: { 
                 skus: [IAP_PRODUCTS_ANDROID.PREMIUM],
-                offerToken: targetProduct.offerToken,
+                subscriptionOffers: [{
+                  sku: IAP_PRODUCTS_ANDROID.PREMIUM,
+                  offerToken: targetProduct.offerToken,
+                }],
               },
             },
           });
