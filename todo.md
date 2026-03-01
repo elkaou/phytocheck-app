@@ -371,3 +371,8 @@
 
 - [x] Agrandir l'illustration dans le bandeau bleu (160×140px)
 - [x] Différencier couleurs boutons : Scanner=#0a7ea5, Recherche=#16a34a, Stock=#F4830B
+
+## Bandeau accueil - restructuration
+
+- [x] Titre + sous-titre en haut sur toute la largeur, image rognée centrée en dessous
+- [x] Remplacer l'image par la version rognée fournie

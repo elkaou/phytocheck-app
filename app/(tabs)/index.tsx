@@ -15,12 +15,10 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>PhytoCheck</Text>
-            <Text style={styles.headerSubtitle}>
-              Vérifiez l'homologation{"\n"}de vos produits
-            </Text>
-          </View>
+          <Text style={styles.headerTitle}>PhytoCheck</Text>
+          <Text style={styles.headerSubtitle}>
+            Vérifiez l'homologation de vos produits
+          </Text>
           <Image
             source={require("@/assets/images/header-illustration.jpg")}
             style={styles.headerImage}
@@ -90,15 +88,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#0a7ea5",
     paddingHorizontal: 24,
     paddingTop: 12,
-    paddingBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    paddingBottom: 16,
+    flexDirection: "column",
+    alignItems: "flex-start",
     overflow: "hidden",
-  },
-  headerLeft: {
-    flex: 1,
-    paddingRight: 8,
   },
   headerTitle: {
     fontSize: 28,
@@ -110,10 +103,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "rgba(255,255,255,0.85)",
     lineHeight: 20,
+    marginBottom: 12,
   },
   headerImage: {
-    width: 160,
-    height: 140,
+    width: "100%",
+    height: 160,
+    alignSelf: "center",
   },
   content: {
     flex: 1,
