@@ -330,3 +330,15 @@
 - [x] Mise à jour risk-phrases.json (2472 → 2478 AMM avec phrases de risque, +6)
 - [x] Mise à jour DB_UPDATE_DATE à "28/02/2026" dans product-service.ts
 - [x] Script de conversion CSV→JSON créé (convert_ephy_to_json.py) et intégré dans le projet
+
+## Build 59 - Problèmes identifiés le 01/03/2026
+
+- [ ] Bug : Date et nombre de produits affichent encore 19/02/2026 / 15 052 dans le build 58 (mise à jour nécessite un nouveau build EAS)
+- [ ] Bug critique : Résiliation abonnement Google Play ne révoque pas le Premium dans l'application (isPremium reste "oui" dans la BDD Render)
+- [ ] Analyser et corriger le mécanisme de vérification/révocation Premium côté serveur Render
+
+## Build 59 - Corrections critiques
+
+- [x] Bug : Date/produits incorrects dans build 58 (build fait le 27/02, données mises à jour le 28/02) → corrigé dans build 59
+- [x] Bug critique : isPremium reste actif après résiliation Google Play → AppProvider n'envoie plus isPremium:true au démarrage ; IAPProvider appelle onPremiumChange(false) quand getAvailablePurchases retourne vide
+- [x] Incrémenter versionCode à 59 dans app.config.ts

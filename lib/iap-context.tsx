@@ -312,17 +312,24 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
               onPremiumChange?.(true);
               console.log("[IAP] Premium actif via getAvailablePurchases:", subType);
             } else {
+              // Aucun abonnement actif trouvé parmi les achats disponibles
               await savePremiumStatus(false, null);
               setIsPremium(false);
               setSubscriptionType(null);
+              onPremiumChange?.(false); // Notifier AppProvider : révoquer Premium
+              console.log("[IAP] Aucun abonnement actif dans getAvailablePurchases → Premium révoqué");
             }
           } else {
+            // getAvailablePurchases retourne un tableau vide : aucun abonnement actif
             await savePremiumStatus(false, null);
             setIsPremium(false);
             setSubscriptionType(null);
+            onPremiumChange?.(false); // Notifier AppProvider : révoquer Premium
+            console.log("[IAP] getAvailablePurchases vide → Premium révoqué");
           }
         } catch (restoreError) {
           console.warn("[IAP] Impossible de vérifier les achats existants:", restoreError);
+          // En cas d'erreur, on ne touche pas au statut local pour éviter une révocation erronée
         }
       } catch (error) {
         console.warn("[IAP] Erreur initialisation:", error);

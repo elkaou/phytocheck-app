@@ -95,8 +95,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (id) {
         try {
-          // Synchroniser avec le serveur : le serveur retourne le vrai searchCount
-          const result = await syncDeviceMutation.mutateAsync({ deviceId: id, isPremium: ip });
+          // Synchroniser avec le serveur pour récupérer le searchCount.
+          // IMPORTANT : on envoie isPremium: false ici car le cache local (AsyncStorage)
+          // peut être obsolète (ex: abonnement résilié). C'est IAPProvider qui est
+          // responsable de la vérification réelle via getAvailablePurchases() et qui
+          // appellera setPremium(true/false) une fois la vérification Google Play terminée.
+          const result = await syncDeviceMutation.mutateAsync({ deviceId: id, isPremium: false });
           if (!result.offline) {
             // Utiliser le compteur serveur (plus fiable que le local)
             setSearchCount(result.searchCount);
