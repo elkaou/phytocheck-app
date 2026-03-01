@@ -354,3 +354,7 @@
 - [x] Bug : subscriptionOfferDetailsAndroid rétabli (avec fallback sur subscriptionOfferDetails)
 - [x] Bug : requestPurchase corrigé avec type:'subs' + subscriptionOffers:[{sku, offerToken}]
 - [x] Incrémenter versionCode à 61
+
+## Build 54 (EAS) - Alignement numéro de build
+
+- [x] Aligner versionCode/buildNumber sur le numéro EAS réel (54) pour affichage correct dans "À propos"
