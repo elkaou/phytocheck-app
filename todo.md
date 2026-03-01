@@ -366,3 +366,8 @@
 ## Amélioration visuelle page d'accueil
 
 - [x] Intégrer illustration dans le bandeau bleu : texte à gauche, image à droite, sans agrandir le bandeau
+
+## Amélioration visuelle page d'accueil (suite)
+
+- [x] Agrandir l'illustration dans le bandeau bleu (160×140px)
+- [x] Différencier couleurs boutons : Scanner=#0a7ea5, Recherche=#16a34a, Stock=#F4830B

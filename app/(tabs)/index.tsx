@@ -34,6 +34,7 @@ export default function HomeScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.actionButton,
+              { backgroundColor: "#0a7ea5" },
               pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
             ]}
             onPress={() => router.push("/scan" as any)}
@@ -46,6 +47,7 @@ export default function HomeScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.actionButton,
+              { backgroundColor: "#16a34a" },
               pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
             ]}
             onPress={() => router.push("/search")}
@@ -58,6 +60,7 @@ export default function HomeScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.actionButton,
+              { backgroundColor: "#F4830B" },
               pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
             ]}
             onPress={() => router.push("/stock")}
@@ -109,8 +112,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   headerImage: {
-    width: 130,
-    height: 110,
+    width: 160,
+    height: 140,
   },
   content: {
     flex: 1,
