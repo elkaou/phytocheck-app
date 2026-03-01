@@ -128,17 +128,31 @@ export default function ScanScreen() {
         const errorMessage = error?.message || error?.toString() || "Erreur inconnue";
         console.error("[Scan] Error details:", errorMessage);
         
-        // More specific error messages
-        let userMessage = "Une erreur est survenue lors de l'analyse de l'image.";
-        if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorMessage.includes("timeout")) {
-          userMessage = "Erreur de connexion. Vérifiez votre connexion internet et réessayez.";
+        // Détection d'erreur réseau
+        const isNetworkError =
+          errorMessage.toLowerCase().includes("network") ||
+          errorMessage.toLowerCase().includes("fetch") ||
+          errorMessage.toLowerCase().includes("timeout") ||
+          errorMessage.toLowerCase().includes("failed to fetch") ||
+          errorMessage.toLowerCase().includes("network request failed");
+
+        let alertTitle: string;
+        let userMessage: string;
+
+        if (isNetworkError) {
+          alertTitle = "Connexion requise";
+          userMessage = "L'analyse de photo nécessite une connexion internet.\n\nVérifiez que votre Wi-Fi ou données mobiles sont activés, puis réessayez.";
         } else if (errorMessage.includes("TRPCClientError")) {
-          userMessage = "Erreur de communication avec le serveur. Vérifiez votre connexion et réessayez.";
+          alertTitle = "Erreur serveur";
+          userMessage = "Impossible de contacter le serveur d'analyse. Vérifiez votre connexion internet et réessayez.";
+        } else {
+          alertTitle = "Erreur d'analyse";
+          userMessage = "Une erreur est survenue lors de l'analyse de l'image. Veuillez réessayer.";
         }
-        
+
         Alert.alert(
-          "Erreur d'analyse",
-          `${userMessage}\n\nDétails techniques :\n${errorMessage}`,
+          alertTitle,
+          userMessage,
           [{ text: "OK", onPress: () => setIsProcessing(false) }]
         );
       } finally {

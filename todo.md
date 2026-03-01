@@ -358,3 +358,7 @@
 ## Build 54 (EAS) - Alignement numéro de build
 
 - [x] Aligner versionCode/buildNumber sur le numéro EAS réel (54) pour affichage correct dans "À propos"
+
+## Build 55 (EAS) - Message erreur réseau
+
+- [x] Bug UX : message "Network request failed" remplacé par "Connexion requise" avec explication claire en français
