@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
+import { ScrollView, Text, View, Pressable, StyleSheet, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -15,10 +15,17 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>PhytoCheck</Text>
-          <Text style={styles.headerSubtitle}>
-            Vérifiez l'homologation de vos produits
-          </Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>PhytoCheck</Text>
+            <Text style={styles.headerSubtitle}>
+              Vérifiez l'homologation{"\n"}de vos produits
+            </Text>
+          </View>
+          <Image
+            source={require("@/assets/images/header-illustration.jpg")}
+            style={styles.headerImage}
+            resizeMode="contain"
+          />
         </View>
 
         {/* Content */}
@@ -80,17 +87,30 @@ const styles = StyleSheet.create({
     backgroundColor: "#0a7ea5",
     paddingHorizontal: 24,
     paddingTop: 12,
-    paddingBottom: 24,
+    paddingBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    overflow: "hidden",
+  },
+  headerLeft: {
+    flex: 1,
+    paddingRight: 8,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "bold",
     color: "#FFFFFF",
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: "rgba(255,255,255,0.85)",
+    lineHeight: 20,
+  },
+  headerImage: {
+    width: 130,
+    height: 110,
   },
   content: {
     flex: 1,

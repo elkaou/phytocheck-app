@@ -362,3 +362,7 @@
 ## Build 55 (EAS) - Message erreur réseau
 
 - [x] Bug UX : message "Network request failed" remplacé par "Connexion requise" avec explication claire en français
+
+## Amélioration visuelle page d'accueil
+
+- [x] Intégrer illustration dans le bandeau bleu : texte à gauche, image à droite, sans agrandir le bandeau
