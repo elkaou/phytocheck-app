@@ -104,14 +104,8 @@ const config: ExpoConfig = {
         cameraPermission: "Autoriser PhytoCheck à prendre des photos pour scanner les étiquettes.",
       },
     ],
-    // expo-audio retiré pour éviter les services de premier plan Android 15+
-    // PhytoCheck n'utilise pas l'audio en arrière-plan
-    [
-      "expo-video",
-      {
-        supportsPictureInPicture: true,
-      },
-    ],
+    // expo-audio et expo-video retirés : PhytoCheck n'utilise ni audio ni vidéo en arrière-plan
+    // Suppression nécessaire pour éviter UIBackgroundModes audio dans Info.plist (rejet Apple 2.5.4)
     [
       "expo-splash-screen",
       {
