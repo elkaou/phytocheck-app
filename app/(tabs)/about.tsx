@@ -4,9 +4,12 @@ import Constants from "expo-constants";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { TOTAL_PRODUCTS, DB_UPDATE_DATE } from "@/lib/product-service";
-// Numéro de build lu depuis expo-constants
-// Constants.nativeBuildVersion retourne le versionCode Android ou buildNumber iOS réel du build EAS
-const BUILD_NUMBER = Constants.nativeBuildVersion ?? "?";
+// Numéro de build lu depuis app.config.ts via Constants.expoConfig
+// Pour mettre à jour : modifier versionCode dans app.config.ts avant chaque build EAS
+const BUILD_NUMBER =
+  Constants.expoConfig?.android?.versionCode?.toString() ??
+  Constants.nativeBuildVersion ??
+  "?";
 
 export default function AboutScreen() {
   return (

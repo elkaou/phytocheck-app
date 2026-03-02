@@ -376,3 +376,7 @@
 
 - [x] Titre + sous-titre en haut sur toute la largeur, image rognée centrée en dessous
 - [x] Remplacer l'image par la version rognée fournie
+
+## Correction numéro de build "À propos"
+
+- [x] Corriger BUILD_NUMBER dans about.tsx : lire depuis Constants.expoConfig.android.versionCode (fiable, un seul fichier à modifier)
