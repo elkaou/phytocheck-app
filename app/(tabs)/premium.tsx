@@ -4,10 +4,8 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useApp } from "@/lib/app-context";
 import { useIAPContext } from "@/lib/iap-context";
 import type { SubscriptionType } from "@/lib/iap-service";
-import { useRouter } from "expo-router";
 
 export default function PremiumScreen() {
-  const router = useRouter();
   const { isPremium: appIsPremium, setPremium } = useApp();
   const {
     connected,
@@ -208,16 +206,7 @@ export default function PremiumScreen() {
               <Text style={styles.restoreText}>Restaurer mes achats</Text>
             </Pressable>
 
-            {/* Debug button */}
-            <Pressable
-              style={({ pressed }) => [
-                styles.debugButton,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={() => router.push("/iap-debug")}
-            >
-              <Text style={styles.debugText}>🔧 Débogage IAP</Text>
-            </Pressable>
+
           </View>
 
           {/* Legal text */}

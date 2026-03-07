@@ -380,3 +380,12 @@
 ## Correction numéro de build "À propos"
 
 - [x] Corriger BUILD_NUMBER dans about.tsx : lire depuis Constants.expoConfig.android.versionCode (fiable, un seul fichier à modifier)
+
+## Build 60 - Correction rejet Apple IAP (Guideline 2.1b)
+
+- [x] Bug : fetchProducts iOS sans type 'subs' → retourne 0 produits (abonnements non chargés)
+- [x] Bug : product.id vs product.productId dans la boucle iOS → mauvaise identification des produits
+- [x] Bug : requestPurchase iOS sans type 'subs' → type par défaut 'in-app' incorrect pour abonnements
+- [x] Amélioration : Afficher les prix par défaut si les produits ne se chargent pas (robustesse)
+- [x] Amélioration : Supprimer le bouton "Débogage IAP" visible en production
+- [x] Incrémenter buildNumber iOS à 60
