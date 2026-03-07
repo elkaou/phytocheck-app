@@ -394,3 +394,8 @@
 
 - [x] Bug : Prix annuel affiché à 49,99 € au lieu de 19,99 € (fallback par défaut incorrect)
 - [x] Bug : Texte "Économisez 17%" incorrect → supprimé, remplacé par "Facturation annuelle"
+
+## Build 62 - Ajustements écran Premium
+
+- [x] Supprimer "par mois" et "par an" sous les prix
+- [x] Ajouter "Économisez 70%" sur la carte abonnement annuel

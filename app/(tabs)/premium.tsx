@@ -150,7 +150,6 @@ export default function PremiumScreen() {
                 <Text style={styles.subscriptionTitle}>Mensuel</Text>
                 <Text style={styles.subscriptionPrice}>{monthlyPrice}</Text>
               </View>
-              <Text style={styles.subscriptionSubtitle}>par mois</Text>
               <Text style={styles.subscriptionDescription}>
                 Facturation mensuelle • Annulation à tout moment
               </Text>
@@ -173,9 +172,8 @@ export default function PremiumScreen() {
                 <Text style={styles.subscriptionTitle}>Annuel</Text>
                 <Text style={styles.subscriptionPrice}>{yearlyPrice}</Text>
               </View>
-              <Text style={styles.subscriptionSubtitle}>par an</Text>
               <Text style={styles.subscriptionDescription}>
-                Facturation annuelle
+                Économisez 70% • Facturation annuelle
               </Text>
             </Pressable>
 
