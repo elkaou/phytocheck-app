@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, Pressable, StyleSheet, Platform, Alert } from "react-native";
+import { ScrollView, Text, View, Pressable, StyleSheet, Platform, Alert, Linking } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useApp } from "@/lib/app-context";
@@ -227,6 +227,14 @@ export default function PremiumScreen() {
                 ? "L'abonnement sera facturé sur votre compte Apple à la confirmation de l'achat. Il se renouvelle automatiquement sauf si vous l'annulez au moins 24 heures avant la fin de la période en cours. Gérez vos abonnements dans les Réglages de votre iPhone."
                 : "L'abonnement sera facturé sur votre compte Google Play à la confirmation de l'achat. Il se renouvelle automatiquement sauf si vous l'annulez au moins 24 heures avant la fin de la période en cours. Gérez vos abonnements dans les paramètres Google Play."}
             </Text>
+            <Pressable
+              onPress={() => Linking.openURL("https://elkaou.github.io/phytocheck-app/terms-of-service.html")}
+              style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, marginTop: 8 }]}
+            >
+              <Text style={[styles.legalText, { textDecorationLine: "underline", fontWeight: "600" }]}>
+                Conditions d'utilisation (CGU)
+              </Text>
+            </Pressable>
           </View>
         </View>
       </ScrollView>
