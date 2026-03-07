@@ -170,7 +170,10 @@ export default function PremiumScreen() {
               </View>
               <View style={styles.subscriptionHeader}>
                 <Text style={styles.subscriptionTitle}>Annuel</Text>
-                <Text style={styles.subscriptionPrice}>{yearlyPrice}</Text>
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text style={styles.subscriptionPrice}>{yearlyPrice}</Text>
+                  <Text style={styles.subscriptionPriceEquiv}>soit 1,67 €/mois</Text>
+                </View>
               </View>
               <Text style={styles.subscriptionDescription}>
                 Économisez 70% • Facturation annuelle
@@ -316,22 +319,33 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
   },
   subscriptionCardRecommended: {
-    borderColor: "#0a7ea4",
+    borderColor: "#F97316",
     position: "relative",
   },
   recommendedBadge: {
     position: "absolute",
-    top: -12,
+    top: -13,
     right: 20,
-    backgroundColor: "#0a7ea4",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    backgroundColor: "#F97316",
+    paddingHorizontal: 14,
+    paddingVertical: 5,
     borderRadius: 8,
+    shadowColor: "#F97316",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
   },
   recommendedText: {
     fontSize: 12,
     fontWeight: "bold",
     color: "#ffffff",
+    letterSpacing: 0.5,
+  },
+  subscriptionPriceEquiv: {
+    fontSize: 12,
+    color: "#687076",
+    marginTop: 2,
   },
   subscriptionHeader: {
     flexDirection: "row",
