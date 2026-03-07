@@ -389,3 +389,8 @@
 - [x] Amélioration : Afficher les prix par défaut si les produits ne se chargent pas (robustesse)
 - [x] Amélioration : Supprimer le bouton "Débogage IAP" visible en production
 - [x] Incrémenter buildNumber iOS à 60
+
+## Build 61 - Correction prix abonnement annuel
+
+- [x] Bug : Prix annuel affiché à 49,99 € au lieu de 19,99 € (fallback par défaut incorrect)
+- [x] Bug : Texte "Économisez 17%" incorrect → supprimé, remplacé par "Facturation annuelle"

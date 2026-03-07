@@ -175,7 +175,7 @@ export default function PremiumScreen() {
               </View>
               <Text style={styles.subscriptionSubtitle}>par an</Text>
               <Text style={styles.subscriptionDescription}>
-                Économisez 17% • Facturation annuelle
+                Facturation annuelle
               </Text>
             </Pressable>
 
