@@ -235,6 +235,14 @@ export default function PremiumScreen() {
                 Conditions d'utilisation (CGU)
               </Text>
             </Pressable>
+            <Pressable
+              onPress={() => Linking.openURL("https://elkaou.github.io/phytocheck-app/privacy-policy.html")}
+              style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, marginTop: 4 }]}
+            >
+              <Text style={[styles.legalText, { textDecorationLine: "underline", fontWeight: "600" }]}>
+                Politique de confidentialité
+              </Text>
+            </Pressable>
           </View>
         </View>
       </ScrollView>
