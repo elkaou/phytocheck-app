@@ -408,8 +408,8 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   legalSection: {
-    marginTop: 24,
-    paddingTop: 24,
+    marginTop: 8,
+    paddingTop: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
     backgroundColor: "rgba(255, 255, 255, 0.15)",
