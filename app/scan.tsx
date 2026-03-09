@@ -194,13 +194,14 @@ export default function ScanScreen() {
         <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1 }}>
           <View style={styles.headerBar}>
             <Pressable
-              style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+              style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.6 }]}
               onPress={() => router.back()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <IconSymbol name="arrow.left" size={24} color="#FFFFFF" />
             </Pressable>
             <Text style={styles.headerBarTitle}>Scanner une étiquette</Text>
-            <View style={{ width: 24 }} />
+            <View style={{ width: 48 }} />
           </View>
           <View style={styles.centerContent}>
             <ActivityIndicator size="large" color="#0a7ea5" />
@@ -216,13 +217,14 @@ export default function ScanScreen() {
         <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1 }}>
           <View style={styles.headerBar}>
             <Pressable
-              style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+              style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.6 }]}
               onPress={() => router.back()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <IconSymbol name="arrow.left" size={24} color="#FFFFFF" />
             </Pressable>
             <Text style={styles.headerBarTitle}>Scanner une étiquette</Text>
-            <View style={{ width: 24 }} />
+            <View style={{ width: 48 }} />
           </View>
           <View style={styles.centerContent}>
             <IconSymbol name="camera.fill" size={64} color="#687076" />
@@ -264,16 +266,17 @@ export default function ScanScreen() {
         <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1 }}>
           <View style={styles.headerBar}>
             <Pressable
-              style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+              style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.6 }]}
               onPress={() => {
                 setIsProcessing(false);
                 router.back();
               }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <IconSymbol name="arrow.left" size={24} color="#FFFFFF" />
             </Pressable>
             <Text style={styles.headerBarTitle}>Analyse en cours</Text>
-            <View style={{ width: 24 }} />
+            <View style={{ width: 48 }} />
           </View>
           <View style={styles.centerContent}>
             <ActivityIndicator size="large" color="#0a7ea5" />
@@ -292,13 +295,14 @@ export default function ScanScreen() {
       <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1 }}>
         <View style={styles.headerBar}>
           <Pressable
-            style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+            style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.6 }]}
             onPress={() => router.back()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <IconSymbol name="arrow.left" size={24} color="#FFFFFF" />
           </Pressable>
           <Text style={styles.headerBarTitle}>Scanner une étiquette</Text>
-          <View style={{ width: 24 }} />
+          <View style={{ width: 48 }} />
         </View>
 
         <View style={styles.centerContent}>
@@ -350,8 +354,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
     backgroundColor: "#0a7ea5",
   },
   headerBarTitle: {
@@ -360,7 +364,14 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     flex: 1,
     textAlign: "center",
-    marginHorizontal: 12,
+    marginHorizontal: 4,
+  },
+  backButton: {
+    padding: 12,
+    minWidth: 48,
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
   },
   centerContent: {
     flex: 1,

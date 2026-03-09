@@ -404,3 +404,7 @@
 
 - [x] Afficher le prix mensuel équivalent sous le prix annuel (ex: "soit 1,67 €/mois")
 - [x] Badge "RECOMMANDÉ" plus vif et contrasté (couleur orange vif #F97316, bordure orange, ombre)
+
+## Build 64 - Correction navigation
+
+- [x] Bug iOS : bouton retour (flèche haut gauche) non cliquable sur l'écran "Scanner une étiquette" (écran permission caméra)
