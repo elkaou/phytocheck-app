@@ -408,3 +408,8 @@
 ## Build 64 - Correction navigation
 
 - [x] Bug iOS : bouton retour (flèche haut gauche) non cliquable sur l'écran "Scanner une étiquette" (écran permission caméra)
+
+## Build 65 - Mise à jour product IDs iOS
+
+- [x] Remplacer "phytocheck.premium.monthly" par "phytocheck.premium.mois" partout dans le projet
+- [x] Remplacer "phytocheck.premium.yearly" par "phytocheck.premium.an" partout dans le projet

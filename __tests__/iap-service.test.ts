@@ -38,8 +38,8 @@ describe("IAP Service", () => {
 
   it("devrait avoir les bons product IDs pour les abonnements", () => {
     expect(IAP_PRODUCTS_ANDROID.PREMIUM).toBe("phytocheck_premium");
-    expect(IAP_PRODUCTS_IOS.PREMIUM_MONTHLY).toBe("phytocheck.premium.monthly");
-    expect(IAP_PRODUCTS_IOS.PREMIUM_YEARLY).toBe("phytocheck.premium.yearly");
+    expect(IAP_PRODUCTS_IOS.PREMIUM_MONTHLY).toBe("phytocheck.premium.mois");
+    expect(IAP_PRODUCTS_IOS.PREMIUM_YEARLY).toBe("phytocheck.premium.an");
     expect(IAP_BASE_PLANS.MONTHLY).toBe("monthly");
     expect(IAP_BASE_PLANS.YEARLY).toBe("yearly");
   });

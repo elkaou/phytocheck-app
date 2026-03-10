@@ -17,8 +17,8 @@ export const IAP_PRODUCTS_ANDROID = {
 
 // iOS product IDs (doivent correspondre exactement à App Store Connect)
 export const IAP_PRODUCTS_IOS = {
-  PREMIUM_MONTHLY: "phytocheck.premium.monthly",
-  PREMIUM_YEARLY: "phytocheck.premium.yearly",
+  PREMIUM_MONTHLY: "phytocheck.premium.mois",
+  PREMIUM_YEARLY: "phytocheck.premium.an",
 } as const;
 
 // Base plans IDs pour Android (définis dans Google Play Console)
