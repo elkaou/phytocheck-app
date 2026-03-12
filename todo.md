@@ -429,3 +429,7 @@
 ## Build 68 - .gitignore CSV E-Phy
 
 - [x] Exclure les CSV E-Phy de la racine du projet dans .gitignore
+
+## Build 69 - Nettoyage écran À propos
+
+- [x] Supprimer "(Build ?)" dans la section "À propos" pour Android et iPhone
