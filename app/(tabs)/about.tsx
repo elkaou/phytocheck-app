@@ -24,7 +24,7 @@ export default function AboutScreen() {
           <View style={styles.card}>
             <Text style={styles.cardLabel}>VERSION</Text>
             <Text style={styles.versionText}>
-              Version 1.0.0
+              Version 1.0.1
             </Text>
           </View>
 

@@ -441,3 +441,8 @@
 ## Build 71 - Texte d'aide résultats de recherche
 
 - [x] Ajouter texte "Cliquer sur un produit pour plus de détails..." sous le bouton Nouvelle Recherche et avant le compteur de résultats
+
+## Build 72 - Version 1.0.1
+
+- [x] Passer la version de 1.0.0 à 1.0.1 dans app.config.ts et about.tsx
+- [x] Synchroniser avec GitHub (merge des commits Windows + Manus)
