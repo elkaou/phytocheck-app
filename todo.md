@@ -413,3 +413,9 @@
 
 - [x] Remplacer "phytocheck.premium.monthly" par "phytocheck.premium.mois" partout dans le projet
 - [x] Remplacer "phytocheck.premium.yearly" par "phytocheck.premium.an" partout dans le projet
+
+## Build 66 - Automatisation mise à jour E-Phy
+
+- [x] Créer update_data.bat (Windows) : appel python convert_ephy_to_json.py + copie JSON + git commit + git push
+- [x] Mettre à jour dynamiquement la date et le nombre de produits dans l'encart "Base de données E-Phy" (accueil)
+- [x] Mettre à jour dynamiquement la date et le nombre de produits dans l'onglet "À propos"
