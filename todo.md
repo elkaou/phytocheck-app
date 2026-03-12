@@ -446,3 +446,8 @@
 
 - [x] Passer la version de 1.0.0 à 1.0.1 dans app.config.ts et about.tsx
 - [x] Synchroniser avec GitHub (merge des commits Windows + Manus)
+
+## Build 73 - Automatisation téléchargement CSV E-Phy
+
+- [x] Trouver les URLs directes des CSV E-Phy sur data.gouv.fr
+- [x] Modifier update_data.bat pour télécharger automatiquement les CSV avant conversion
