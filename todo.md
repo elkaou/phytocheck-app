@@ -437,3 +437,7 @@
 ## Build 70 - Nettoyage bouton débogage Premium
 
 - [x] Vérifier et supprimer tout résidu du bouton de débogage IAP dans l'onglet Premium
+
+## Build 71 - Texte d'aide résultats de recherche
+
+- [x] Ajouter texte "Cliquer sur un produit pour plus de détails..." sous le bouton Nouvelle Recherche et avant le compteur de résultats

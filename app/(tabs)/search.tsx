@@ -264,7 +264,10 @@ export default function SearchScreen() {
           )}
 
           {!isSearching && results.length > 0 && (
-            <View ref={resultsRef} style={{ marginTop: 20 }}>
+            <View ref={resultsRef} style={{ marginTop: 16 }}>
+              <Text style={styles.helpHint}>
+                ℹ️ Cliquez sur un produit pour plus de détails (Equivalences, matière active…)
+              </Text>
               <Text style={styles.resultsCount}>
                 {results.length} résultat{results.length > 1 ? "s" : ""}
               </Text>
@@ -389,6 +392,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: "#687076",
+    textAlign: "center",
+  },
+  helpHint: {
+    fontSize: 12,
+    color: "#687076",
+    fontStyle: "italic",
+    marginBottom: 10,
     textAlign: "center",
   },
   resultsCount: {
