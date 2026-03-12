@@ -2,10 +2,11 @@ import { ScrollView, Text, View, Pressable, StyleSheet, Image } from "react-nati
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { TOTAL_PRODUCTS, DB_UPDATE_DATE } from "@/lib/product-service";
+import { useData } from "@/lib/data-context";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { products, updateDate } = useData();
 
   return (
     <ScreenContainer containerClassName="" style={{ backgroundColor: '#0a7ea5' }}>
@@ -71,10 +72,10 @@ export default function HomeScreen() {
           <View style={styles.infoCard}>
             <Text style={styles.infoCardTitle}>BASE DE DONNÉES E-PHY</Text>
             <Text style={styles.infoCardDate}>
-              Mise à jour le {DB_UPDATE_DATE}
+              Mise à jour le {updateDate}
             </Text>
             <Text style={styles.infoCardCount}>
-              {TOTAL_PRODUCTS.toLocaleString("fr-FR")} produits référencés
+              {products.length.toLocaleString("fr-FR")} produits référencés
             </Text>
           </View>
         </View>

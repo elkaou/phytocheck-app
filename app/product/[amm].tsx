@@ -19,11 +19,13 @@ import {
   getClassificationBgColor,
 } from "@/lib/product-service";
 import { useApp } from "@/lib/app-context";
+import { useData } from "@/lib/data-context";
 
 export default function ProductDetailScreen() {
   const { amm, name } = useLocalSearchParams<{ amm: string; name?: string }>();
   const router = useRouter();
   const { addProductToStock, isProductInStock, getProductQuantity, updateProductQuantity, isPremium, stock } = useApp();
+  const { products: dynamicProducts, riskPhrases: dynamicRiskPhrases } = useData();
 
   const [product, setProduct] = useState<ClassifiedProduct | null>(null);
   const [showQuantityModal, setShowQuantityModal] = useState(false);
@@ -31,7 +33,7 @@ export default function ProductDetailScreen() {
 
   useEffect(() => {
     if (amm) {
-      const p = getProductByAMM(amm, name);
+      const p = getProductByAMM(amm, name, dynamicProducts, dynamicRiskPhrases);
       setProduct(p);
     }
   }, [amm, name]);

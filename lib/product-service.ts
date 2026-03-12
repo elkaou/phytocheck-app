@@ -89,8 +89,24 @@ export function classifyProduct(product: Product): ClassifiedProduct {
   };
 }
 
-// Search products by name or AMM
-export function searchProducts(query: string, limit = 50): ClassifiedProduct[] {
+// Search products by name or AMM (avec données dynamiques optionnelles)
+export function searchProducts(
+  query: string,
+  limit = 50,
+  dynamicProducts?: Product[],
+  dynamicRiskPhrases?: Record<string, RiskPhrase[]>
+): ClassifiedProduct[] {
+  const dataProducts = dynamicProducts ?? products;
+  const dataRiskPhrases = dynamicRiskPhrases ?? riskPhrases;
+  return _searchProducts(query, limit, dataProducts, dataRiskPhrases);
+}
+
+function _searchProducts(
+  query: string,
+  limit: number,
+  dataProducts: Product[],
+  dataRiskPhrases: Record<string, RiskPhrase[]>
+): ClassifiedProduct[] {
   if (!query || query.trim().length < 2) return [];
 
   const normalizedQuery = query
@@ -102,7 +118,7 @@ export function searchProducts(query: string, limit = 50): ClassifiedProduct[] {
 
   const results: ClassifiedProduct[] = [];
 
-  for (const product of products) {
+  for (const product of dataProducts) {
     if (results.length >= limit) break;
 
     const normalizedName = product.nom
@@ -138,7 +154,7 @@ export function searchProducts(query: string, limit = 50): ClassifiedProduct[] {
     }
 
     if (matched) {
-      const classified = classifyProduct(product);
+      const classified = classifyProductWithData(product, dataRiskPhrases);
       if (matchedSecondaryName) {
         classified.matchedName = matchedSecondaryName;
       }
@@ -149,9 +165,38 @@ export function searchProducts(query: string, limit = 50): ClassifiedProduct[] {
   return results;
 }
 
+// Classify avec données dynamiques
+function classifyProductWithData(
+  product: Product,
+  dataRiskPhrases: Record<string, RiskPhrase[]>
+): ClassifiedProduct {
+  const phrases = dataRiskPhrases[product.amm] || [];
+  const codes = phrases.map((p) => p.code);
+  const isCMR = codes.some((code) => CMR_CODES.includes(code));
+  const isToxique = codes.some((code) => TOXIQUE_CODES.includes(code));
+  let classification: ProductClassification;
+  if (product.etat === "RETIRE") {
+    classification = "retire";
+  } else if (isCMR) {
+    classification = "homologue_cmr";
+  } else if (isToxique) {
+    classification = "homologue_toxique";
+  } else {
+    classification = "homologue";
+  }
+  return { ...product, classification, riskPhrases: phrases, isCMR, isToxique };
+}
+
 // Get product by AMM (optionally filter by name if multiple products share the same AMM)
-export function getProductByAMM(amm: string, preferredName?: string): ClassifiedProduct | null {
-  const matchingProducts = products.filter((p) => p.amm === amm);
+export function getProductByAMM(
+  amm: string,
+  preferredName?: string,
+  dynamicProducts?: Product[],
+  dynamicRiskPhrases?: Record<string, RiskPhrase[]>
+): ClassifiedProduct | null {
+  const dataProducts = dynamicProducts ?? products;
+  const dataRiskPhrases = dynamicRiskPhrases ?? riskPhrases;
+  const matchingProducts = dataProducts.filter((p) => p.amm === amm);
   if (matchingProducts.length === 0) return null;
   
   // If preferred name is provided, try to find exact match
@@ -160,11 +205,11 @@ export function getProductByAMM(amm: string, preferredName?: string): Classified
       p.nom.toLowerCase() === preferredName.toLowerCase() ||
       p.nomsSecondaires.toLowerCase().includes(preferredName.toLowerCase())
     );
-    if (exactMatch) return classifyProduct(exactMatch);
+    if (exactMatch) return classifyProductWithData(exactMatch, dataRiskPhrases);
   }
   
   // Return first match
-  return classifyProduct(matchingProducts[0]);
+  return classifyProductWithData(matchingProducts[0], dataRiskPhrases);
 }
 
 // Get classification label

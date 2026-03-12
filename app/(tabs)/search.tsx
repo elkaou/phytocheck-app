@@ -22,11 +22,13 @@ import {
   getClassificationBgColor,
 } from "@/lib/product-service";
 import { useApp } from "@/lib/app-context";
+import { useData } from "@/lib/data-context";
 
 export default function SearchScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string; q?: string }>();
   const { remainingSearches, isPremium, performSearch } = useApp();
+  const { products: dynamicProducts, riskPhrases: dynamicRiskPhrases } = useData();
 
   const [query, setQuery] = useState(params.q || "");
   const [autoSearchDone, setAutoSearchDone] = useState(false);
@@ -39,7 +41,7 @@ export default function SearchScreen() {
   const doSearch = useCallback((searchQuery: string) => {
     setIsSearching(true);
     setTimeout(() => {
-      const found = searchProducts(searchQuery);
+      const found = searchProducts(searchQuery, 50, dynamicProducts, dynamicRiskPhrases);
       setResults(found);
       setHasSearched(true);
       setIsSearching(false);

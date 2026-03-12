@@ -17,11 +17,13 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { searchProducts } from "@/lib/product-service";
 import { useApp } from "@/lib/app-context";
+import { useData } from "@/lib/data-context";
 import { trpc } from "@/lib/trpc";
 
 export default function ScanScreen() {
   const router = useRouter();
   const { performSearch } = useApp();
+  const { products: dynamicProducts, riskPhrases: dynamicRiskPhrases } = useData();
   const [permission, requestPermission] = useCameraPermissions();
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -77,13 +79,13 @@ export default function ScanScreen() {
 
         if (result.success && result.data && (result.data.productName || result.data.amm)) {
           let searchQuery = result.data.productName || result.data.amm || "";
-          let results = searchProducts(searchQuery);
+          let results = searchProducts(searchQuery, 50, dynamicProducts, dynamicRiskPhrases);
           
           // If no results with full name, try each word individually (for names like "Belkar™ Arylex™ active")
           if (results.length === 0 && result.data.productName) {
             const words = result.data.productName.split(/\s+/).filter((w: string) => w.length >= 3);
             for (const word of words) {
-              results = searchProducts(word);
+              results = searchProducts(word, 50, dynamicProducts, dynamicRiskPhrases);
               if (results.length > 0) {
                 searchQuery = word;
                 break;
@@ -93,7 +95,7 @@ export default function ScanScreen() {
           
           // If still no results, try by AMM
           if (results.length === 0 && result.data.amm) {
-            results = searchProducts(result.data.amm);
+            results = searchProducts(result.data.amm, 50, dynamicProducts, dynamicRiskPhrases);
             searchQuery = result.data.amm;
           }
           

@@ -2,9 +2,10 @@ import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { TOTAL_PRODUCTS, DB_UPDATE_DATE } from "@/lib/product-service";
+import { useData } from "@/lib/data-context";
 
 export default function AboutScreen() {
+  const { products, updateDate } = useData();
   return (
     <ScreenContainer containerClassName="bg-primary">
       {/* Header */}
@@ -62,10 +63,10 @@ export default function AboutScreen() {
             <Text style={styles.dbTitle}>Base de données</Text>
             <Text style={styles.dbText}>
               Les données de produits proviennent de la base E-Phy officielle,
-              mise à jour le {DB_UPDATE_DATE}.
+              mise à jour le {updateDate}.
             </Text>
             <Text style={styles.dbText}>
-              {TOTAL_PRODUCTS.toLocaleString("fr-FR")} produits phytosanitaires
+              {products.length.toLocaleString("fr-FR")} produits phytosanitaires
               référencés.
             </Text>
           </View>

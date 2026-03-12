@@ -451,3 +451,9 @@
 
 - [x] Trouver les URLs directes des CSV E-Phy sur data.gouv.fr
 - [x] Modifier update_data.bat pour télécharger automatiquement les CSV avant conversion
+
+## Build 74 - GitHub Pages pour données E-Phy
+
+- [x] Créer le dépôt GitHub Pages phytocheck-data et publier les JSON
+- [x] Créer service de données avec logique bundle/cache/remote dans l'app
+- [x] Mettre à jour update_data.bat pour pousser vers GitHub Pages
