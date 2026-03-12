@@ -433,3 +433,7 @@
 ## Build 69 - Nettoyage écran À propos
 
 - [x] Supprimer "(Build ?)" dans la section "À propos" pour Android et iPhone
+
+## Build 70 - Nettoyage bouton débogage Premium
+
+- [x] Vérifier et supprimer tout résidu du bouton de débogage IAP dans l'onglet Premium

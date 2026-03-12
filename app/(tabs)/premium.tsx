@@ -397,16 +397,6 @@ const styles = StyleSheet.create({
     color: "#0a7ea4",
     fontWeight: "500",
   },
-  debugButton: {
-    paddingVertical: 12,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  debugText: {
-    fontSize: 14,
-    color: "#687076",
-    fontWeight: "500",
-  },
   legalSection: {
     marginTop: 8,
     paddingTop: 12,
