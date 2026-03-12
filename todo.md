@@ -419,3 +419,9 @@
 - [x] Créer update_data.bat (Windows) : appel python convert_ephy_to_json.py + copie JSON + git commit + git push
 - [x] Mettre à jour dynamiquement la date et le nombre de produits dans l'encart "Base de données E-Phy" (accueil)
 - [x] Mettre à jour dynamiquement la date et le nombre de produits dans l'onglet "À propos"
+
+## Build 67 - Adaptation scripts aux noms CSV réels
+
+- [x] Adapter convert_ephy_to_json.py aux noms produits_utf8.csv et produits_phrases_de_risque_utf8.csv et aux colonnes réelles
+- [x] Adapter update_data.bat aux nouveaux noms de fichiers
+- [x] Tester la conversion avec les vrais CSV (15 064 produits, 2 479 AMM avec risques)

@@ -11,8 +11,8 @@
 ::   3. Double-cliquez sur update_data.bat (ou lancez depuis PowerShell)
 ::
 :: FICHIERS CSV ATTENDUS (à la racine du projet) :
-::   - produits_phytopharmaceutiques.csv
-::   - usages_produits_phytopharmaceutiques.csv
+::   - produits_utf8.csv
+::   - produits_phrases_de_risque_utf8.csv
 :: ============================================================
 
 setlocal enabledelayedexpansion
@@ -36,21 +36,21 @@ if errorlevel 1 (
 )
 
 :: ── Vérification des fichiers CSV ───────────────────────────
-if not exist "produits_phytopharmaceutiques.csv" (
-    echo [ERREUR] Fichier manquant : produits_phytopharmaceutiques.csv
+if not exist "produits_utf8.csv" (
+    echo [ERREUR] Fichier manquant : produits_utf8.csv
     echo.
     echo Telechargez-le sur https://ephy.anses.fr :
-    echo   Donnees ^> Produits phytopharmaceutiques ^> Exporter CSV
+    echo   Donnees ^> Produits phytopharmaceutiques ^> Exporter CSV ^(UTF-8^)
     echo Puis copiez-le dans : %CD%
     pause
     exit /b 1
 )
 
-if not exist "usages_produits_phytopharmaceutiques.csv" (
-    echo [ERREUR] Fichier manquant : usages_produits_phytopharmaceutiques.csv
+if not exist "produits_phrases_de_risque_utf8.csv" (
+    echo [ERREUR] Fichier manquant : produits_phrases_de_risque_utf8.csv
     echo.
     echo Telechargez-le sur https://ephy.anses.fr :
-    echo   Donnees ^> Usages des produits ^> Exporter CSV
+    echo   Donnees ^> Phrases de risque des produits ^> Exporter CSV ^(UTF-8^)
     echo Puis copiez-le dans : %CD%
     pause
     exit /b 1
@@ -61,8 +61,8 @@ echo.
 
 :: ── Conversion CSV → JSON ────────────────────────────────────
 python scripts\convert_ephy_to_json.py ^
-    --products "produits_phytopharmaceutiques.csv" ^
-    --risks "usages_produits_phytopharmaceutiques.csv" ^
+    --products "produits_utf8.csv" ^
+    --risks "produits_phrases_de_risque_utf8.csv" ^
     --out-dir "assets\data"
 
 if errorlevel 1 (
@@ -101,13 +101,7 @@ if errorlevel 1 (
     goto :skip_git
 )
 
-:: Récupérer la date du jour pour le message de commit
-for /f "tokens=1-3 delims=/" %%a in ("%date%") do (
-    set DAY=%%a
-    set MONTH=%%b
-    set YEAR=%%c
-)
-:: Format date peut varier selon la locale Windows - utiliser Python pour fiabilité
+:: Récupérer la date du jour via Python (fiable quelle que soit la locale Windows)
 for /f %%d in ('python -c "from datetime import date; print(date.today().strftime('%%d/%%m/%%Y'))"') do set TODAY=%%d
 
 git add assets\data\products.json assets\data\risk-phrases.json lib\product-service.ts

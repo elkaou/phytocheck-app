@@ -8,15 +8,15 @@ Usage :
     python scripts/convert_ephy_to_json.py [--products CSV] [--risks CSV] [--out-dir DIR]
 
 Fichiers CSV attendus (téléchargeables sur https://ephy.anses.fr) :
-    - Produits phytopharmaceutiques : "produits_phytopharmaceutiques.csv"
-    - Phrases de risque (AMM) :       "usages_produits_phytopharmaceutiques.csv"
+    - Produits phytopharmaceutiques : "produits_utf8.csv"
+    - Phrases de risque :             "produits_phrases_de_risque_utf8.csv"
 
 Sorties générées dans assets/data/ :
     - products.json
     - risk-phrases.json
 
-Le script met également à jour automatiquement DB_UPDATE_DATE et TOTAL_PRODUCTS
-dans lib/product-service.ts avec la date du jour et le nombre réel de produits.
+Le script met également à jour automatiquement DB_UPDATE_DATE
+dans lib/product-service.ts avec la date du jour.
 """
 
 import csv
@@ -31,29 +31,30 @@ from pathlib import Path
 # ── Chemins par défaut (relatifs à la racine du projet) ──────────────────────
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
-DEFAULT_PRODUCTS_CSV = PROJECT_ROOT / "produits_phytopharmaceutiques.csv"
-DEFAULT_RISKS_CSV = PROJECT_ROOT / "usages_produits_phytopharmaceutiques.csv"
+DEFAULT_PRODUCTS_CSV = PROJECT_ROOT / "produits_utf8.csv"
+DEFAULT_RISKS_CSV = PROJECT_ROOT / "produits_phrases_de_risque_utf8.csv"
 OUT_DIR = PROJECT_ROOT / "assets" / "data"
 PRODUCT_SERVICE = PROJECT_ROOT / "lib" / "product-service.ts"
 
-# ── Colonnes attendues dans le CSV produits ───────────────────────────────────
-# Adapter si les noms de colonnes changent dans les exports E-PHY
-COL_AMM = "Numéro AMM"
-COL_NOM = "Nom du produit"
-COL_NOMS_SEC = "Autre(s) nom(s) du produit"
-COL_TITULAIRE = "Titulaire de l'AMM"
-COL_GAMME = "Gamme d'usage"
-COL_SUBSTANCES = "Substance(s) active(s)"
-COL_FONCTIONS = "Fonction(s)"
-COL_FORMULATION = "Type de formulation"
-COL_ETAT = "Etat"
-COL_DATE_RETRAIT = "Date de retrait"
-COL_DATE_AUTORISATION = "Date d'autorisation"
+# ── Colonnes du CSV produits (produits_utf8.csv) ─────────────────────────────
+# Séparateur : point-virgule
+COL_AMM          = "numero AMM"
+COL_NOM          = "nom produit"
+COL_NOMS_SEC     = "seconds noms commerciaux"
+COL_TITULAIRE    = "titulaire"
+COL_GAMME        = "gamme usage"
+COL_SUBSTANCES   = "Substances actives"
+COL_FONCTIONS    = "fonctions"
+COL_FORMULATION  = "formulations"
+COL_ETAT         = "Etat d'autorisation"
+COL_DATE_RETRAIT = "Date de retrait du produit"
+COL_DATE_AUTH    = "Date de première autorisation"
 
-# ── Colonnes attendues dans le CSV usages/risques ────────────────────────────
-COL_AMM_RISK = "Numéro AMM"
-COL_PHRASE_CODE = "Code mention de danger"
-COL_PHRASE_LIB = "Libellé mention de danger"
+# ── Colonnes du CSV risques (produits_phrases_de_risque_utf8.csv) ────────────
+# Séparateur : point-virgule
+COL_AMM_RISK     = "numero AMM"
+COL_PHRASE_CODE  = "Libellé court phrase de risque "   # espace intentionnel (nom réel dans CSV)
+COL_PHRASE_LIB   = "Libellé long phrase de risque"
 
 
 def parse_args():
@@ -61,7 +62,7 @@ def parse_args():
     parser.add_argument("--products", default=str(DEFAULT_PRODUCTS_CSV),
                         help=f"Chemin vers le CSV produits (défaut: {DEFAULT_PRODUCTS_CSV.name})")
     parser.add_argument("--risks", default=str(DEFAULT_RISKS_CSV),
-                        help=f"Chemin vers le CSV usages/risques (défaut: {DEFAULT_RISKS_CSV.name})")
+                        help=f"Chemin vers le CSV risques (défaut: {DEFAULT_RISKS_CSV.name})")
     parser.add_argument("--out-dir", default=str(OUT_DIR),
                         help=f"Dossier de sortie des JSON (défaut: {OUT_DIR})")
     parser.add_argument("--no-update-ts", action="store_true",
@@ -69,79 +70,83 @@ def parse_args():
     return parser.parse_args()
 
 
-def detect_encoding(filepath):
-    """Essaie UTF-8 puis latin-1 (Windows-1252) pour les CSV E-PHY."""
-    for enc in ("utf-8-sig", "utf-8", "latin-1", "cp1252"):
-        try:
-            with open(filepath, encoding=enc) as f:
-                f.read(1024)
-            return enc
-        except UnicodeDecodeError:
-            continue
-    return "latin-1"
+def open_csv(filepath):
+    """Ouvre un CSV E-PHY avec encodage UTF-8 et séparateur point-virgule."""
+    return open(filepath, encoding="utf-8-sig", newline="")
 
 
-def detect_separator(filepath, encoding):
-    """Détecte le séparateur CSV (virgule ou point-virgule)."""
-    with open(filepath, encoding=encoding) as f:
-        first_line = f.readline()
-    return ";" if first_line.count(";") > first_line.count(",") else ","
+def normalize_row(row):
+    """Normalise les clés d'une ligne CSV (strip espaces/BOM)."""
+    return {k.strip().lstrip("\ufeff"): (v.strip() if v else "") for k, v in row.items()}
+
+
+def find_col(row, *candidates):
+    """Cherche la première clé candidate présente dans la ligne (insensible à la casse et aux espaces)."""
+    row_lower = {k.strip().lower(): k for k in row.keys()}
+    for c in candidates:
+        key = row_lower.get(c.strip().lower())
+        if key is not None:
+            return row.get(key, "")
+    return ""
 
 
 def convert_products(csv_path):
     """Lit le CSV produits E-PHY et retourne une liste de dicts."""
-    enc = detect_encoding(csv_path)
-    sep = detect_separator(csv_path, enc)
-    print(f"  Encodage détecté : {enc}, séparateur : '{sep}'")
-
+    print(f"  Fichier : {csv_path}")
     products = []
-    with open(csv_path, encoding=enc, newline="") as f:
-        reader = csv.DictReader(f, delimiter=sep)
+
+    with open_csv(csv_path) as f:
+        reader = csv.DictReader(f, delimiter=";")
         headers = reader.fieldnames or []
-        print(f"  Colonnes CSV produits : {headers[:6]}...")
+        print(f"  Colonnes détectées : {[h.strip() for h in headers[:8]]}...")
 
         for row in reader:
-            # Normalisation robuste des noms de colonnes (strip espaces/BOM)
-            row = {k.strip().lstrip("\ufeff"): v.strip() for k, v in row.items()}
+            row = normalize_row(row)
 
             amm = row.get(COL_AMM, "").strip()
             if not amm:
                 continue
 
+            # Normaliser l'état : "RETIRE" ou "AUTORISE"
+            etat = row.get(COL_ETAT, "").strip().upper()
+            if "RETIR" in etat:
+                etat = "RETIRE"
+            elif etat:
+                etat = "AUTORISE"
+
             products.append({
                 "amm": amm,
-                "nom": row.get(COL_NOM, "").strip(),
-                "nomsSecondaires": row.get(COL_NOMS_SEC, "").strip(),
-                "titulaire": row.get(COL_TITULAIRE, "").strip(),
-                "gammeUsage": row.get(COL_GAMME, "").strip(),
-                "substancesActives": row.get(COL_SUBSTANCES, "").strip(),
-                "fonctions": row.get(COL_FONCTIONS, "").strip(),
-                "formulation": row.get(COL_FORMULATION, "").strip(),
-                "etat": row.get(COL_ETAT, "").strip().upper(),
-                "dateRetrait": row.get(COL_DATE_RETRAIT, "").strip(),
-                "dateAutorisation": row.get(COL_DATE_AUTORISATION, "").strip(),
+                "nom": row.get(COL_NOM, ""),
+                "nomsSecondaires": row.get(COL_NOMS_SEC, ""),
+                "titulaire": row.get(COL_TITULAIRE, ""),
+                "gammeUsage": row.get(COL_GAMME, ""),
+                "substancesActives": row.get(COL_SUBSTANCES, ""),
+                "fonctions": row.get(COL_FONCTIONS, ""),
+                "formulation": row.get(COL_FORMULATION, ""),
+                "etat": etat,
+                "dateRetrait": row.get(COL_DATE_RETRAIT, ""),
+                "dateAutorisation": row.get(COL_DATE_AUTH, ""),
             })
 
     return products
 
 
 def convert_risks(csv_path):
-    """Lit le CSV usages E-PHY et retourne un dict {amm: [{code, libelle}]}."""
-    enc = detect_encoding(csv_path)
-    sep = detect_separator(csv_path, enc)
-    print(f"  Encodage détecté : {enc}, séparateur : '{sep}'")
-
+    """Lit le CSV phrases de risque E-PHY et retourne un dict {amm: [{code, libelle}]}."""
+    print(f"  Fichier : {csv_path}")
     risk_map = {}
-    with open(csv_path, encoding=enc, newline="") as f:
-        reader = csv.DictReader(f, delimiter=sep)
+
+    with open_csv(csv_path) as f:
+        reader = csv.DictReader(f, delimiter=";")
         headers = reader.fieldnames or []
-        print(f"  Colonnes CSV risques : {headers[:6]}...")
+        print(f"  Colonnes détectées : {[h.strip() for h in headers]}...")
 
         for row in reader:
-            row = {k.strip().lstrip("\ufeff"): v.strip() for k, v in row.items()}
+            row = normalize_row(row)
 
             amm = row.get(COL_AMM_RISK, "").strip()
-            code = row.get(COL_PHRASE_CODE, "").strip()
+            # Le nom de colonne du code peut avoir un espace trailing dans le CSV réel
+            code = row.get(COL_PHRASE_CODE, row.get(COL_PHRASE_CODE.strip(), "")).strip()
             libelle = row.get(COL_PHRASE_LIB, "").strip()
 
             if not amm or not code:
@@ -150,7 +155,6 @@ def convert_risks(csv_path):
             if amm not in risk_map:
                 risk_map[amm] = []
 
-            # Éviter les doublons
             entry = {"code": code, "libelle": libelle}
             if entry not in risk_map[amm]:
                 risk_map[amm].append(entry)
@@ -158,23 +162,20 @@ def convert_risks(csv_path):
     return risk_map
 
 
-def update_product_service(ts_path, total_products, update_date_str):
-    """Met à jour DB_UPDATE_DATE et TOTAL_PRODUCTS dans product-service.ts."""
+def update_product_service(ts_path, update_date_str):
+    """Met à jour DB_UPDATE_DATE dans product-service.ts."""
     if not ts_path.exists():
         print(f"  AVERTISSEMENT : {ts_path} introuvable, mise à jour ignorée.")
         return
 
     content = ts_path.read_text(encoding="utf-8")
-
-    # Remplace DB_UPDATE_DATE = "..."
     content = re.sub(
         r'export const DB_UPDATE_DATE\s*=\s*"[^"]*"',
         f'export const DB_UPDATE_DATE = "{update_date_str}"',
         content,
     )
-
     ts_path.write_text(content, encoding="utf-8")
-    print(f"  product-service.ts mis à jour : date={update_date_str}, produits={total_products}")
+    print(f"  product-service.ts mis à jour : date={update_date_str}")
 
 
 def main():
@@ -185,13 +186,13 @@ def main():
 
     # Vérifications
     if not products_csv.exists():
-        print(f"ERREUR : Fichier CSV produits introuvable : {products_csv}")
-        print(f"  Téléchargez-le sur https://ephy.anses.fr et placez-le à : {products_csv}")
+        print(f"\nERREUR : Fichier CSV produits introuvable : {products_csv}")
+        print(f"  Placez '{products_csv.name}' dans : {products_csv.parent}")
         sys.exit(1)
 
     if not risks_csv.exists():
-        print(f"ERREUR : Fichier CSV risques introuvable : {risks_csv}")
-        print(f"  Téléchargez-le sur https://ephy.anses.fr et placez-le à : {risks_csv}")
+        print(f"\nERREUR : Fichier CSV risques introuvable : {risks_csv}")
+        print(f"  Placez '{risks_csv.name}' dans : {risks_csv.parent}")
         sys.exit(1)
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -199,7 +200,7 @@ def main():
     # ── Conversion produits ──────────────────────────────────────────────────
     print("\n[1/3] Conversion du CSV produits...")
     products = convert_products(products_csv)
-    print(f"  → {len(products)} produits convertis")
+    print(f"  → {len(products):,} produits convertis")
 
     products_out = out_dir / "products.json"
     with open(products_out, "w", encoding="utf-8") as f:
@@ -207,9 +208,9 @@ def main():
     print(f"  → Écrit : {products_out}")
 
     # ── Conversion risques ───────────────────────────────────────────────────
-    print("\n[2/3] Conversion du CSV risques/usages...")
+    print("\n[2/3] Conversion du CSV phrases de risque...")
     risks = convert_risks(risks_csv)
-    print(f"  → {len(risks)} AMM avec phrases de risque")
+    print(f"  → {len(risks):,} AMM avec phrases de risque")
 
     risks_out = out_dir / "risk-phrases.json"
     with open(risks_out, "w", encoding="utf-8") as f:
@@ -220,19 +221,19 @@ def main():
     if not args.no_update_ts:
         print("\n[3/3] Mise à jour de lib/product-service.ts...")
         today = date.today().strftime("%d/%m/%Y")
-        update_product_service(PRODUCT_SERVICE, len(products), today)
+        update_product_service(PRODUCT_SERVICE, today)
 
     # ── Résumé ───────────────────────────────────────────────────────────────
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("CONVERSION TERMINÉE")
-    print(f"  Produits     : {len(products):,}")
-    print(f"  AMM risques  : {len(risks):,}")
-    print(f"  Date mise à jour : {date.today().strftime('%d/%m/%Y')}")
-    print("="*50)
+    print(f"  Produits          : {len(products):,}")
+    print(f"  AMM avec risques  : {len(risks):,}")
+    print(f"  Date mise à jour  : {date.today().strftime('%d/%m/%Y')}")
+    print("=" * 50)
     print("\nProchaines étapes :")
     print("  1. Vérifiez les JSON dans assets/data/")
     print("  2. Lancez : git add -A && git commit -m 'Mise à jour E-PHY' && git push")
-    print("  3. Lancez un nouveau build EAS : eas build --platform all --profile production")
+    print("  3. Nouveau build : eas build --platform all --profile production")
 
 
 if __name__ == "__main__":
