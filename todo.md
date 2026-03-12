@@ -425,3 +425,7 @@
 - [x] Adapter convert_ephy_to_json.py aux noms produits_utf8.csv et produits_phrases_de_risque_utf8.csv et aux colonnes réelles
 - [x] Adapter update_data.bat aux nouveaux noms de fichiers
 - [x] Tester la conversion avec les vrais CSV (15 064 produits, 2 479 AMM avec risques)
+
+## Build 68 - .gitignore CSV E-Phy
+
+- [x] Exclure les CSV E-Phy de la racine du projet dans .gitignore

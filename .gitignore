@@ -63,3 +63,8 @@ Thumbs.db
 
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
+
+# Fichiers CSV E-Phy (données brutes, à ne pas versionner)
+# Copier ces fichiers à la racine du projet avant de lancer update_data.bat
+produits_utf8.csv
+produits_phrases_de_risque_utf8.csv
