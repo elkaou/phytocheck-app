@@ -37,38 +37,40 @@ var NOT_ADMIN_ERR_MSG = "You do not have required permission (10002)";
 
 // server/db.ts
 var import_drizzle_orm = require("drizzle-orm");
-var import_mysql2 = require("drizzle-orm/mysql2");
+var import_node_postgres = require("drizzle-orm/node-postgres");
+var import_pg = require("pg");
 
 // drizzle/schema.ts
-var import_mysql_core = require("drizzle-orm/mysql-core");
-var users = (0, import_mysql_core.mysqlTable)("users", {
+var import_pg_core = require("drizzle-orm/pg-core");
+var roleEnum = (0, import_pg_core.pgEnum)("role", ["user", "admin"]);
+var users = (0, import_pg_core.pgTable)("users", {
   /**
    * Surrogate primary key. Auto-incremented numeric value managed by the database.
    * Use this for relations between tables.
    */
-  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+  id: (0, import_pg_core.serial)("id").primaryKey(),
   /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
-  openId: (0, import_mysql_core.varchar)("openId", { length: 64 }).notNull().unique(),
-  name: (0, import_mysql_core.text)("name"),
-  email: (0, import_mysql_core.varchar)("email", { length: 320 }),
-  loginMethod: (0, import_mysql_core.varchar)("loginMethod", { length: 64 }),
-  role: (0, import_mysql_core.mysqlEnum)("role", ["user", "admin"]).default("user").notNull(),
-  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
-  updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: (0, import_mysql_core.timestamp)("lastSignedIn").defaultNow().notNull()
+  openId: (0, import_pg_core.varchar)("openId", { length: 64 }).notNull().unique(),
+  name: (0, import_pg_core.text)("name"),
+  email: (0, import_pg_core.varchar)("email", { length: 320 }),
+  loginMethod: (0, import_pg_core.varchar)("loginMethod", { length: 64 }),
+  role: roleEnum("role").default("user").notNull(),
+  createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+  updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull(),
+  lastSignedIn: (0, import_pg_core.timestamp)("lastSignedIn").defaultNow().notNull()
 });
-var devices = (0, import_mysql_core.mysqlTable)("devices", {
-  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+var devices = (0, import_pg_core.pgTable)("devices", {
+  id: (0, import_pg_core.serial)("id").primaryKey(),
   /** Identifiant unique de l'appareil (androidId ou idfv iOS) */
-  deviceId: (0, import_mysql_core.varchar)("deviceId", { length: 255 }).notNull().unique(),
+  deviceId: (0, import_pg_core.varchar)("deviceId", { length: 255 }).notNull().unique(),
   /** Nombre total de recherches effectuées sur cet appareil */
-  searchCount: (0, import_mysql_core.int)("searchCount").default(0).notNull(),
+  searchCount: (0, import_pg_core.integer)("searchCount").default(0).notNull(),
   /** L'appareil a-t-il un abonnement Premium actif ? */
-  isPremium: (0, import_mysql_core.boolean)("isPremium").default(false).notNull(),
+  isPremium: (0, import_pg_core.boolean)("isPremium").default(false).notNull(),
   /** Première utilisation de l'app sur cet appareil */
-  firstSeen: (0, import_mysql_core.timestamp)("firstSeen").defaultNow().notNull(),
+  firstSeen: (0, import_pg_core.timestamp)("firstSeen").defaultNow().notNull(),
   /** Dernière synchronisation avec le serveur */
-  lastSeen: (0, import_mysql_core.timestamp)("lastSeen").defaultNow().onUpdateNow().notNull()
+  lastSeen: (0, import_pg_core.timestamp)("lastSeen").defaultNow().notNull()
 });
 
 // server/_core/env.ts
@@ -88,7 +90,11 @@ var _db = null;
 async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = (0, import_mysql2.drizzle)(process.env.DATABASE_URL);
+      const pool = new import_pg.Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+      });
+      _db = (0, import_node_postgres.drizzle)(pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -136,7 +142,8 @@ async function upsertUser(user) {
     if (Object.keys(updateSet).length === 0) {
       updateSet.lastSignedIn = /* @__PURE__ */ new Date();
     }
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet
     });
   } catch (error) {
@@ -157,7 +164,10 @@ async function syncDevice(deviceId, isPremium) {
   const db = await getDb();
   if (!db) return null;
   try {
-    await db.insert(devices).values({ deviceId, isPremium, searchCount: 0 }).onDuplicateKeyUpdate({ set: { isPremium, lastSeen: /* @__PURE__ */ new Date() } });
+    await db.insert(devices).values({ deviceId, isPremium, searchCount: 0 }).onConflictDoUpdate({
+      target: devices.deviceId,
+      set: { isPremium, lastSeen: /* @__PURE__ */ new Date() }
+    });
     const result = await db.select().from(devices).where((0, import_drizzle_orm.eq)(devices.deviceId, deviceId)).limit(1);
     return result.length > 0 ? result[0] : null;
   } catch (error) {

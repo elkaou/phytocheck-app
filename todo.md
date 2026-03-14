@@ -457,3 +457,10 @@
 - [x] Créer le dépôt GitHub Pages phytocheck-data et publier les JSON
 - [x] Créer service de données avec logique bundle/cache/remote dans l'app
 - [x] Mettre à jour update_data.bat pour pousser vers GitHub Pages
+
+## Build 75 - Migration base de données Manus → Render PostgreSQL
+
+- [x] Exporter les données depuis Manus (tables users et devices)
+- [x] Importer les données dans phytocheck-db sur Render
+- [x] Mettre à jour DATABASE_URL sur Render backend
+- [x] Valider la connexion et le fonctionnement

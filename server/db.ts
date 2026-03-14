@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import { InsertUser, users, devices, Device } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -9,7 +10,11 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
+      });
+      _db = drizzle(pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -68,9 +73,13 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
+    await db
+      .insert(users)
+      .values(values)
+      .onConflictDoUpdate({
+        target: users.openId,
+        set: updateSet,
+      });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
@@ -103,7 +112,10 @@ export async function syncDevice(deviceId: string, isPremium: boolean): Promise<
     await db
       .insert(devices)
       .values({ deviceId, isPremium, searchCount: 0 })
-      .onDuplicateKeyUpdate({ set: { isPremium, lastSeen: new Date() } });
+      .onConflictDoUpdate({
+        target: devices.deviceId,
+        set: { isPremium, lastSeen: new Date() },
+      });
     const result = await db.select().from(devices).where(eq(devices.deviceId, deviceId)).limit(1);
     return result.length > 0 ? result[0] : null;
   } catch (error) {
@@ -137,7 +149,10 @@ export async function incrementDeviceSearch(
 
     // Si Premium côté serveur, toujours autorisé
     if (device.isPremium) {
-      await db.update(devices).set({ searchCount: device.searchCount + 1 }).where(eq(devices.deviceId, deviceId));
+      await db
+        .update(devices)
+        .set({ searchCount: device.searchCount + 1 })
+        .where(eq(devices.deviceId, deviceId));
       return { allowed: true, searchCount: device.searchCount + 1 };
     }
 
@@ -147,7 +162,10 @@ export async function incrementDeviceSearch(
     }
 
     const newCount = device.searchCount + 1;
-    await db.update(devices).set({ searchCount: newCount }).where(eq(devices.deviceId, deviceId));
+    await db
+      .update(devices)
+      .set({ searchCount: newCount })
+      .where(eq(devices.deviceId, deviceId));
     return { allowed: true, searchCount: newCount };
   } catch (error) {
     console.error("[Database] incrementDeviceSearch error:", error);
