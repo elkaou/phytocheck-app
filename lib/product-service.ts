@@ -60,6 +60,22 @@ const riskPhrases: Record<string, RiskPhrase[]> = riskPhrasesData as Record<stri
 export const TOTAL_PRODUCTS = products.length;
 export const DB_UPDATE_DATE = "12/03/2026";
 
+// Détermine si un produit est retiré, en se basant sur le champ etat
+// OU sur la dateRetrait si etat est vide (cas du CSV E-Phy où la colonne peut être absente)
+function isProductRetired(product: Product): boolean {
+  if (product.etat === "RETIRE") return true;
+  if (product.etat === "AUTORISE") return false;
+  // etat vide : on se base sur la dateRetrait
+  if (product.dateRetrait) {
+    const parts = product.dateRetrait.split("/");
+    if (parts.length === 3) {
+      const retrait = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+      return retrait <= new Date();
+    }
+  }
+  return false;
+}
+
 // Classify a product
 export function classifyProduct(product: Product): ClassifiedProduct {
   const phrases = riskPhrases[product.amm] || [];
@@ -70,7 +86,7 @@ export function classifyProduct(product: Product): ClassifiedProduct {
 
   let classification: ProductClassification;
 
-  if (product.etat === "RETIRE") {
+  if (isProductRetired(product)) {
     classification = "retire";
   } else if (isCMR) {
     classification = "homologue_cmr";
@@ -175,7 +191,7 @@ function classifyProductWithData(
   const isCMR = codes.some((code) => CMR_CODES.includes(code));
   const isToxique = codes.some((code) => TOXIQUE_CODES.includes(code));
   let classification: ProductClassification;
-  if (product.etat === "RETIRE") {
+  if (isProductRetired(product)) {
     classification = "retire";
   } else if (isCMR) {
     classification = "homologue_cmr";

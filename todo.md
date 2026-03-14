@@ -464,3 +464,9 @@
 - [x] Importer les données dans phytocheck-db sur Render
 - [x] Mettre à jour DATABASE_URL sur Render backend
 - [x] Valider la connexion et le fonctionnement
+
+## Bug Build 60 - Classification incorrecte des produits retirés
+
+- [x] Bug critique : Produits retirés (ex: SAFARI) affichés "Homologué CMR" au lieu de "RETIRÉ" — le champ `etat` est vide ("") pour tous les 15 064 produits dans le JSON (colonne CSV mal lue). La classification doit se baser sur `dateRetrait` quand `etat` est vide.
+- [x] Corriger la logique de classification dans product-service.ts : si `etat` est vide et `dateRetrait` est dans le passé → RETIRÉ
+- [x] Corriger le script Python convert_ephy_to_json.py pour gérer le cas où la colonne "Etat d'autorisation" est absente/vide (fallback sur dateRetrait dans product-service.ts)
