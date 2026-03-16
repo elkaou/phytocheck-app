@@ -100,7 +100,7 @@ export default function RootLayout() {
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="product/[amm]" options={{ presentation: "card" }} />
-                <Stack.Screen name="scan" options={{ presentation: "fullScreenModal" }} />
+                <Stack.Screen name="scan" options={{ presentation: "modal" }} />
                 <Stack.Screen name="oauth/callback" />
               </Stack>
               <StatusBar style="auto" />

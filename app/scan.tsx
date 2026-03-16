@@ -170,22 +170,35 @@ export default function ScanScreen() {
         quality: 0.8,
         exif: false,
       });
-      if (!result.canceled && result.assets[0]?.uri) {
+      if (result.canceled) {
+        setIsProcessing(false);
+        return;
+      }
+      if (result.assets[0]?.uri) {
         await processImage(result.assets[0].uri);
       }
     } catch (error) {
+      setIsProcessing(false);
       Alert.alert("Erreur", "Impossible de prendre la photo.");
     }
   }, [processImage]);
 
   const pickFromGallery = useCallback(async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 0.8,
-      exif: false,
-    });
-    if (!result.canceled && result.assets[0]?.uri) {
-      await processImage(result.assets[0].uri);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+        exif: false,
+      });
+      if (result.canceled) {
+        setIsProcessing(false);
+        return;
+      }
+      if (result.assets[0]?.uri) {
+        await processImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      setIsProcessing(false);
     }
   }, [processImage]);
 
@@ -370,10 +383,11 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 12,
-    minWidth: 48,
-    minHeight: 48,
+    minWidth: 56,
+    minHeight: 56,
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 10,
   },
   centerContent: {
     flex: 1,
