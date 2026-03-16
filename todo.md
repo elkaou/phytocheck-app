@@ -475,3 +475,8 @@
 
 - [x] Bug : La barre de navigation du bas disparaît sur l'écran Scanner (presentation fullScreenModal masque le tab bar)
 - [x] Bug : La flèche retour en haut à gauche est dans une zone non cliquable (headerBar trop petit, zone de tap insuffisante)
+
+## Bug Script CSV - Encodage colonne etat (Build 78)
+
+- [x] Bug : La colonne "Etat d'autorisation" dans le CSV E-Phy a l'apostrophe mal encodée ("â€™" au lieu de "'") → le champ etat est vide pour tous les produits dans le JSON. Correction : la fonction get_etat() teste 4 variantes du nom de colonne + recherche insensible à la casse en dernier recours.
+- [ ] Régénérer products.json sur PC Windows après git pull et vérifier que etat="RETIRE" pour SAFARI

@@ -46,7 +46,14 @@ COL_GAMME        = "gamme usage"
 COL_SUBSTANCES   = "Substances actives"
 COL_FONCTIONS    = "fonctions"
 COL_FORMULATION  = "formulations"
-COL_ETAT         = "Etat d'autorisation"
+COL_ETAT         = "Etat d\u2019autorisation"  # apostrophe typographique (U+2019)
+# Variantes observées dans les CSV E-Phy selon l'encodage :
+COL_ETAT_VARIANTS = [
+    "Etat d\u2019autorisation",   # apostrophe typographique correcte
+    "Etat d'autorisation",     # apostrophe ASCII simple
+    "Etat d\u00e2\u20ac\u2122autorisation",  # UTF-8 mal interprété (â€™)
+    "Etat dautorisation",      # sans apostrophe
+]
 COL_DATE_RETRAIT = "Date de retrait du produit"
 COL_DATE_AUTH    = "Date de première autorisation"
 
@@ -90,6 +97,20 @@ def find_col(row, *candidates):
     return ""
 
 
+def get_etat(row):
+    """Récupère la valeur de la colonne état en testant toutes les variantes connues du nom."""
+    for variant in COL_ETAT_VARIANTS:
+        val = row.get(variant, None)
+        if val is not None:
+            return val.strip()
+    # Recherche insensible à la casse en dernier recours
+    for key in row.keys():
+        normalized = key.strip().lower().replace("\u2019", "'").replace("\u00e2\u20ac\u2122", "'")
+        if "etat" in normalized and "autorisation" in normalized:
+            return row[key].strip()
+    return ""
+
+
 def convert_products(csv_path):
     """Lit le CSV produits E-PHY et retourne une liste de dicts."""
     print(f"  Fichier : {csv_path}")
@@ -108,7 +129,7 @@ def convert_products(csv_path):
                 continue
 
             # Normaliser l'état : "RETIRE" ou "AUTORISE"
-            etat = row.get(COL_ETAT, "").strip().upper()
+            etat = get_etat(row).upper()
             if "RETIR" in etat:
                 etat = "RETIRE"
             elif etat:
