@@ -1,11 +1,13 @@
 import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
 import { router } from "expo-router";
+import Constants from "expo-constants";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useData } from "@/lib/data-context";
 
 export default function AboutScreen() {
   const { products, updateDate } = useData();
+  const appVersion = Constants.expoConfig?.version ?? "1.0.0";
   return (
     <ScreenContainer containerClassName="bg-primary">
       {/* Header */}
@@ -25,7 +27,7 @@ export default function AboutScreen() {
           <View style={styles.card}>
             <Text style={styles.cardLabel}>VERSION</Text>
             <Text style={styles.versionText}>
-              Version 1.0.1
+              Version {appVersion}
             </Text>
           </View>
 
