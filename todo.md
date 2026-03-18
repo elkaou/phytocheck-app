@@ -484,6 +484,6 @@
 ## Build 84 - Amélioration script Python et préparation production
 
 - [x] Améliorer le script Python convert_ephy_to_json.py pour mettre à jour automatiquement BUNDLE_MANIFEST dans data-context.tsx
-- [ ] Préparer et tester le build Android pour Google Play (recrutement 12+ testeurs)
+- [x] Préparer le build Android (synchronisation GitHub, vérification version, checklist pré-build)
 - [ ] Préparer et tester le build iOS pour App Store
 - [ ] Gérer le processus de soumission Google Play/App Store
