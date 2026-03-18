@@ -10,6 +10,14 @@ import {
 import bundleProducts from "@/assets/data/products.json";
 import bundleRiskPhrases from "@/assets/data/risk-phrases.json";
 
+// Manifest bundle (mis à jour automatiquement par le script Python)
+const BUNDLE_MANIFEST = {
+  version: "1.0",
+  updated_at: "18/03/2026",
+  products_count: 15070,
+  risks_count: 2482,
+};
+
 export type DataSource = "bundle" | "cache" | "remote";
 
 interface DataContextValue {
@@ -24,7 +32,7 @@ interface DataContextValue {
 const DataContext = createContext<DataContextValue>({
   products: bundleProducts as Product[],
   riskPhrases: bundleRiskPhrases as Record<string, RiskPhrase[]>,
-  updateDate: "12/03/2026",
+  updateDate: BUNDLE_MANIFEST.updated_at,
   dataSource: "bundle",
   isUpdating: false,
   lastRemoteUpdate: null,
@@ -35,7 +43,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [riskPhrases, setRiskPhrases] = useState<Record<string, RiskPhrase[]>>(
     bundleRiskPhrases as Record<string, RiskPhrase[]>
   );
-  const [updateDate, setUpdateDate] = useState("12/03/2026");
+  const [updateDate, setUpdateDate] = useState(BUNDLE_MANIFEST.updated_at);
   const [dataSource, setDataSource] = useState<DataSource>("bundle");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastRemoteUpdate, setLastRemoteUpdate] = useState<string | null>(null);
