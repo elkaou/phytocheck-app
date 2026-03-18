@@ -480,3 +480,10 @@
 
 - [x] Bug : La colonne "Etat d'autorisation" dans le CSV E-Phy a l'apostrophe mal encodée ("â€™" au lieu de "'") → le champ etat est vide pour tous les produits dans le JSON. Correction : la fonction get_etat() teste 4 variantes du nom de colonne + recherche insensible à la casse en dernier recours.
 - [ ] Régénérer products.json sur PC Windows après git pull et vérifier que etat="RETIRE" pour SAFARI
+
+## Build 84 - Amélioration script Python et préparation production
+
+- [x] Améliorer le script Python convert_ephy_to_json.py pour mettre à jour automatiquement BUNDLE_MANIFEST dans data-context.tsx
+- [ ] Préparer et tester le build Android pour Google Play (recrutement 12+ testeurs)
+- [ ] Préparer et tester le build iOS pour App Store
+- [ ] Gérer le processus de soumission Google Play/App Store

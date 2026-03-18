@@ -45,6 +45,9 @@ MANIFEST_SEARCH_PATHS = [
     Path("D:/phytocheck-data/manifest.json"),                     # Windows D:
 ]
 
+# Chemin vers data-context.tsx (pour mettre à jour BUNDLE_MANIFEST)
+DATA_CONTEXT = PROJECT_ROOT / "lib" / "data-context.tsx"
+
 # ── Colonnes du CSV produits (produits_utf8.csv) ─────────────────────────────
 # Séparateur : point-virgule
 COL_AMM          = "numero AMM"
@@ -239,6 +242,35 @@ def update_product_service(ts_path, update_date_str):
     print(f"  product-service.ts mis à jour : date={update_date_str}")
 
 
+
+def update_bundle_manifest(data_context_path, update_date_str, products_count, risks_count):
+    """Met à jour BUNDLE_MANIFEST dans lib/data-context.tsx."""
+    if not data_context_path.exists():
+        print(f"  AVERTISSEMENT : {data_context_path} introuvable, mise à jour ignorée.")
+        return
+
+    content = data_context_path.read_text(encoding="utf-8")
+    
+    # Remplacer les valeurs dans BUNDLE_MANIFEST
+    content = re.sub(
+        r'updated_at:\s*"[^"]*"',
+        f'updated_at: "{update_date_str}"',
+        content,
+    )
+    content = re.sub(
+        r'products_count:\s*\d+',
+        f'products_count: {products_count}',
+        content,
+    )
+    content = re.sub(
+        r'risks_count:\s*\d+',
+        f'risks_count: {risks_count}',
+        content,
+    )
+    
+    data_context_path.write_text(content, encoding="utf-8")
+    print(f"  data-context.tsx mis à jour : date={update_date_str}, produits={products_count}, risques={risks_count}")
+
 def main():
     args = parse_args()
     products_csv = Path(args.products)
@@ -286,6 +318,9 @@ def main():
 
     print("\n[4/4] Mise à jour de manifest.json (GitHub Pages)...")
     update_manifest(today, len(products), len(risks))
+    
+    print("\n[5/5] Mise à jour de lib/data-context.tsx (BUNDLE_MANIFEST)...")
+    update_bundle_manifest(DATA_CONTEXT, today, len(products), len(risks))
 
     # ── Résumé ───────────────────────────────────────────────────────────────
     print("\n" + "=" * 50)
@@ -294,8 +329,14 @@ def main():
     print(f"  AMM avec risques  : {len(risks):,}")
     print(f"  Date mise à jour  : {date.today().strftime('%d/%m/%Y')}")
     print("=" * 50)
+    print("\nFichiers mis à jour :")
+    print(f"  ✓ assets/data/products.json")
+    print(f"  ✓ assets/data/risk-phrases.json")
+    print(f"  ✓ lib/product-service.ts (DB_UPDATE_DATE)")
+    print(f"  ✓ manifest.json (GitHub Pages)")
+    print(f"  ✓ lib/data-context.tsx (BUNDLE_MANIFEST)")
     print("\nProchaines étapes :")
-    print("  1. Vérifiez les JSON dans assets/data/")
+    print("  1. Vérifiez les changements : git diff")
     print("  2. Lancez : git add -A && git commit -m 'Mise à jour E-PHY' && git push")
     print("  3. Nouveau build : eas build --platform all --profile production")
 
