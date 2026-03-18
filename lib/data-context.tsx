@@ -14,8 +14,8 @@ import bundleRiskPhrases from "@/assets/data/risk-phrases.json";
 const BUNDLE_MANIFEST = {
   version: "1.0",
   updated_at: "18/03/2026",
-  products_count: 15070,
-  risks_count: 2482,
+  products_count: 15064,
+  risks_count: 2479,
 };
 
 export type DataSource = "bundle" | "cache" | "remote";
