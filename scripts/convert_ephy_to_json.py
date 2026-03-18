@@ -36,6 +36,15 @@ DEFAULT_RISKS_CSV = PROJECT_ROOT / "produits_phrases_de_risque_utf8.csv"
 OUT_DIR = PROJECT_ROOT / "assets" / "data"
 PRODUCT_SERVICE = PROJECT_ROOT / "lib" / "product-service.ts"
 
+# Chemins possibles pour le dépôt phytocheck-data (manifest GitHub Pages)
+# Le script cherche automatiquement dans les emplacements courants
+MANIFEST_SEARCH_PATHS = [
+    PROJECT_ROOT.parent / "phytocheck-data" / "manifest.json",  # dossier frère
+    Path.home() / "phytocheck-data" / "manifest.json",           # home
+    Path("C:/phytocheck-data/manifest.json"),                     # Windows absolu
+    Path("D:/phytocheck-data/manifest.json"),                     # Windows D:
+]
+
 # ── Colonnes du CSV produits (produits_utf8.csv) ─────────────────────────────
 # Séparateur : point-virgule
 COL_AMM          = "numero AMM"
@@ -183,6 +192,37 @@ def convert_risks(csv_path):
     return risk_map
 
 
+def update_manifest(update_date_str, products_count, risks_count):
+    """Met à jour manifest.json dans le dépôt phytocheck-data si trouvé."""
+    manifest_path = None
+    for candidate in MANIFEST_SEARCH_PATHS:
+        if candidate.exists():
+            manifest_path = candidate
+            break
+
+    if manifest_path is None:
+        print(f"  INFO : manifest.json non trouvé dans les emplacements connus.")
+        print(f"  Mettez à jour manuellement : phytocheck-data/manifest.json")
+        return
+
+    try:
+        with open(manifest_path, encoding="utf-8") as f:
+            manifest = json.load(f)
+
+        manifest["updated_at"] = update_date_str
+        manifest["products_count"] = products_count
+        manifest["risks_count"] = risks_count
+
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+
+        print(f"  manifest.json mis à jour : {manifest_path}")
+        print(f"  → updated_at={update_date_str}, products={products_count}, risks={risks_count}")
+    except Exception as e:
+        print(f"  AVERTISSEMENT : impossible de mettre à jour manifest.json : {e}")
+
+
 def update_product_service(ts_path, update_date_str):
     """Met à jour DB_UPDATE_DATE dans product-service.ts."""
     if not ts_path.exists():
@@ -238,11 +278,14 @@ def main():
         json.dump(risks, f, ensure_ascii=False, separators=(",", ":"))
     print(f"  → Écrit : {risks_out}")
 
-    # ── Mise à jour product-service.ts ───────────────────────────────────────
+    # ── Mise à jour product-service.ts et manifest.json ────────────────────────
+    today = date.today().strftime("%d/%m/%Y")
     if not args.no_update_ts:
-        print("\n[3/3] Mise à jour de lib/product-service.ts...")
-        today = date.today().strftime("%d/%m/%Y")
+        print("\n[3/4] Mise à jour de lib/product-service.ts...")
         update_product_service(PRODUCT_SERVICE, today)
+
+    print("\n[4/4] Mise à jour de manifest.json (GitHub Pages)...")
+    update_manifest(today, len(products), len(risks))
 
     # ── Résumé ───────────────────────────────────────────────────────────────
     print("\n" + "=" * 50)
