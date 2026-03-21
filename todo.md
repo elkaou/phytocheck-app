@@ -487,3 +487,10 @@
 - [x] Préparer le build Android (synchronisation GitHub, vérification version, checklist pré-build)
 - [ ] Préparer et tester le build iOS pour App Store
 - [ ] Gérer le processus de soumission Google Play/App Store
+
+## Build 85 - Augmentation du nombre de recherches Freemium
+
+- [ ] Modifier FREE_SEARCH_LIMIT de 15 à 20 dans lib/store.ts (ligne 11)
+- [ ] Modifier le texte "15 max" en "20 max" dans app/(tabs)/premium.tsx (ligne 121)
+- [ ] Modifier le message d'alerte de 15 à 20 recherches dans app/(tabs)/search.tsx (ligne 90)
+- [ ] Tester avec npm run check (le compteur se mettra à jour automatiquement)
