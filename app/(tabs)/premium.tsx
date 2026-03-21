@@ -118,7 +118,7 @@ export default function PremiumScreen() {
           <View style={styles.comparisonCard}>
             <View style={styles.comparisonRow}>
               <Text style={styles.featureLabel}>Recherches</Text>
-              <Text style={styles.freeValue}>15 max</Text>
+              <Text style={styles.freeValue}>20 max</Text>
               <Text style={styles.premiumValue}>Illimité</Text>
             </View>
             <View style={styles.comparisonRow}>

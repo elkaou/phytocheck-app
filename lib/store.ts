@@ -8,7 +8,7 @@ const STORAGE_KEYS = {
 };
 
 // Freemium limits
-export const FREE_SEARCH_LIMIT = 15;
+export const FREE_SEARCH_LIMIT = 20;
 export const FREE_STOCK_LIMIT = 20;
 
 // Stock item (simplified product for storage)
