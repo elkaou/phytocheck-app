@@ -87,7 +87,7 @@ export default function SearchScreen() {
     if (!canDo) {
       Alert.alert(
         "Limite atteinte",
-        "Vous avez atteint la limite de 15 recherches gratuites. Passez à Premium pour des recherches illimitées.",
+        "Vous avez atteint la limite de 20 recherches gratuites. Passez à Premium pour des recherches illimitées.",
         [
           { text: "Annuler", style: "cancel" },
           {
