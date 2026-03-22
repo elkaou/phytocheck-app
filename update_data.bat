@@ -26,6 +26,7 @@ echo   Source : data.gouv.fr (ANSES - mise a jour hebdomadaire)
 echo ============================================================
 echo.
 
+
 :: Aller dans le dossier du script (racine du projet phytocheck-app)
 cd /d "%~dp0"
 
