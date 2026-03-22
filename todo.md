@@ -490,7 +490,16 @@
 
 ## Build 85 - Augmentation du nombre de recherches Freemium
 
-- [ ] Modifier FREE_SEARCH_LIMIT de 15 à 20 dans lib/store.ts (ligne 11)
-- [ ] Modifier le texte "15 max" en "20 max" dans app/(tabs)/premium.tsx (ligne 121)
-- [ ] Modifier le message d'alerte de 15 à 20 recherches dans app/(tabs)/search.tsx (ligne 90)
-- [ ] Tester avec npm run check (le compteur se mettra à jour automatiquement)
+- [x] Modifier FREE_SEARCH_LIMIT de 15 à 20 dans lib/store.ts (ligne 11)
+- [x] Modifier le texte "15 max" en "20 max" dans app/(tabs)/premium.tsx (ligne 121)
+- [x] Modifier le message d'alerte de 15 à 20 recherches dans app/(tabs)/search.tsx (ligne 90)
+- [x] Tester avec npm run check (le compteur se mettra à jour automatiquement)
+
+## Build 86 - Passage à version 1.0.3 iOS et builds finaux
+
+- [x] Modifier version de 1.0.2 à 1.0.3 dans app.config.ts
+- [x] Pousser sur GitHub
+- [ ] Build iOS 1.0.3 en cours sur EAS (~20-30 min)
+- [ ] Build Android versionCode 75 (à lancer si pas déjà fait)
+- [ ] Tester APK Android (20 recherches, date 18/03/2026)
+- [ ] Tester IPA iOS via TestFlight (20 recherches, date 18/03/2026)
