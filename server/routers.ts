@@ -7,7 +7,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { storagePut } from "./storage";
 import { syncDevice, incrementDeviceSearch } from "./db";
 
-const FREE_SEARCH_LIMIT = 15;
+const FREE_SEARCH_LIMIT = 20;
 
 export const appRouter = router({
   system: systemRouter,
