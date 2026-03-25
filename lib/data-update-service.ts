@@ -55,12 +55,13 @@ async function checkForUpdate(): Promise<DataManifest | null> {
 
     // Comparer avec la version en cache
     const cachedVersion = await AsyncStorage.getItem(CACHE_KEYS.REMOTE_VERSION);
-    if (cachedVersion === manifest.updated_at) {
+    if (cachedVersion && cachedVersion === manifest.updated_at) {
       // Même version, mettre à jour le timestamp de vérification
       await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
       return null;
     }
 
+    // Nouvelle version disponible ou première exécution
     return manifest;
   } catch {
     return null; // Pas de connexion ou erreur réseau
