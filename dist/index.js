@@ -877,7 +877,7 @@ var systemRouter = router({
 });
 
 // server/routers.ts
-var FREE_SEARCH_LIMIT = 15;
+var FREE_SEARCH_LIMIT = 20;
 var appRouter = router({
   system: systemRouter,
   auth: router({
