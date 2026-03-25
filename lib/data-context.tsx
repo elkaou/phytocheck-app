@@ -13,9 +13,9 @@ import bundleRiskPhrases from "@/assets/data/risk-phrases.json";
 // Manifest bundle (mis à jour automatiquement par le script Python)
 const BUNDLE_MANIFEST = {
   version: "1.0",
-  updated_at: "18/03/2026",
-  products_count: 15064,
-  risks_count: 2479,
+  updated_at: "25/03/2026",
+  products_count: 15076,
+  risks_count: 2482,
 };
 
 export type DataSource = "bundle" | "cache" | "remote";
