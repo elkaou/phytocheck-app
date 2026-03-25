@@ -14,8 +14,8 @@ const CACHE_KEYS = {
   REMOTE_VERSION: "@phytocheck/remote_version",
 };
 
-// Intervalle minimum entre deux vérifications (24h en ms)
-const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+// Intervalle minimum entre deux vérifications (1h en ms)
+const CHECK_INTERVAL_MS = 1 * 60 * 60 * 1000;
 
 export interface DataManifest {
   version: string;
@@ -35,11 +35,16 @@ export interface RemoteDataState {
  * Vérifie si une mise à jour est disponible sur GitHub Pages.
  * Retourne le manifest si une mise à jour est disponible, null sinon.
  */
-async function checkForUpdate(): Promise<DataManifest | null> {
+async function checkForUpdate(bundleDate?: string): Promise<DataManifest | null> {
   try {
     // Vérifier si on a déjà vérifié récemment
     const lastCheck = await AsyncStorage.getItem(CACHE_KEYS.LAST_UPDATE);
-    if (lastCheck) {
+    const cachedVersion = await AsyncStorage.getItem(CACHE_KEYS.REMOTE_VERSION);
+    
+    // Si on a un cache ET qu'il est plus récent que le bundle, vérifier l'intervalle
+    // Sinon, toujours vérifier (le bundle a peut-être été mis à jour)
+    const cacheIsUpToDate = cachedVersion && bundleDate && cachedVersion === bundleDate;
+    if (lastCheck && cacheIsUpToDate) {
       const elapsed = Date.now() - parseInt(lastCheck, 10);
       if (elapsed < CHECK_INTERVAL_MS) {
         return null; // Pas besoin de revérifier
@@ -54,7 +59,6 @@ async function checkForUpdate(): Promise<DataManifest | null> {
     const manifest: DataManifest = await response.json();
 
     // Comparer avec la version en cache
-    const cachedVersion = await AsyncStorage.getItem(CACHE_KEYS.REMOTE_VERSION);
     if (cachedVersion && cachedVersion === manifest.updated_at) {
       // Même version, mettre à jour le timestamp de vérification
       await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
@@ -134,12 +138,13 @@ export async function loadCachedData(): Promise<{
  * Appelle onUpdate si de nouvelles données ont été téléchargées.
  */
 export function checkAndUpdateInBackground(
-  onUpdate?: (manifest: DataManifest) => void
+  onUpdate?: (manifest: DataManifest) => void,
+  bundleDate?: string
 ): void {
   // Exécution asynchrone sans await pour ne pas bloquer
   (async () => {
     try {
-      const manifest = await checkForUpdate();
+      const manifest = await checkForUpdate(bundleDate);
       if (!manifest) return;
 
       const success = await downloadAndCache(manifest);

@@ -78,7 +78,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setIsUpdating(true);
     checkAndUpdateInBackground((manifest) => {
       applyRemoteData(manifest);
-    });
+    }, BUNDLE_MANIFEST.updated_at);
 
     // Timeout pour arrêter le spinner si pas de connexion
     const timeout = setTimeout(() => setIsUpdating(false), 10000);
