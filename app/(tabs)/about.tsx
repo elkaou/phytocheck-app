@@ -64,7 +64,7 @@ export default function AboutScreen() {
           <View style={[styles.card, { marginTop: 24 }]}>
             <Text style={styles.dbTitle}>Base de données</Text>
             <Text style={styles.dbText}>
-              Les données de produits proviennent de la base E-Phy officielle,
+              Les données de produits proviennent de la base E-Phy-Anses officielle,
               mise à jour le {updateDate}.
             </Text>
             <Text style={styles.dbText}>
