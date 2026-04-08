@@ -257,14 +257,15 @@ def convert_pcp(csv_path, ephy_products):
             date_autorisation = ""
 
         # Construire les noms secondaires
+        # On met uniquement le produit de référence français en nom secondaire,
+        # PAS les noms des produits importés étrangers (ex: BELKAR importé d'Allemagne
+        # ne doit pas apparaître comme nom secondaire de HALOPI)
         noms_secondaires_parts = []
-        for nom in sorted(entry["noms_importes"]):
-            if nom.upper() != entry["nom"].upper():
-                noms_secondaires_parts.append(nom)
         ref_nom = entry.get("ref_nom", "")
         if ref_nom and ref_nom.upper() != entry["nom"].upper():
-            if ref_nom not in noms_secondaires_parts:
-                noms_secondaires_parts.append(ref_nom)
+            noms_secondaires_parts.append(ref_nom)
+        # Note: les noms importés (entry["noms_importes"]) sont volontairement
+        # exclus des noms secondaires car ce sont des noms de produits étrangers
         noms_secondaires = " | ".join(noms_secondaires_parts)
 
         # Normaliser l'état

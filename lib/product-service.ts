@@ -132,10 +132,13 @@ function _searchProducts(
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[®™©℠]/g, "");
 
-  const results: ClassifiedProduct[] = [];
+  // Deux listes : priorité haute (nom principal / AMM) et basse (nom secondaire)
+  const primaryResults: ClassifiedProduct[] = [];
+  const secondaryResults: ClassifiedProduct[] = [];
 
   for (const product of dataProducts) {
-    if (results.length >= limit) break;
+    // Arrêter si on a déjà assez de résultats au total
+    if (primaryResults.length + secondaryResults.length >= limit) break;
 
     const normalizedName = product.nom
       .toLowerCase()
@@ -149,36 +152,30 @@ function _searchProducts(
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[®™©℠]/g, "");
 
-    let matched = false;
-    let matchedSecondaryName: string | undefined;
-
     if (normalizedName.includes(normalizedQuery) || normalizedAMM.includes(normalizedQuery)) {
-      matched = true;
+      // Match par nom principal ou AMM → priorité haute
+      primaryResults.push(classifyProductWithData(product, dataRiskPhrases));
     } else if (normalizedSecondary.includes(normalizedQuery)) {
-      matched = true;
-      // Find which secondary name matched
+      // Match par nom secondaire → priorité basse
+      const classified = classifyProductWithData(product, dataRiskPhrases);
+      // Trouver quel nom secondaire a matché
       if (product.nomsSecondaires) {
         const secondaryNames = product.nomsSecondaires.split(" | ");
         for (const sn of secondaryNames) {
           const normalizedSN = sn.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[®™©℠]/g, "");
           if (normalizedSN.includes(normalizedQuery)) {
-            matchedSecondaryName = sn.trim();
+            classified.matchedName = sn.trim();
             break;
           }
         }
       }
-    }
-
-    if (matched) {
-      const classified = classifyProductWithData(product, dataRiskPhrases);
-      if (matchedSecondaryName) {
-        classified.matchedName = matchedSecondaryName;
-      }
-      results.push(classified);
+      secondaryResults.push(classified);
     }
   }
 
-  return results;
+  // Fusionner : d'abord les résultats par nom principal, puis par nom secondaire
+  const merged = [...primaryResults, ...secondaryResults];
+  return merged.slice(0, limit);
 }
 
 // Classify avec données dynamiques
