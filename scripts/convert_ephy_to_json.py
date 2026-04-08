@@ -3,20 +3,24 @@
 convert_ephy_to_json.py
 =======================
 Convertit les deux fichiers CSV E-PHY en JSON pour l'application PhytoCheck.
+Intègre également les produits PCP (Permis de Commerce Parallèle) si le CSV est présent.
 
 Usage :
-    python scripts/convert_ephy_to_json.py [--products CSV] [--risks CSV] [--out-dir DIR]
+    python scripts/convert_ephy_to_json.py [--products CSV] [--risks CSV] [--pcp CSV] [--out-dir DIR]
 
 Fichiers CSV attendus (téléchargeables sur https://ephy.anses.fr) :
     - Produits phytopharmaceutiques : "produits_utf8.csv"
     - Phrases de risque :             "produits_phrases_de_risque_utf8.csv"
+    - Permis de commerce parallèle :  "permis_de_commerce_parallele_utf8.csv" (optionnel)
 
 Sorties générées dans assets/data/ :
     - products.json
     - risk-phrases.json
 
-Le script met également à jour automatiquement DB_UPDATE_DATE
-dans lib/product-service.ts avec la date du jour.
+Le script met également à jour automatiquement :
+    - DB_UPDATE_DATE dans lib/product-service.ts
+    - BUNDLE_MANIFEST dans lib/data-context.tsx
+    - manifest.json dans le dépôt phytocheck-data (GitHub Pages)
 """
 
 import csv
@@ -33,6 +37,7 @@ SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 DEFAULT_PRODUCTS_CSV = PROJECT_ROOT / "produits_utf8.csv"
 DEFAULT_RISKS_CSV = PROJECT_ROOT / "produits_phrases_de_risque_utf8.csv"
+DEFAULT_PCP_CSV = PROJECT_ROOT / "permis_de_commerce_parallele_utf8.csv"
 OUT_DIR = PROJECT_ROOT / "assets" / "data"
 PRODUCT_SERVICE = PROJECT_ROOT / "lib" / "product-service.ts"
 
@@ -82,10 +87,14 @@ def parse_args():
                         help=f"Chemin vers le CSV produits (défaut: {DEFAULT_PRODUCTS_CSV.name})")
     parser.add_argument("--risks", default=str(DEFAULT_RISKS_CSV),
                         help=f"Chemin vers le CSV risques (défaut: {DEFAULT_RISKS_CSV.name})")
+    parser.add_argument("--pcp", default=str(DEFAULT_PCP_CSV),
+                        help=f"Chemin vers le CSV PCP (défaut: {DEFAULT_PCP_CSV.name})")
     parser.add_argument("--out-dir", default=str(OUT_DIR),
                         help=f"Dossier de sortie des JSON (défaut: {OUT_DIR})")
     parser.add_argument("--no-update-ts", action="store_true",
                         help="Ne pas mettre à jour product-service.ts automatiquement")
+    parser.add_argument("--no-pcp", action="store_true",
+                        help="Ne pas intégrer les produits PCP même si le CSV est présent")
     return parser.parse_args()
 
 
@@ -121,6 +130,14 @@ def get_etat(row):
         if "etat" in normalized and "autorisation" in normalized:
             return row[key].strip()
     return ""
+
+
+def find_pcp_etat_column(fieldnames):
+    """Trouver la colonne d'état d'autorisation dans le CSV PCP."""
+    for col in fieldnames:
+        if "tat" in col.lower() and "autor" in col.lower():
+            return col
+    return None
 
 
 def convert_products(csv_path):
@@ -162,6 +179,117 @@ def convert_products(csv_path):
             })
 
     return products
+
+
+def convert_pcp(csv_path, ephy_products):
+    """
+    Lit le CSV PCP (Permis de Commerce Parallèle) et retourne une liste de dicts.
+    Les infos (substances, fonctions, formulation) sont récupérées depuis le produit
+    de référence français dans ephy_products.
+    """
+    print(f"  Fichier : {csv_path}")
+
+    # Index des produits E-Phy par AMM
+    amm_index = {p["amm"]: p for p in ephy_products}
+    existing_amms = set(amm_index.keys())
+
+    # Lire et regrouper par N° Permis (un produit PCP peut avoir plusieurs lignes)
+    pcp_by_permis = {}
+    total_rows = 0
+
+    with open(csv_path, encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f, delimiter=";")
+        etat_col = find_pcp_etat_column(reader.fieldnames or [])
+        if not etat_col:
+            print("  ERREUR: Colonne 'Etat d'autorisation' non trouvée dans le CSV PCP !")
+            return []
+
+        for row in reader:
+            total_rows += 1
+            permis = row.get("N° Permis", "").strip()
+            if not permis:
+                continue
+
+            if permis not in pcp_by_permis:
+                pcp_by_permis[permis] = {
+                    "nom": row.get("Nom du produit", "").strip(),
+                    "permis": permis,
+                    "etat": row.get(etat_col, "").strip(),
+                    "titulaire": row.get("Détenteur PCP", "").strip(),
+                    "ref_nom": row.get("Produit de référence français", "").strip(),
+                    "ref_amm": row.get("N° AMM de référence français", "").strip(),
+                    "noms_importes": set(),
+                }
+
+            nom_importe = row.get("Nom du produit importé", "").strip()
+            if nom_importe:
+                pcp_by_permis[permis]["noms_importes"].add(nom_importe)
+
+    print(f"  {total_rows} lignes CSV, {len(pcp_by_permis)} produits PCP uniques")
+
+    # Construire les produits PCP
+    pcp_products = []
+    with_ref = 0
+    no_ref = 0
+    skipped = 0
+
+    for permis, entry in pcp_by_permis.items():
+        # Ne pas ajouter si le permis existe déjà comme AMM dans E-Phy
+        if permis in existing_amms:
+            skipped += 1
+            continue
+
+        # Chercher le produit de référence
+        ref_amm = entry.get("ref_amm", "")
+        ref_product = amm_index.get(ref_amm)
+
+        if ref_product:
+            with_ref += 1
+            substances = ref_product.get("substancesActives", "")
+            fonctions = ref_product.get("fonctions", "")
+            formulation = ref_product.get("formulation", "")
+            date_autorisation = ref_product.get("dateAutorisation", "")
+        else:
+            no_ref += 1
+            substances = ""
+            fonctions = ""
+            formulation = ""
+            date_autorisation = ""
+
+        # Construire les noms secondaires
+        noms_secondaires_parts = []
+        for nom in sorted(entry["noms_importes"]):
+            if nom.upper() != entry["nom"].upper():
+                noms_secondaires_parts.append(nom)
+        ref_nom = entry.get("ref_nom", "")
+        if ref_nom and ref_nom.upper() != entry["nom"].upper():
+            if ref_nom not in noms_secondaires_parts:
+                noms_secondaires_parts.append(ref_nom)
+        noms_secondaires = " | ".join(noms_secondaires_parts)
+
+        # Normaliser l'état
+        etat = entry["etat"].upper()
+        if "RETIR" in etat:
+            etat = "RETIRE"
+        elif etat:
+            etat = "AUTORISE"
+
+        pcp_products.append({
+            "amm": permis,
+            "nom": entry["nom"],
+            "nomsSecondaires": noms_secondaires,
+            "titulaire": entry["titulaire"],
+            "gammeUsage": "Professionnel",
+            "substancesActives": substances,
+            "fonctions": fonctions,
+            "formulation": formulation,
+            "etat": etat,
+            "dateRetrait": "",
+            "dateAutorisation": date_autorisation,
+        })
+
+    print(f"  → {len(pcp_products)} produits PCP ajoutés (ref trouvée: {with_ref}, sans ref: {no_ref}, ignorés: {skipped})")
+    return pcp_products
 
 
 def convert_risks(csv_path):
@@ -275,6 +403,7 @@ def main():
     args = parse_args()
     products_csv = Path(args.products)
     risks_csv = Path(args.risks)
+    pcp_csv = Path(args.pcp)
     out_dir = Path(args.out_dir)
 
     # Vérifications
@@ -290,18 +419,33 @@ def main():
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── Conversion produits ──────────────────────────────────────────────────
-    print("\n[1/3] Conversion du CSV produits...")
+    # ── Conversion produits E-Phy ────────────────────────────────────────────
+    print("\n[1/5] Conversion du CSV produits E-Phy...")
     products = convert_products(products_csv)
-    print(f"  → {len(products):,} produits convertis")
+    print(f"  → {len(products):,} produits E-Phy convertis")
 
+    # ── Intégration PCP ──────────────────────────────────────────────────────
+    pcp_count = 0
+    if not args.no_pcp and pcp_csv.exists():
+        print(f"\n[2/5] Intégration des produits PCP (Permis de Commerce Parallèle)...")
+        pcp_products = convert_pcp(pcp_csv, products)
+        pcp_count = len(pcp_products)
+        products.extend(pcp_products)
+        print(f"  → Total après intégration PCP : {len(products):,} produits")
+    elif not args.no_pcp:
+        print(f"\n[2/5] CSV PCP non trouvé ({pcp_csv.name}), étape ignorée.")
+        print(f"  Pour inclure les PCP, placez '{pcp_csv.name}' dans : {pcp_csv.parent}")
+    else:
+        print(f"\n[2/5] Intégration PCP désactivée (--no-pcp).")
+
+    # ── Sauvegarde products.json ─────────────────────────────────────────────
     products_out = out_dir / "products.json"
     with open(products_out, "w", encoding="utf-8") as f:
         json.dump(products, f, ensure_ascii=False, separators=(",", ":"))
     print(f"  → Écrit : {products_out}")
 
     # ── Conversion risques ───────────────────────────────────────────────────
-    print("\n[2/3] Conversion du CSV phrases de risque...")
+    print("\n[3/5] Conversion du CSV phrases de risque...")
     risks = convert_risks(risks_csv)
     print(f"  → {len(risks):,} AMM avec phrases de risque")
 
@@ -313,19 +457,20 @@ def main():
     # ── Mise à jour product-service.ts et manifest.json ────────────────────────
     today = date.today().strftime("%d/%m/%Y")
     if not args.no_update_ts:
-        print("\n[3/4] Mise à jour de lib/product-service.ts...")
+        print("\n[4/5] Mise à jour de lib/product-service.ts...")
         update_product_service(PRODUCT_SERVICE, today)
 
-    print("\n[4/4] Mise à jour de manifest.json (GitHub Pages)...")
+    print("\n[5/5] Mise à jour de manifest.json et data-context.tsx...")
     update_manifest(today, len(products), len(risks))
-    
-    print("\n[5/5] Mise à jour de lib/data-context.tsx (BUNDLE_MANIFEST)...")
     update_bundle_manifest(DATA_CONTEXT, today, len(products), len(risks))
 
     # ── Résumé ───────────────────────────────────────────────────────────────
     print("\n" + "=" * 50)
     print("CONVERSION TERMINÉE")
-    print(f"  Produits          : {len(products):,}")
+    print(f"  Produits E-Phy    : {len(products) - pcp_count:,}")
+    if pcp_count > 0:
+        print(f"  Produits PCP      : {pcp_count:,}")
+    print(f"  Total produits    : {len(products):,}")
     print(f"  AMM avec risques  : {len(risks):,}")
     print(f"  Date mise à jour  : {date.today().strftime('%d/%m/%Y')}")
     print("=" * 50)
