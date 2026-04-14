@@ -137,20 +137,25 @@ export function searchBySubstance(
     results.push(classified);
 
     if (product.nomsSecondaires && product.nomsSecondaires.trim()) {
-      // Une carte supplémentaire par nom secondaire, avec "(Nom principal : X)" en dessous
+      // Une carte supplémentaire par nom secondaire :
+      // matchedName = nom secondaire (affiché en noir comme titre de la carte)
+      // nom = nom principal (affiché en bleu en dessous)
       const secondaryNames = product.nomsSecondaires.split(" | ").map(s => s.trim()).filter(Boolean);
       for (const sn of secondaryNames) {
         results.push({
           ...classified,
-          nom: sn,
-          matchedName: product.nom,
+          matchedName: sn,
         });
       }
     }
   }
 
-  // Trier par ordre alphabétique
-  results.sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }));
+  // Trier par ordre alphabétique sur le nom affiché (matchedName si présent, sinon nom)
+  results.sort((a, b) => {
+    const nameA = a.matchedName || a.nom;
+    const nameB = b.matchedName || b.nom;
+    return nameA.localeCompare(nameB, "fr", { sensitivity: "base" });
+  });
 
   return results.slice(0, limit);
 }
