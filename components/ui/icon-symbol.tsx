@@ -28,8 +28,10 @@ const MAPPING = {
   "trash.fill": "delete",
   "xmark.circle.fill": "cancel",
   "checkmark.circle.fill": "check-circle",
+  "circle": "radio-button-unchecked",
   "exclamationmark.triangle.fill": "warning",
   "doc.text.fill": "description",
+  "leaf.fill": "eco",
 } as IconMapping;
 
 /**

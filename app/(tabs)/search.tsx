@@ -352,20 +352,26 @@ export default function SearchScreen() {
                 </Text>
                 <Pressable
                     style={({ pressed }) => ({
-                      backgroundColor: filterHomologues ? "#2E7D32" : "#E8F5E9",
+                      backgroundColor: filterHomologues ? "#2E7D32" : "#FFFFFF",
                       borderRadius: 20,
                       paddingHorizontal: 12,
                       paddingVertical: 6,
                       flexDirection: "row" as const,
                       alignItems: "center" as const,
-                      gap: 4,
+                      gap: 5,
                       opacity: pressed ? 0.8 : 1,
+                      borderWidth: 1.5,
+                      borderColor: "#2E7D32",
                     })}
                     onPress={() => setFilterHomologues(f => !f)}
                   >
-                    <IconSymbol name="checkmark.circle.fill" size={16} color={filterHomologues ? "#FFFFFF" : "#2E7D32"} />
+                    <IconSymbol
+                      name={filterHomologues ? "checkmark.circle.fill" : "circle"}
+                      size={16}
+                      color={filterHomologues ? "#FFFFFF" : "#2E7D32"}
+                    />
                     <Text style={{ fontSize: 12, fontWeight: "600", color: filterHomologues ? "#FFFFFF" : "#2E7D32" }}>
-                      Homologués
+                      {filterHomologues ? "Homologués \u2713" : "Homologués"}
                     </Text>
                   </Pressable>
               </View>
