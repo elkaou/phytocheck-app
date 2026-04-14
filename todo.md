@@ -503,3 +503,36 @@
 - [ ] Build Android versionCode 75 (à lancer si pas déjà fait)
 - [ ] Tester APK Android (20 recherches, date 18/03/2026)
 - [ ] Tester IPA iOS via TestFlight (20 recherches, date 18/03/2026)
+
+## Build 88 - Intégration des produits PCP (Permis de Commerce Parallèle)
+
+- [x] Créer un script pour intégrer les 2055 produits PCP dans products.json
+- [x] Récupérer substances actives, fonctions, formulation depuis le produit de référence français
+- [x] Mettre à jour le script convert_ephy_to_json.py pour inclure les PCP automatiquement
+- [x] Mettre à jour BUNDLE_MANIFEST (data-context.tsx) avec le nouveau nombre de produits
+- [x] Pousser sur GitHub et synchroniser
+
+## Build 89 - Fix mise à jour dynamique des données sur mobile
+
+- [x] Corriger le cache CDN GitHub Pages qui empêche la détection des nouvelles données
+- [x] Ajouter un paramètre anti-cache (?t=timestamp) aux URLs de fetch
+- [x] Améliorer la logique de comparaison de version pour forcer la vérification
+- [x] Tester et sauvegarder le checkpoint
+
+## Build 89b - Mise à jour version
+
+- [x] Changer le numéro de version à 1.0.4 dans app.config.ts (version 1.0.4, versionCode 75, buildNumber 76)
+
+## Build 90 - Fix doublons dans les résultats de recherche
+
+- [x] Analyser pourquoi "Belkar" apparaît ~19 fois dans les résultats (19 produits différents avec BELKAR en nom secondaire)
+- [x] Corriger la logique de recherche : prioriser nom principal/AMM avant noms secondaires
+- [x] Tester et sauvegarder (5 tests passés)
+
+## Build 91 - Fix noms secondaires PCP (produits importés étrangers)
+
+- [x] Analyser les produits PCP : les noms de produits importés étrangers (ex: BELKAR) étaient ajoutés en noms secondaires de tous les PCP
+- [x] Corriger le script convert_ephy_to_json.py : seul le produit de référence français en nom secondaire
+- [x] Corriger products.json : 1150 produits PCP nettoyés (noms importés supprimés, ref français conservé)
+- [x] Belkar passe de 19 résultats à 2 (MOZZAR avec BELKAR en nom secondaire E-Phy + BELKAR PIMP)
+- [x] Tous les tests passent (50/50)

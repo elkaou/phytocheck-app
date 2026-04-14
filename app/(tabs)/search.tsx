@@ -123,40 +123,41 @@ export default function SearchScreen() {
           })
         }
       >
-        {/* Ligne 1 : Nom du produit sur toute la largeur */}
-        <Text style={styles.resultName}>
-          {item.matchedName || item.nom}
-        </Text>
-        {/* Ligne 2 : Nom principal si résultat secondaire, sur toute la largeur */}
-        {item.matchedName && (
-          <Text style={styles.resultSecondary}>
-            (Nom principal : {item.nom})
+        <View style={styles.resultCardContent}>
+          {item.matchedName ? (
+            <>
+              <Text style={styles.resultName} numberOfLines={1}>
+                {item.matchedName}
+              </Text>
+              <Text style={styles.resultSecondary} numberOfLines={1}>
+                (Nom principal : {item.nom})
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.resultName} numberOfLines={1}>
+              {item.nom}
+            </Text>
+          )}
+          <Text style={styles.resultAMM}>AMM : {item.amm}</Text>
+          <Text style={styles.resultInfo} numberOfLines={1}>
+            {item.titulaire}
           </Text>
-        )}
-        {/* Ligne 3-4 : AMM/titulaire à gauche, badge à droite */}
-        <View style={styles.resultBottomRow}>
-          <View style={styles.resultCardContent}>
-            <Text style={styles.resultAMM}>AMM : {item.amm}</Text>
-            <Text style={styles.resultInfo} numberOfLines={1}>
-              {item.titulaire}
-            </Text>
-          </View>
-          <View
+        </View>
+        <View
+          style={[
+            styles.badge,
+            { backgroundColor: getClassificationBgColor(item.classification) },
+          ]}
+        >
+          <Text
             style={[
-              styles.badge,
-              { backgroundColor: getClassificationBgColor(item.classification) },
+              styles.badgeText,
+              { color: getClassificationColor(item.classification) },
             ]}
+            numberOfLines={2}
           >
-            <Text
-              style={[
-                styles.badgeText,
-                { color: getClassificationColor(item.classification) },
-              ]}
-              numberOfLines={2}
-            >
-              {getClassificationLabel(item.classification)}
-            </Text>
-          </View>
+            {getClassificationLabel(item.classification)}
+          </Text>
         </View>
       </Pressable>
     ),
@@ -412,29 +413,28 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 10,
-    flexDirection: "column",
-  },
-  resultBottomRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 6,
   },
   resultCardContent: {
     flex: 1,
     marginRight: 12,
+    minWidth: 100, // Prevent vertical text wrapping for short names
     flexDirection: "column",
   },
   resultName: {
     fontSize: 16,
     fontWeight: "600",
     color: "#1A1A1A",
+    flexShrink: 0,
+    flexWrap: "nowrap",
   },
   resultSecondary: {
     fontSize: 12,
     color: "#0a7ea5",
     fontStyle: "italic",
-    marginTop: 2,
+    marginTop: 1,
   },
   resultAMM: {
     fontSize: 13,

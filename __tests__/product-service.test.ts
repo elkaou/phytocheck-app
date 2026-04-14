@@ -13,13 +13,13 @@ describe("product-service", () => {
   describe("TOTAL_PRODUCTS", () => {
     it("should have loaded products from JSON", () => {
       expect(TOTAL_PRODUCTS).toBeGreaterThan(0);
-      expect(TOTAL_PRODUCTS).toBe(15052);
+      expect(TOTAL_PRODUCTS).toBe(17131);
     });
   });
 
   describe("DB_UPDATE_DATE", () => {
     it("should return the correct date", () => {
-      expect(DB_UPDATE_DATE).toBe("19/02/2026");
+      expect(DB_UPDATE_DATE).toBe("08/04/2026");
     });
   });
 

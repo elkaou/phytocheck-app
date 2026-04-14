@@ -59,8 +59,8 @@ beforeEach(() => {
 
 describe("store", () => {
   describe("FREE_SEARCH_LIMIT", () => {
-    it("should be 15", () => {
-      expect(FREE_SEARCH_LIMIT).toBe(15);
+    it("should be 20", () => {
+      expect(FREE_SEARCH_LIMIT).toBe(20);
     });
   });
 
