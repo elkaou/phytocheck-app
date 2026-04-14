@@ -65,8 +65,7 @@ export default function SearchScreen() {
         );
       }, 200);
     }, 100);
-  }, []);
-
+   }, [dynamicProducts, dynamicRiskPhrases]);
   // Auto-search when coming from scan with q parameter
   useEffect(() => {
     if (params.q && !autoSearchDone) {
