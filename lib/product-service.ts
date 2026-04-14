@@ -105,6 +105,56 @@ export function classifyProduct(product: Product): ClassifiedProduct {
   };
 }
 
+// Search products by active substance (avec données dynamiques optionnelles)
+// Génère une carte par nom secondaire : si un produit a 2 noms secondaires, 2 cartes sont créées
+export function searchBySubstance(
+  query: string,
+  limit = 10000,
+  dynamicProducts?: Product[],
+  dynamicRiskPhrases?: Record<string, RiskPhrase[]>
+): ClassifiedProduct[] {
+  if (!query || query.trim().length < 2) return [];
+  const dataProducts = dynamicProducts ?? products;
+  const dataRiskPhrases = dynamicRiskPhrases ?? riskPhrases;
+
+  const normalizedQuery = query
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  const results: ClassifiedProduct[] = [];
+  for (const product of dataProducts) {
+    const normalizedSubstances = product.substancesActives
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    if (!normalizedSubstances.includes(normalizedQuery)) continue;
+
+    const classified = classifyProductWithData(product, dataRiskPhrases);
+
+    // Toujours ajouter une carte pour le nom principal (sans matchedName)
+    results.push(classified);
+
+    if (product.nomsSecondaires && product.nomsSecondaires.trim()) {
+      // Une carte supplémentaire par nom secondaire, avec "(Nom principal : X)" en dessous
+      const secondaryNames = product.nomsSecondaires.split(" | ").map(s => s.trim()).filter(Boolean);
+      for (const sn of secondaryNames) {
+        results.push({
+          ...classified,
+          nom: sn,
+          matchedName: product.nom,
+        });
+      }
+    }
+  }
+
+  // Trier par ordre alphabétique
+  results.sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }));
+
+  return results.slice(0, limit);
+}
+
 // Search products by name or AMM (avec données dynamiques optionnelles)
 export function searchProducts(
   query: string,

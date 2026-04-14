@@ -16,6 +16,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import {
   searchProducts,
+  searchBySubstance,
   ClassifiedProduct,
   getClassificationLabel,
   getClassificationColor,
@@ -31,17 +32,23 @@ export default function SearchScreen() {
   const { products: dynamicProducts, riskPhrases: dynamicRiskPhrases } = useData();
 
   const [query, setQuery] = useState(params.q || "");
+  const [substanceQuery, setSubstanceQuery] = useState("");
   const [autoSearchDone, setAutoSearchDone] = useState(false);
   const [results, setResults] = useState<ClassifiedProduct[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchType, setSearchType] = useState<"name" | "substance">("name");
+  const [filterHomologues, setFilterHomologues] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const resultsRef = useRef<View>(null);
 
-  const doSearch = useCallback((searchQuery: string) => {
+  const doSearch = useCallback((searchQuery: string, type: "name" | "substance" = "name") => {
     setIsSearching(true);
+    setSearchType(type);
     setTimeout(() => {
-      const found = searchProducts(searchQuery, 50, dynamicProducts, dynamicRiskPhrases);
+      const found = type === "substance"
+        ? searchBySubstance(searchQuery, 10000, dynamicProducts, dynamicRiskPhrases)
+        : searchProducts(searchQuery, 50, dynamicProducts, dynamicRiskPhrases);
       setResults(found);
       setHasSearched(true);
       setIsSearching(false);
@@ -73,6 +80,7 @@ export default function SearchScreen() {
     useCallback(() => {
       if (!params.q) {
         setQuery("");
+        setSubstanceQuery("");
         setResults([]);
         setHasSearched(false);
       }
@@ -99,8 +107,30 @@ export default function SearchScreen() {
       return;
     }
 
-    doSearch(query.trim());
+    doSearch(query.trim(), "name");
   }, [query, performSearch, router, doSearch]);
+
+  const handleSubstanceSearch = useCallback(async () => {
+    if (!substanceQuery.trim()) return;
+
+    const canDo = await performSearch();
+    if (!canDo) {
+      Alert.alert(
+        "Limite atteinte",
+        "Vous avez atteint la limite de 20 recherches gratuites. Passez à Premium pour des recherches illimitées.",
+        [
+          { text: "Annuler", style: "cancel" },
+          {
+            text: "Voir Premium",
+            onPress: () => router.push("/premium"),
+          },
+        ]
+      );
+      return;
+    }
+
+    doSearch(substanceQuery.trim(), "substance");
+  }, [substanceQuery, performSearch, router, doSearch]);
 
   const handleScan = useCallback(() => {
     router.push("/scan" as any);
@@ -123,41 +153,40 @@ export default function SearchScreen() {
           })
         }
       >
-        <View style={styles.resultCardContent}>
-          {item.matchedName ? (
-            <>
-              <Text style={styles.resultName} numberOfLines={1}>
-                {item.matchedName}
-              </Text>
-              <Text style={styles.resultSecondary} numberOfLines={1}>
-                (Nom principal : {item.nom})
-              </Text>
-            </>
-          ) : (
-            <Text style={styles.resultName} numberOfLines={1}>
-              {item.nom}
+        {/* Ligne 1 : Nom du produit sur toute la largeur */}
+        <Text style={styles.resultName}>
+          {item.matchedName || item.nom}
+        </Text>
+        {/* Ligne 2 : Nom principal si résultat secondaire, sur toute la largeur */}
+        {item.matchedName && (
+          <Text style={styles.resultSecondary}>
+            (Nom principal : {item.nom})
+          </Text>
+        )}
+        {/* Ligne 3-4 : AMM/titulaire à gauche, badge à droite */}
+        <View style={styles.resultBottomRow}>
+          <View style={styles.resultCardContent}>
+            <Text style={styles.resultAMM}>AMM : {item.amm}</Text>
+            <Text style={styles.resultInfo} numberOfLines={1}>
+              {item.titulaire}
             </Text>
-          )}
-          <Text style={styles.resultAMM}>AMM : {item.amm}</Text>
-          <Text style={styles.resultInfo} numberOfLines={1}>
-            {item.titulaire}
-          </Text>
-        </View>
-        <View
-          style={[
-            styles.badge,
-            { backgroundColor: getClassificationBgColor(item.classification) },
-          ]}
-        >
-          <Text
+          </View>
+          <View
             style={[
-              styles.badgeText,
-              { color: getClassificationColor(item.classification) },
+              styles.badge,
+              { backgroundColor: getClassificationBgColor(item.classification) },
             ]}
-            numberOfLines={2}
           >
-            {getClassificationLabel(item.classification)}
-          </Text>
+            <Text
+              style={[
+                styles.badgeText,
+                { color: getClassificationColor(item.classification) },
+              ]}
+              numberOfLines={2}
+            >
+              {getClassificationLabel(item.classification)}
+            </Text>
+          </View>
         </View>
       </Pressable>
     ),
@@ -189,8 +218,10 @@ export default function SearchScreen() {
             ]}
             onPress={() => {
               setQuery("");
+              setSubstanceQuery("");
               setResults([]);
               setHasSearched(false);
+              setFilterHomologues(false);
             }}
           >
             <IconSymbol name="plus.circle.fill" size={20} color="#FFFFFF" />
@@ -228,6 +259,31 @@ export default function SearchScreen() {
                 <Text style={styles.searchButtonText}>Rechercher</Text>
               </Pressable>
 
+              {/* Search by active substance */}
+              <Text style={[styles.sectionTitle, { marginTop: 28 }]}>Recherche par matière active</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ex: glyphosate, fluroxypyr..."
+                placeholderTextColor="#9BA1A6"
+                value={substanceQuery}
+                onChangeText={setSubstanceQuery}
+                returnKeyType="search"
+                onSubmitEditing={handleSubstanceSearch}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+              <Pressable
+                style={({ pressed }) => [
+                  styles.searchButton,
+                  { backgroundColor: "#2E7D32" },
+                  pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                ]}
+                onPress={handleSubstanceSearch}
+              >
+                <IconSymbol name="leaf.fill" size={22} color="#FFFFFF" />
+                <Text style={styles.searchButtonText}>Rechercher</Text>
+              </Pressable>
+
               {/* Search by photo */}
               <Text style={[styles.sectionTitle, { marginTop: 28 }]}>
                 Recherche par photo d'étiquette
@@ -260,7 +316,7 @@ export default function SearchScreen() {
           {!isSearching && hasSearched && results.length === 0 && (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
-                Aucun produit trouvé pour "{query}"
+                Aucun produit trouvé pour "{searchType === "substance" ? substanceQuery : query}"
               </Text>
             </View>
           )}
@@ -270,11 +326,35 @@ export default function SearchScreen() {
               <Text style={styles.helpHint}>
                 ℹ️ Cliquez sur un produit pour plus de détails (Equivalences, matière active…)
               </Text>
-              <Text style={styles.resultsCount}>
-                {results.length} résultat{results.length > 1 ? "s" : ""}
-              </Text>
-              {results.map((item) => (
-                <View key={item.amm}>{renderProduct({ item })}</View>
+              {/* Compteur + bouton filtre homologués */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <Text style={styles.resultsCount}>
+                  {filterHomologues
+                    ? results.filter(r => r.classification !== "retire").length
+                    : results.length} résultat{(filterHomologues ? results.filter(r => r.classification !== "retire").length : results.length) > 1 ? "s" : ""}
+                  {filterHomologues ? " (homologués)" : ""}
+                </Text>
+                <Pressable
+                    style={({ pressed }) => ({
+                      backgroundColor: filterHomologues ? "#2E7D32" : "#E8F5E9",
+                      borderRadius: 20,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      flexDirection: "row" as const,
+                      alignItems: "center" as const,
+                      gap: 4,
+                      opacity: pressed ? 0.8 : 1,
+                    })}
+                    onPress={() => setFilterHomologues(f => !f)}
+                  >
+                    <IconSymbol name="checkmark.circle.fill" size={16} color={filterHomologues ? "#FFFFFF" : "#2E7D32"} />
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: filterHomologues ? "#FFFFFF" : "#2E7D32" }}>
+                      Homologués
+                    </Text>
+                  </Pressable>
+              </View>
+              {(filterHomologues ? results.filter(r => r.classification !== "retire") : results).map((item, index) => (
+                <View key={`${item.amm}-${item.nom}-${index}`}>{renderProduct({ item })}</View>
               ))}
             </View>
           )}
@@ -282,7 +362,7 @@ export default function SearchScreen() {
           {!hasSearched && !isSearching && (
             <View style={styles.hintCard}>
               <Text style={styles.hintText}>
-                Entrez un nom de produit ou un numéro AMM pour commencer
+                Entrez un nom de produit, un numéro AMM ou une matière active pour commencer
               </Text>
             </View>
           )}
@@ -413,28 +493,29 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 10,
+    flexDirection: "column",
+  },
+  resultBottomRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    marginTop: 6,
   },
   resultCardContent: {
     flex: 1,
     marginRight: 12,
-    minWidth: 100, // Prevent vertical text wrapping for short names
     flexDirection: "column",
   },
   resultName: {
     fontSize: 16,
     fontWeight: "600",
     color: "#1A1A1A",
-    flexShrink: 0,
-    flexWrap: "nowrap",
   },
   resultSecondary: {
     fontSize: 12,
     color: "#0a7ea5",
     fontStyle: "italic",
-    marginTop: 1,
+    marginTop: 2,
   },
   resultAMM: {
     fontSize: 13,
