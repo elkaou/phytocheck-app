@@ -41,6 +41,10 @@ export default function SearchScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const resultsRef = useRef<View>(null);
+  // Flag pour détecter le retour depuis une fiche produit (ne pas effacer les résultats)
+  const isNavigatingToProduct = useRef(false);
+  // Mémoriser la position de scroll pour la restaurer au retour
+  const savedScrollY = useRef(0);
 
   const doSearch = useCallback((searchQuery: string, type: "name" | "substance" = "name") => {
     setIsSearching(true);
@@ -74,14 +78,24 @@ export default function SearchScreen() {
     }
   }, [params.q, autoSearchDone, doSearch]);
 
-  // Clear search field when tab is focused (unless coming from scan with q param)
+  // Clear search field when tab is focused (unless coming from scan with q param or returning from product sheet)
   useFocusEffect(
     useCallback(() => {
+      if (isNavigatingToProduct.current) {
+        // Retour depuis une fiche produit : restaurer la position de scroll
+        isNavigatingToProduct.current = false;
+        setTimeout(() => {
+          scrollViewRef.current?.scrollTo({ y: savedScrollY.current, animated: false });
+        }, 50);
+        return;
+      }
       if (!params.q) {
         setQuery("");
         setSubstanceQuery("");
         setResults([]);
         setHasSearched(false);
+        setFilterHomologues(false);
+        savedScrollY.current = 0;
       }
     }, [params.q])
   );
@@ -142,15 +156,16 @@ export default function SearchScreen() {
           styles.resultCard,
           pressed && { opacity: 0.7 },
         ]}
-        onPress={() =>
+        onPress={() => {
+          isNavigatingToProduct.current = true;
           router.push({
             pathname: "/product/[amm]" as any,
             params: { 
               amm: item.amm,
               name: item.matchedName || item.nom,
             },
-          })
-        }
+          });
+        }}
       >
         {/* Ligne 1 : Nom du produit sur toute la largeur */}
         <Text style={styles.resultName}>
@@ -232,6 +247,8 @@ export default function SearchScreen() {
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          onScroll={(e) => { savedScrollY.current = e.nativeEvent.contentOffset.y; }}
+          scrollEventThrottle={16}
         >
           {/* Search by name or AMM - Hidden when results are displayed */}
           {!hasSearched && (
