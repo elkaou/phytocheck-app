@@ -15,7 +15,7 @@ const BUNDLE_MANIFEST = {
   version: "1.0",
   updated_at: "15/04/2026",
   products_count: 17138,
-  risks_count: 2486,
+  risks_count: 2482,
 };
 
 export type DataSource = "bundle" | "cache" | "remote";

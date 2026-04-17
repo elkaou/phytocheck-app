@@ -60,18 +60,14 @@ async function checkForUpdate(bundleDate?: string): Promise<DataManifest | null>
 
     console.log("[DataUpdate] checkForUpdate - bundleDate:", bundleDate, "cachedVersion:", cachedVersion);
 
-    // Vérifier l'intervalle uniquement si le cache est au moins aussi récent que le bundle
-    if (lastCheck && cachedVersion && bundleDate) {
-      const cachedTs = parseDateDDMMYYYY(cachedVersion);
-      const bundleTs = parseDateDDMMYYYY(bundleDate);
-      
-      // Le cache est à jour seulement s'il est >= au bundle
-      if (cachedTs >= bundleTs && cachedTs > 0) {
-        const elapsed = Date.now() - parseInt(lastCheck, 10);
-        if (elapsed < CHECK_INTERVAL_MS) {
-          console.log("[DataUpdate] Skipping check - last check was", Math.round(elapsed / 60000), "min ago");
-          return null;
-        }
+    // Vérifier l'intervalle uniquement si on a déjà vérifié récemment (5 min)
+    // Cela évite les appels répétés en cas de rechargement rapide,
+    // mais garantit une vérification à chaque démarrage normal
+    if (lastCheck) {
+      const elapsed = Date.now() - parseInt(lastCheck, 10);
+      if (elapsed < CHECK_INTERVAL_MS) {
+        console.log("[DataUpdate] Skipping check - last check was", Math.round(elapsed / 60000), "min ago");
+        return null;
       }
     }
 
@@ -102,17 +98,31 @@ async function checkForUpdate(bundleDate?: string): Promise<DataManifest | null>
 
     if (remoteTs > cachedTs) {
       console.log("[DataUpdate] New version available!");
+      // Mettre à jour le timestamp de vérification AVANT de retourner
+      // pour éviter de re-vérifier en boucle si le téléchargement échoue
+      await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
       return manifest;
     }
 
-    if (remoteTs === cachedTs && manifest.products_count !== undefined) {
-      // Même date mais vérifier le nombre de produits (cas d'une mise à jour le même jour)
-      // On ne peut pas comparer ici car on n'a pas le count en cache, donc on fait confiance à la date
-      console.log("[DataUpdate] Same date, no update needed");
+    // Même date : vérifier si le nombre de produits a changé (mise à jour le même jour)
+    const cachedCountStr = await AsyncStorage.getItem(CACHE_KEYS.PRODUCTS);
+    if (remoteTs === cachedTs && cachedCountStr && manifest.products_count !== undefined) {
+      try {
+        const cachedProducts = JSON.parse(cachedCountStr);
+        const cachedCount = Array.isArray(cachedProducts) ? cachedProducts.length : 0;
+        if (manifest.products_count !== cachedCount) {
+          console.log("[DataUpdate] Same date but different count:", cachedCount, "→", manifest.products_count);
+          await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
+          return manifest;
+        }
+      } catch {
+        // Ignore parse error
+      }
     }
 
-    // Mettre à jour le timestamp de vérification
+    // Mettre à jour le timestamp de vérification (pas de mise à jour nécessaire)
     await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
+    console.log("[DataUpdate] Already up to date");
     return null;
   } catch (error) {
     console.log("[DataUpdate] Error checking for update:", error);
