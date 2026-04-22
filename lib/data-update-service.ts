@@ -1,14 +1,20 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as FileSystem from "expo-file-system/legacy";
+import { Platform } from "react-native";
 
 // URL de base GitHub Pages - source de vérité pour les données E-Phy
 const GITHUB_PAGES_BASE = "https://elkaou.github.io/phytocheck-data";
 
-// Clés AsyncStorage
+// Clés AsyncStorage (métadonnées légères uniquement)
 const CACHE_KEYS = {
-  PRODUCTS: "@phytocheck/remote_products",
-  RISK_PHRASES: "@phytocheck/remote_risk_phrases",
   LAST_UPDATE: "@phytocheck/last_remote_update",
   REMOTE_VERSION: "@phytocheck/remote_version",
+};
+
+// Chemins fichiers locaux (FileSystem - pour les gros fichiers JSON)
+const FILE_PATHS = {
+  PRODUCTS: (FileSystem.documentDirectory ?? "") + "phytocheck_products.json",
+  RISK_PHRASES: (FileSystem.documentDirectory ?? "") + "phytocheck_risk_phrases.json",
 };
 
 // Intervalle minimum entre deux vérifications (1h en ms)
@@ -50,6 +56,41 @@ function parseDateDDMMYYYY(dateStr: string): number {
 }
 
 /**
+ * Lit un fichier JSON depuis le système de fichiers local.
+ * Retourne null si le fichier n'existe pas ou est invalide.
+ */
+async function readLocalFile(path: string): Promise<unknown | null> {
+  try {
+    if (Platform.OS === "web") return null;
+    const info = await FileSystem.getInfoAsync(path);
+    if (!info.exists) return null;
+    const content = await FileSystem.readAsStringAsync(path, {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
+    return JSON.parse(content);
+  } catch (error) {
+    console.log("[DataUpdate] Error reading local file:", path, error);
+    return null;
+  }
+}
+
+/**
+ * Écrit un objet JSON dans un fichier local.
+ */
+async function writeLocalFile(path: string, data: unknown): Promise<boolean> {
+  try {
+    if (Platform.OS === "web") return false;
+    await FileSystem.writeAsStringAsync(path, JSON.stringify(data), {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
+    return true;
+  } catch (error) {
+    console.log("[DataUpdate] Error writing local file:", path, error);
+    return false;
+  }
+}
+
+/**
  * Vérifie si une mise à jour est disponible sur GitHub Pages.
  * Retourne le manifest si une mise à jour est disponible, null sinon.
  */
@@ -60,9 +101,7 @@ async function checkForUpdate(bundleDate?: string): Promise<DataManifest | null>
 
     console.log("[DataUpdate] checkForUpdate - bundleDate:", bundleDate, "cachedVersion:", cachedVersion);
 
-    // Vérifier l'intervalle uniquement si on a déjà vérifié récemment (5 min)
-    // Cela évite les appels répétés en cas de rechargement rapide,
-    // mais garantit une vérification à chaque démarrage normal
+    // Vérifier l'intervalle uniquement si on a déjà vérifié récemment (1h)
     if (lastCheck) {
       const elapsed = Date.now() - parseInt(lastCheck, 10);
       if (elapsed < CHECK_INTERVAL_MS) {
@@ -84,39 +123,34 @@ async function checkForUpdate(bundleDate?: string): Promise<DataManifest | null>
 
     if (!response.ok) {
       console.log("[DataUpdate] Manifest fetch failed:", response.status);
+      await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
       return null;
     }
 
     const manifest: DataManifest = await response.json();
     console.log("[DataUpdate] Remote manifest:", JSON.stringify(manifest));
 
-    // Comparer les dates en tant que timestamps pour une comparaison fiable
+    // Comparer avec la version en cache (ou le bundle si pas de cache)
     const remoteTs = parseDateDDMMYYYY(manifest.updated_at);
-    const cachedTs = cachedVersion ? parseDateDDMMYYYY(cachedVersion) : 0;
+    const referenceVersion = cachedVersion ?? bundleDate ?? "01/01/2000";
+    const referenceTs = parseDateDDMMYYYY(referenceVersion);
 
-    console.log("[DataUpdate] Comparing - remote:", manifest.updated_at, "(", remoteTs, ") vs cached:", cachedVersion, "(", cachedTs, ")");
+    console.log("[DataUpdate] Comparing - remote:", manifest.updated_at, "(", remoteTs, ") vs reference:", referenceVersion, "(", referenceTs, ")");
 
-    if (remoteTs > cachedTs) {
+    if (remoteTs > referenceTs) {
       console.log("[DataUpdate] New version available!");
-      // Mettre à jour le timestamp de vérification AVANT de retourner
-      // pour éviter de re-vérifier en boucle si le téléchargement échoue
       await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
       return manifest;
     }
 
     // Même date : vérifier si le nombre de produits a changé (mise à jour le même jour)
-    const cachedCountStr = await AsyncStorage.getItem(CACHE_KEYS.PRODUCTS);
-    if (remoteTs === cachedTs && cachedCountStr && manifest.products_count !== undefined) {
-      try {
-        const cachedProducts = JSON.parse(cachedCountStr);
-        const cachedCount = Array.isArray(cachedProducts) ? cachedProducts.length : 0;
-        if (manifest.products_count !== cachedCount) {
-          console.log("[DataUpdate] Same date but different count:", cachedCount, "→", manifest.products_count);
-          await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
-          return manifest;
-        }
-      } catch {
-        // Ignore parse error
+    if (remoteTs === referenceTs && manifest.products_count !== undefined) {
+      // Vérifier le nombre de produits en cache via FileSystem
+      const cachedProducts = await readLocalFile(FILE_PATHS.PRODUCTS);
+      if (Array.isArray(cachedProducts) && manifest.products_count !== cachedProducts.length) {
+        console.log("[DataUpdate] Same date but different count:", cachedProducts.length, "→", manifest.products_count);
+        await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
+        return manifest;
       }
     }
 
@@ -132,51 +166,82 @@ async function checkForUpdate(bundleDate?: string): Promise<DataManifest | null>
 
 /**
  * Télécharge et met en cache les données depuis GitHub Pages.
+ * Utilise FileSystem pour les gros fichiers JSON (évite les limites d'AsyncStorage).
  * Retourne true si la mise à jour a réussi.
  */
 async function downloadAndCache(manifest: DataManifest): Promise<boolean> {
   try {
-    console.log("[DataUpdate] Downloading products and risk phrases...");
-
-    const [productsRes, riskRes] = await Promise.all([
-      fetch(cacheBust(`${GITHUB_PAGES_BASE}/products.json`), {
-        headers: { "Cache-Control": "no-cache, no-store", "Pragma": "no-cache" },
-      }),
-      fetch(cacheBust(`${GITHUB_PAGES_BASE}/risk-phrases.json`), {
-        headers: { "Cache-Control": "no-cache, no-store", "Pragma": "no-cache" },
-      }),
-    ]);
-
-    if (!productsRes.ok || !riskRes.ok) {
-      console.log("[DataUpdate] Download failed - products:", productsRes.status, "risks:", riskRes.status);
+    // Sur web, utiliser fetch + JSON (FileSystem non disponible)
+    if (Platform.OS === "web") {
+      console.log("[DataUpdate] Web platform - skipping FileSystem download");
       return false;
     }
 
-    const [products, riskPhrases] = await Promise.all([
-      productsRes.json(),
-      riskRes.json(),
+    console.log("[DataUpdate] Downloading products and risk phrases via FileSystem...");
+
+    const productsUrl = cacheBust(`${GITHUB_PAGES_BASE}/products.json`);
+    const riskUrl = cacheBust(`${GITHUB_PAGES_BASE}/risk-phrases.json`);
+
+    // Télécharger directement vers le système de fichiers (évite de charger tout en mémoire)
+    const [productsResult, riskResult] = await Promise.all([
+      FileSystem.downloadAsync(productsUrl, FILE_PATHS.PRODUCTS + ".tmp"),
+      FileSystem.downloadAsync(riskUrl, FILE_PATHS.RISK_PHRASES + ".tmp"),
     ]);
 
-    console.log("[DataUpdate] Downloaded", Array.isArray(products) ? products.length : "?", "products");
+    if (productsResult.status !== 200 || riskResult.status !== 200) {
+      console.log("[DataUpdate] Download failed - products:", productsResult.status, "risks:", riskResult.status);
+      // Nettoyer les fichiers temporaires
+      await Promise.allSettled([
+        FileSystem.deleteAsync(FILE_PATHS.PRODUCTS + ".tmp", { idempotent: true }),
+        FileSystem.deleteAsync(FILE_PATHS.RISK_PHRASES + ".tmp", { idempotent: true }),
+      ]);
+      return false;
+    }
 
-    // Sauvegarder en cache local
+    // Vérifier que les fichiers téléchargés sont valides (parseable JSON)
+    const [productsCheck, riskCheck] = await Promise.all([
+      readLocalFile(FILE_PATHS.PRODUCTS + ".tmp"),
+      readLocalFile(FILE_PATHS.RISK_PHRASES + ".tmp"),
+    ]);
+
+    if (!Array.isArray(productsCheck) || !productsCheck.length) {
+      console.log("[DataUpdate] Downloaded products.json is invalid or empty");
+      await Promise.allSettled([
+        FileSystem.deleteAsync(FILE_PATHS.PRODUCTS + ".tmp", { idempotent: true }),
+        FileSystem.deleteAsync(FILE_PATHS.RISK_PHRASES + ".tmp", { idempotent: true }),
+      ]);
+      return false;
+    }
+
+    console.log("[DataUpdate] Downloaded", productsCheck.length, "products - validating...");
+
+    // Renommer les fichiers temporaires vers les fichiers définitifs
     await Promise.all([
-      AsyncStorage.setItem(CACHE_KEYS.PRODUCTS, JSON.stringify(products)),
-      AsyncStorage.setItem(CACHE_KEYS.RISK_PHRASES, JSON.stringify(riskPhrases)),
+      FileSystem.moveAsync({ from: FILE_PATHS.PRODUCTS + ".tmp", to: FILE_PATHS.PRODUCTS }),
+      FileSystem.moveAsync({ from: FILE_PATHS.RISK_PHRASES + ".tmp", to: FILE_PATHS.RISK_PHRASES }),
+    ]);
+
+    // Sauvegarder uniquement les métadonnées dans AsyncStorage
+    await Promise.all([
       AsyncStorage.setItem(CACHE_KEYS.REMOTE_VERSION, manifest.updated_at),
       AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString()),
     ]);
 
-    console.log("[DataUpdate] Cache updated successfully - version:", manifest.updated_at);
+    console.log("[DataUpdate] Cache updated successfully via FileSystem - version:", manifest.updated_at, "products:", productsCheck.length);
     return true;
   } catch (error) {
     console.log("[DataUpdate] Error downloading data:", error);
+    // Nettoyer les fichiers temporaires en cas d'erreur
+    await Promise.allSettled([
+      FileSystem.deleteAsync(FILE_PATHS.PRODUCTS + ".tmp", { idempotent: true }),
+      FileSystem.deleteAsync(FILE_PATHS.RISK_PHRASES + ".tmp", { idempotent: true }),
+    ]);
     return false;
   }
 }
 
 /**
- * Charge les données depuis le cache local AsyncStorage.
+ * Charge les données depuis le cache local (FileSystem).
  * Retourne null si aucun cache disponible.
  */
 export async function loadCachedData(): Promise<{
@@ -185,23 +250,29 @@ export async function loadCachedData(): Promise<{
   updatedAt: string;
 } | null> {
   try {
-    const [productsStr, riskStr, updatedAt] = await Promise.all([
-      AsyncStorage.getItem(CACHE_KEYS.PRODUCTS),
-      AsyncStorage.getItem(CACHE_KEYS.RISK_PHRASES),
-      AsyncStorage.getItem(CACHE_KEYS.REMOTE_VERSION),
-    ]);
+    if (Platform.OS === "web") return null;
 
-    if (!productsStr || !riskStr || !updatedAt) {
-      console.log("[DataUpdate] No cached data found");
+    const updatedAt = await AsyncStorage.getItem(CACHE_KEYS.REMOTE_VERSION);
+    if (!updatedAt) {
+      console.log("[DataUpdate] No cached version found");
       return null;
     }
 
-    const products = JSON.parse(productsStr);
-    console.log("[DataUpdate] Loaded cache - version:", updatedAt, "products:", Array.isArray(products) ? products.length : "?");
+    const [products, riskPhrases] = await Promise.all([
+      readLocalFile(FILE_PATHS.PRODUCTS),
+      readLocalFile(FILE_PATHS.RISK_PHRASES),
+    ]);
+
+    if (!Array.isArray(products) || !products.length || !riskPhrases) {
+      console.log("[DataUpdate] Cached files missing or invalid");
+      return null;
+    }
+
+    console.log("[DataUpdate] Loaded cache from FileSystem - version:", updatedAt, "products:", products.length);
 
     return {
       products,
-      riskPhrases: JSON.parse(riskStr),
+      riskPhrases: riskPhrases as Record<string, unknown[]>,
       updatedAt,
     };
   } catch (error) {
@@ -251,11 +322,11 @@ export async function getCachedUpdateDate(): Promise<string | null> {
  * Vide le cache des données distantes (pour forcer un re-téléchargement).
  */
 export async function clearDataCache(): Promise<void> {
-  await Promise.all([
-    AsyncStorage.removeItem(CACHE_KEYS.PRODUCTS),
-    AsyncStorage.removeItem(CACHE_KEYS.RISK_PHRASES),
+  await Promise.allSettled([
     AsyncStorage.removeItem(CACHE_KEYS.LAST_UPDATE),
     AsyncStorage.removeItem(CACHE_KEYS.REMOTE_VERSION),
+    FileSystem.deleteAsync(FILE_PATHS.PRODUCTS, { idempotent: true }),
+    FileSystem.deleteAsync(FILE_PATHS.RISK_PHRASES, { idempotent: true }),
   ]);
-  console.log("[DataUpdate] Cache cleared");
+  console.log("[DataUpdate] Cache cleared (FileSystem + AsyncStorage)");
 }
