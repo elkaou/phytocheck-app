@@ -325,34 +325,42 @@ def convert_risks(csv_path):
 
 
 def update_manifest(update_date_str, products_count, risks_count):
-    """Met à jour manifest.json dans le dépôt phytocheck-data si trouvé."""
+    """Met à jour manifest.json dans assets/data/ du projet ET dans le dépôt phytocheck-data."""
+    manifest_data = {
+        "version": "1.0",
+        "updated_at": update_date_str,
+        "products_count": products_count,
+        "risks_count": risks_count,
+    }
+
+    # ── 1. Toujours mettre à jour assets/data/manifest.json dans le projet ──
+    local_manifest = PROJECT_ROOT / "assets" / "data" / "manifest.json"
+    try:
+        with open(local_manifest, "w", encoding="utf-8") as f:
+            json.dump(manifest_data, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        print(f"  assets/data/manifest.json mis à jour")
+        print(f"  → updated_at={update_date_str}, products={products_count}, risks={risks_count}")
+    except Exception as e:
+        print(f"  AVERTISSEMENT : impossible de mettre à jour assets/data/manifest.json : {e}")
+
+    # ── 2. Mettre à jour manifest.json dans phytocheck-data si trouvé ──
     manifest_path = None
     for candidate in MANIFEST_SEARCH_PATHS:
         if candidate.exists():
             manifest_path = candidate
             break
-
     if manifest_path is None:
-        print(f"  INFO : manifest.json non trouvé dans les emplacements connus.")
-        print(f"  Mettez à jour manuellement : phytocheck-data/manifest.json")
+        print(f"  INFO : phytocheck-data/manifest.json non trouvé dans les emplacements connus.")
+        print(f"  Copiez assets/data/manifest.json vers phytocheck-data/manifest.json manuellement.")
         return
-
     try:
-        with open(manifest_path, encoding="utf-8") as f:
-            manifest = json.load(f)
-
-        manifest["updated_at"] = update_date_str
-        manifest["products_count"] = products_count
-        manifest["risks_count"] = risks_count
-
         with open(manifest_path, "w", encoding="utf-8") as f:
-            json.dump(manifest, f, ensure_ascii=False, indent=2)
+            json.dump(manifest_data, f, ensure_ascii=False, indent=2)
             f.write("\n")
-
-        print(f"  manifest.json mis à jour : {manifest_path}")
-        print(f"  → updated_at={update_date_str}, products={products_count}, risks={risks_count}")
+        print(f"  phytocheck-data/manifest.json mis à jour : {manifest_path}")
     except Exception as e:
-        print(f"  AVERTISSEMENT : impossible de mettre à jour manifest.json : {e}")
+        print(f"  AVERTISSEMENT : impossible de mettre à jour phytocheck-data/manifest.json : {e}")
 
 
 def update_product_service(ts_path, update_date_str):
