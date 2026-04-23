@@ -32,6 +32,9 @@ const MAPPING = {
   "exclamationmark.triangle.fill": "warning",
   "doc.text.fill": "description",
   "leaf.fill": "eco",
+  "list.bullet": "format-list-bulleted",
+  "chevron.down": "expand-more",
+  "chevron.up": "expand-less",
 } as IconMapping;
 
 /**

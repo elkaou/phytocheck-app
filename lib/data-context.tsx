@@ -18,11 +18,27 @@ const BUNDLE_MANIFEST = {
   risks_count: 2489,
 };
 
+// Type pour un usage produit
+export interface ProductUsage {
+  usage?: string;
+  culture: string;
+  application?: string;
+  cible?: string;
+  etat?: string;
+  dose?: string;
+  unite?: string;
+  dar?: string;
+  nb_max_appli?: string;
+  znt_aqua?: string;
+  condition?: string;
+}
+
 export type DataSource = "bundle" | "cache" | "remote";
 
 interface DataContextValue {
   products: Product[];
   riskPhrases: Record<string, RiskPhrase[]>;
+  usages: Record<string, ProductUsage[]>;
   updateDate: string;
   dataSource: DataSource;
   isUpdating: boolean;
@@ -32,6 +48,7 @@ interface DataContextValue {
 const DataContext = createContext<DataContextValue>({
   products: bundleProducts as Product[],
   riskPhrases: bundleRiskPhrases as Record<string, RiskPhrase[]>,
+  usages: {},
   updateDate: BUNDLE_MANIFEST.updated_at,
   dataSource: "bundle",
   isUpdating: false,
@@ -43,17 +60,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [riskPhrases, setRiskPhrases] = useState<Record<string, RiskPhrase[]>>(
     bundleRiskPhrases as Record<string, RiskPhrase[]>
   );
+  const [usages, setUsages] = useState<Record<string, ProductUsage[]>>({});
   const [updateDate, setUpdateDate] = useState(BUNDLE_MANIFEST.updated_at);
   const [dataSource, setDataSource] = useState<DataSource>("bundle");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastRemoteUpdate, setLastRemoteUpdate] = useState<string | null>(null);
 
   const applyRemoteData = useCallback((manifest: DataManifest) => {
-    // Recharger depuis le cache AsyncStorage après téléchargement
     loadCachedData().then((cached) => {
       if (cached) {
         setProducts(cached.products as Product[]);
         setRiskPhrases(cached.riskPhrases as Record<string, RiskPhrase[]>);
+        setUsages(cached.usages as Record<string, ProductUsage[]>);
         setUpdateDate(cached.updatedAt);
         setDataSource("remote");
         setLastRemoteUpdate(cached.updatedAt);
@@ -68,6 +86,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (cached) {
         setProducts(cached.products as Product[]);
         setRiskPhrases(cached.riskPhrases as Record<string, RiskPhrase[]>);
+        setUsages(cached.usages as Record<string, ProductUsage[]>);
         setUpdateDate(cached.updatedAt);
         setDataSource("cache");
         setLastRemoteUpdate(cached.updatedAt);
@@ -90,6 +109,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       value={{
         products,
         riskPhrases,
+        usages,
         updateDate,
         dataSource,
         isUpdating,

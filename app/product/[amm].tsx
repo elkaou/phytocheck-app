@@ -8,6 +8,7 @@ import {
   Alert,
 } from "react-native";
 import { QuantityModal } from "@/components/quantity-modal";
+import { UsagesModal } from "@/components/usages-modal";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -19,16 +20,20 @@ import {
   getClassificationBgColor,
 } from "@/lib/product-service";
 import { useApp } from "@/lib/app-context";
-import { useData } from "@/lib/data-context";
+import { useData, ProductUsage } from "@/lib/data-context";
 
 export default function ProductDetailScreen() {
-  const { amm, name } = useLocalSearchParams<{ amm: string; name?: string }>();
+  const params = useLocalSearchParams<{ amm: string | string[]; name?: string | string[] }>();
+  // useLocalSearchParams peut retourner string | string[] selon la plateforme
+  const amm = Array.isArray(params.amm) ? params.amm[0] : params.amm;
+  const name = Array.isArray(params.name) ? params.name[0] : params.name;
   const router = useRouter();
   const { addProductToStock, isProductInStock, getProductQuantity, updateProductQuantity, isPremium, stock } = useApp();
-  const { products: dynamicProducts, riskPhrases: dynamicRiskPhrases } = useData();
+  const { products: dynamicProducts, riskPhrases: dynamicRiskPhrases, usages: dynamicUsages } = useData();
 
   const [product, setProduct] = useState<ClassifiedProduct | null>(null);
   const [showQuantityModal, setShowQuantityModal] = useState(false);
+  const [showUsagesModal, setShowUsagesModal] = useState(false);
   const inStock = amm ? isProductInStock(amm) : false;
 
   useEffect(() => {
@@ -39,6 +44,10 @@ export default function ProductDetailScreen() {
   }, [amm, name]);
 
   const currentQuantity = amm ? getProductQuantity(amm) : 0;
+
+  // Récupérer les usages pour ce produit (par numéro AMM)
+  const productUsages: ProductUsage[] = amm ? (dynamicUsages[amm] ?? []) : [];
+  const hasUsages = productUsages.length > 0;
 
   const handleAddToStock = useCallback(async () => {
     if (!product) return;
@@ -101,6 +110,7 @@ export default function ProductDetailScreen() {
   const classColor = getClassificationColor(product.classification);
   const classBgColor = getClassificationBgColor(product.classification);
   const classLabel = getClassificationLabel(product.classification);
+  const isAuthorise = product.classification !== "retire";
 
   return (
     <View style={styles.container}>
@@ -215,6 +225,23 @@ export default function ProductDetailScreen() {
             ) : null}
           </View>
 
+          {/* Bouton Usages — uniquement pour les produits autorisés avec des usages disponibles */}
+          {isAuthorise && hasUsages && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.usagesButton,
+                pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+              ]}
+              onPress={() => setShowUsagesModal(true)}
+            >
+              <IconSymbol name="list.bullet" size={22} color="#FFFFFF" />
+              <Text style={styles.usagesButtonText}>
+                Usages autorisés ({productUsages.length})
+              </Text>
+              <IconSymbol name="chevron.right" size={20} color="#FFFFFF" />
+            </Pressable>
+          )}
+
           {/* Risk phrases */}
           {product.riskPhrases.length > 0 && (
             <View style={styles.riskCard}>
@@ -297,6 +324,14 @@ export default function ProductDetailScreen() {
         productName={name && name !== product.nom ? name : product.nom}
         onCancel={() => setShowQuantityModal(false)}
         onConfirm={handleQuantityConfirm}
+      />
+
+      {/* Usages Modal */}
+      <UsagesModal
+        visible={showUsagesModal}
+        productName={name && name !== product.nom ? name : product.nom}
+        usages={productUsages}
+        onClose={() => setShowUsagesModal(false)}
       />
     </View>
   );
@@ -404,6 +439,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#1A1A1A",
     lineHeight: 22,
+  },
+  usagesButton: {
+    backgroundColor: "#2D9E6B",
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginHorizontal: 20,
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  usagesButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    flex: 1,
   },
   riskCard: {
     backgroundColor: "#FFFFFF",

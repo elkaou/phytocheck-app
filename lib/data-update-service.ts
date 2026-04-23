@@ -15,6 +15,7 @@ const CACHE_KEYS = {
 const FILE_PATHS = {
   PRODUCTS: (FileSystem.documentDirectory ?? "") + "phytocheck_products.json",
   RISK_PHRASES: (FileSystem.documentDirectory ?? "") + "phytocheck_risk_phrases.json",
+  USAGES: (FileSystem.documentDirectory ?? "") + "phytocheck_usages.json",
 };
 
 // Intervalle minimum entre deux vérifications (1h en ms)
@@ -25,11 +26,13 @@ export interface DataManifest {
   updated_at: string;
   products_count: number;
   risks_count: number;
+  usages_count?: number;
 }
 
 export interface RemoteDataState {
   products: unknown[] | null;
   riskPhrases: Record<string, unknown[]> | null;
+  usages: Record<string, unknown[]> | null;
   updatedAt: string | null;
   source: "bundle" | "cache" | "remote";
 }
@@ -71,22 +74,6 @@ async function readLocalFile(path: string): Promise<unknown | null> {
   } catch (error) {
     console.log("[DataUpdate] Error reading local file:", path, error);
     return null;
-  }
-}
-
-/**
- * Écrit un objet JSON dans un fichier local.
- */
-async function writeLocalFile(path: string, data: unknown): Promise<boolean> {
-  try {
-    if (Platform.OS === "web") return false;
-    await FileSystem.writeAsStringAsync(path, JSON.stringify(data), {
-      encoding: FileSystem.EncodingType.UTF8,
-    });
-    return true;
-  } catch (error) {
-    console.log("[DataUpdate] Error writing local file:", path, error);
-    return false;
   }
 }
 
@@ -145,13 +132,20 @@ async function checkForUpdate(bundleDate?: string): Promise<DataManifest | null>
 
     // Même date : vérifier si le nombre de produits a changé (mise à jour le même jour)
     if (remoteTs === referenceTs && manifest.products_count !== undefined) {
-      // Vérifier le nombre de produits en cache via FileSystem
       const cachedProducts = await readLocalFile(FILE_PATHS.PRODUCTS);
       if (Array.isArray(cachedProducts) && manifest.products_count !== cachedProducts.length) {
         console.log("[DataUpdate] Same date but different count:", cachedProducts.length, "→", manifest.products_count);
         await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
         return manifest;
       }
+    }
+
+    // Vérifier si usages.json est absent en cache (première install après ajout de la feature)
+    const usagesInfo = await FileSystem.getInfoAsync(FILE_PATHS.USAGES);
+    if (!usagesInfo.exists) {
+      console.log("[DataUpdate] usages.json missing from cache - triggering download");
+      await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
+      return manifest;
     }
 
     // Mettre à jour le timestamp de vérification (pas de mise à jour nécessaire)
@@ -171,55 +165,61 @@ async function checkForUpdate(bundleDate?: string): Promise<DataManifest | null>
  */
 async function downloadAndCache(manifest: DataManifest): Promise<boolean> {
   try {
-    // Sur web, utiliser fetch + JSON (FileSystem non disponible)
+    // Sur web, FileSystem non disponible
     if (Platform.OS === "web") {
       console.log("[DataUpdate] Web platform - skipping FileSystem download");
       return false;
     }
 
-    console.log("[DataUpdate] Downloading products and risk phrases via FileSystem...");
+    console.log("[DataUpdate] Downloading products, risk phrases and usages via FileSystem...");
 
     const productsUrl = cacheBust(`${GITHUB_PAGES_BASE}/products.json`);
     const riskUrl = cacheBust(`${GITHUB_PAGES_BASE}/risk-phrases.json`);
+    const usagesUrl = cacheBust(`${GITHUB_PAGES_BASE}/usages.json`);
 
     // Télécharger directement vers le système de fichiers (évite de charger tout en mémoire)
-    const [productsResult, riskResult] = await Promise.all([
+    const [productsResult, riskResult, usagesResult] = await Promise.all([
       FileSystem.downloadAsync(productsUrl, FILE_PATHS.PRODUCTS + ".tmp"),
       FileSystem.downloadAsync(riskUrl, FILE_PATHS.RISK_PHRASES + ".tmp"),
+      FileSystem.downloadAsync(usagesUrl, FILE_PATHS.USAGES + ".tmp"),
     ]);
 
+    const tmpFiles = [
+      FILE_PATHS.PRODUCTS + ".tmp",
+      FILE_PATHS.RISK_PHRASES + ".tmp",
+      FILE_PATHS.USAGES + ".tmp",
+    ];
+
     if (productsResult.status !== 200 || riskResult.status !== 200) {
-      console.log("[DataUpdate] Download failed - products:", productsResult.status, "risks:", riskResult.status);
-      // Nettoyer les fichiers temporaires
-      await Promise.allSettled([
-        FileSystem.deleteAsync(FILE_PATHS.PRODUCTS + ".tmp", { idempotent: true }),
-        FileSystem.deleteAsync(FILE_PATHS.RISK_PHRASES + ".tmp", { idempotent: true }),
-      ]);
+      console.log("[DataUpdate] Download failed - products:", productsResult.status, "risks:", riskResult.status, "usages:", usagesResult.status);
+      await Promise.allSettled(tmpFiles.map(f => FileSystem.deleteAsync(f, { idempotent: true })));
       return false;
     }
 
-    // Vérifier que les fichiers téléchargés sont valides (parseable JSON)
-    const [productsCheck, riskCheck] = await Promise.all([
-      readLocalFile(FILE_PATHS.PRODUCTS + ".tmp"),
-      readLocalFile(FILE_PATHS.RISK_PHRASES + ".tmp"),
-    ]);
-
+    // Vérifier que products.json est valide (obligatoire)
+    const productsCheck = await readLocalFile(FILE_PATHS.PRODUCTS + ".tmp");
     if (!Array.isArray(productsCheck) || !productsCheck.length) {
       console.log("[DataUpdate] Downloaded products.json is invalid or empty");
-      await Promise.allSettled([
-        FileSystem.deleteAsync(FILE_PATHS.PRODUCTS + ".tmp", { idempotent: true }),
-        FileSystem.deleteAsync(FILE_PATHS.RISK_PHRASES + ".tmp", { idempotent: true }),
-      ]);
+      await Promise.allSettled(tmpFiles.map(f => FileSystem.deleteAsync(f, { idempotent: true })));
       return false;
     }
 
     console.log("[DataUpdate] Downloaded", productsCheck.length, "products - validating...");
 
-    // Renommer les fichiers temporaires vers les fichiers définitifs
+    // Renommer products et risk-phrases (obligatoires)
     await Promise.all([
       FileSystem.moveAsync({ from: FILE_PATHS.PRODUCTS + ".tmp", to: FILE_PATHS.PRODUCTS }),
       FileSystem.moveAsync({ from: FILE_PATHS.RISK_PHRASES + ".tmp", to: FILE_PATHS.RISK_PHRASES }),
     ]);
+
+    // Renommer usages si le téléchargement a réussi (optionnel - ne bloque pas si absent)
+    if (usagesResult.status === 200) {
+      await FileSystem.moveAsync({ from: FILE_PATHS.USAGES + ".tmp", to: FILE_PATHS.USAGES });
+      console.log("[DataUpdate] usages.json cached successfully");
+    } else {
+      console.log("[DataUpdate] usages.json download failed (status:", usagesResult.status, ") - continuing without usages");
+      await FileSystem.deleteAsync(FILE_PATHS.USAGES + ".tmp", { idempotent: true });
+    }
 
     // Sauvegarder uniquement les métadonnées dans AsyncStorage
     await Promise.all([
@@ -235,6 +235,7 @@ async function downloadAndCache(manifest: DataManifest): Promise<boolean> {
     await Promise.allSettled([
       FileSystem.deleteAsync(FILE_PATHS.PRODUCTS + ".tmp", { idempotent: true }),
       FileSystem.deleteAsync(FILE_PATHS.RISK_PHRASES + ".tmp", { idempotent: true }),
+      FileSystem.deleteAsync(FILE_PATHS.USAGES + ".tmp", { idempotent: true }),
     ]);
     return false;
   }
@@ -247,6 +248,7 @@ async function downloadAndCache(manifest: DataManifest): Promise<boolean> {
 export async function loadCachedData(): Promise<{
   products: unknown[];
   riskPhrases: Record<string, unknown[]>;
+  usages: Record<string, unknown[]>;
   updatedAt: string;
 } | null> {
   try {
@@ -258,9 +260,10 @@ export async function loadCachedData(): Promise<{
       return null;
     }
 
-    const [products, riskPhrases] = await Promise.all([
+    const [products, riskPhrases, usages] = await Promise.all([
       readLocalFile(FILE_PATHS.PRODUCTS),
       readLocalFile(FILE_PATHS.RISK_PHRASES),
+      readLocalFile(FILE_PATHS.USAGES),
     ]);
 
     if (!Array.isArray(products) || !products.length || !riskPhrases) {
@@ -268,11 +271,12 @@ export async function loadCachedData(): Promise<{
       return null;
     }
 
-    console.log("[DataUpdate] Loaded cache from FileSystem - version:", updatedAt, "products:", products.length);
+    console.log("[DataUpdate] Loaded cache from FileSystem - version:", updatedAt, "products:", products.length, "usages:", usages ? Object.keys(usages as object).length : 0);
 
     return {
       products,
       riskPhrases: riskPhrases as Record<string, unknown[]>,
+      usages: (usages ?? {}) as Record<string, unknown[]>,
       updatedAt,
     };
   } catch (error) {
@@ -290,7 +294,6 @@ export function checkAndUpdateInBackground(
   onUpdate?: (manifest: DataManifest) => void,
   bundleDate?: string
 ): void {
-  // Exécution asynchrone sans await pour ne pas bloquer
   (async () => {
     try {
       console.log("[DataUpdate] Starting background check...");
@@ -327,6 +330,7 @@ export async function clearDataCache(): Promise<void> {
     AsyncStorage.removeItem(CACHE_KEYS.REMOTE_VERSION),
     FileSystem.deleteAsync(FILE_PATHS.PRODUCTS, { idempotent: true }),
     FileSystem.deleteAsync(FILE_PATHS.RISK_PHRASES, { idempotent: true }),
+    FileSystem.deleteAsync(FILE_PATHS.USAGES, { idempotent: true }),
   ]);
   console.log("[DataUpdate] Cache cleared (FileSystem + AsyncStorage)");
 }
