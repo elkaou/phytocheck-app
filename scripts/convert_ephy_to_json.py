@@ -12,10 +12,12 @@ Fichiers CSV attendus (téléchargeables sur https://ephy.anses.fr) :
     - Produits phytopharmaceutiques : "produits_utf8.csv"
     - Phrases de risque :             "produits_phrases_de_risque_utf8.csv"
     - Permis de commerce parallèle :  "permis_de_commerce_parallele_utf8.csv" (optionnel)
+    - Usages des produits autorisés : "usages_des_produits_autorises_utf8.csv" (optionnel)
 
 Sorties générées dans assets/data/ :
     - products.json
     - risk-phrases.json
+    - usages.json (si le CSV usages est présent)
 
 Le script met également à jour automatiquement :
     - DB_UPDATE_DATE dans lib/product-service.ts
@@ -38,6 +40,7 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 DEFAULT_PRODUCTS_CSV = PROJECT_ROOT / "produits_utf8.csv"
 DEFAULT_RISKS_CSV = PROJECT_ROOT / "produits_phrases_de_risque_utf8.csv"
 DEFAULT_PCP_CSV = PROJECT_ROOT / "permis_de_commerce_parallele_utf8.csv"
+DEFAULT_USAGES_CSV = PROJECT_ROOT / "usages_des_produits_autorises_utf8.csv"
 OUT_DIR = PROJECT_ROOT / "assets" / "data"
 PRODUCT_SERVICE = PROJECT_ROOT / "lib" / "product-service.ts"
 
@@ -95,6 +98,10 @@ def parse_args():
                         help="Ne pas mettre à jour product-service.ts automatiquement")
     parser.add_argument("--no-pcp", action="store_true",
                         help="Ne pas intégrer les produits PCP même si le CSV est présent")
+    parser.add_argument("--usages", default=str(DEFAULT_USAGES_CSV),
+                        help=f"Chemin vers le CSV usages (défaut: {DEFAULT_USAGES_CSV.name})")
+    parser.add_argument("--no-usages", action="store_true",
+                        help="Ne pas générer usages.json même si le CSV est présent")
     return parser.parse_args()
 
 
@@ -454,7 +461,7 @@ def main():
     print(f"  → Écrit : {products_out}")
 
     # ── Conversion risques ───────────────────────────────────────────────────
-    print("\n[3/5] Conversion du CSV phrases de risque...")
+    print("\n[3/6] Conversion du CSV phrases de risque...")
     risks = convert_risks(risks_csv)
     print(f"  → {len(risks):,} AMM avec phrases de risque")
 
@@ -463,15 +470,32 @@ def main():
         json.dump(risks, f, ensure_ascii=False, separators=(",", ":"))
     print(f"  → Écrit : {risks_out}")
 
+    # ── Conversion usages ────────────────────────────────────────────────────
+    usages_count = None
+    if not args.no_usages and usages_csv.exists():
+        print(f"\n[4/6] Conversion du CSV usages des produits autorisés...")
+        usages = convert_usages(usages_csv)
+        usages_count = sum(len(v) for v in usages.values())
+        usages_out = out_dir / "usages.json"
+        with open(usages_out, "w", encoding="utf-8") as f:
+            json.dump(usages, f, ensure_ascii=False, separators=(",", ":"))
+        size_mb = os.path.getsize(usages_out) / 1024 / 1024
+        print(f"  → Écrit : {usages_out} ({size_mb:.1f} Mo)")
+    elif not args.no_usages:
+        print(f"\n[4/6] CSV usages non trouvé ({usages_csv.name}), étape ignorée.")
+        print(f"  Pour inclure les usages, placez '{usages_csv.name}' dans : {usages_csv.parent}")
+    else:
+        print(f"\n[4/6] Conversion usages désactivée (--no-usages).")
+
     # ── Mise à jour product-service.ts et manifest.json ────────────────────────
     today = date.today().strftime("%d/%m/%Y")
     if not args.no_update_ts:
-        print("\n[4/5] Mise à jour de lib/product-service.ts...")
+        print("\n[5/6] Mise à jour de lib/product-service.ts...")
         update_product_service(PRODUCT_SERVICE, today)
 
-    print("\n[5/5] Mise à jour de manifest.json et data-context.tsx...")
-    update_manifest(today, len(products), len(risks))
-    update_bundle_manifest(DATA_CONTEXT, today, len(products), len(risks))
+    print("\n[6/6] Mise à jour de manifest.json et data-context.tsx...")
+    update_manifest(today, len(products), len(risks), usages_count)
+    update_bundle_manifest(DATA_CONTEXT, today, len(products), len(risks), usages_count)
 
     # ── Résumé ───────────────────────────────────────────────────────────────
     print("\n" + "=" * 50)
@@ -481,11 +505,15 @@ def main():
         print(f"  Produits PCP      : {pcp_count:,}")
     print(f"  Total produits    : {len(products):,}")
     print(f"  AMM avec risques  : {len(risks):,}")
+    if usages_count is not None:
+        print(f"  Usages autorisés  : {usages_count:,}")
     print(f"  Date mise à jour  : {date.today().strftime('%d/%m/%Y')}")
     print("=" * 50)
     print("\nFichiers mis à jour :")
     print(f"  ✓ assets/data/products.json")
     print(f"  ✓ assets/data/risk-phrases.json")
+    if usages_count is not None:
+        print(f"  ✓ assets/data/usages.json")
     print(f"  ✓ lib/product-service.ts (DB_UPDATE_DATE)")
     print(f"  ✓ manifest.json (GitHub Pages)")
     print(f"  ✓ lib/data-context.tsx (BUNDLE_MANIFEST)")
