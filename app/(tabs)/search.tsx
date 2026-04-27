@@ -28,6 +28,66 @@ import { useData } from "@/lib/data-context";
 const TYPE_FILTERS = ["Tous", "Herbicide", "Fongicide", "Insecticide", "Acaricide"] as const;
 type TypeFilter = (typeof TYPE_FILTERS)[number];
 
+// Table d'alias : quand l'utilisateur cherche une culture spécifique,
+// on inclut aussi les cultures génériques d'E-Phy qui la couvrent.
+// Ex: "Blé" → inclure aussi "Céréales à paille" et "Céréales"
+const CULTURE_ALIASES: Record<string, string[]> = {
+  // Céréales à paille
+  "Blé":        ["Céréales à paille", "Céréales", "Grandes cultures"],
+  "Orge":       ["Céréales à paille", "Céréales", "Grandes cultures"],
+  "Seigle":     ["Céréales à paille", "Céréales", "Grandes cultures"],
+  "Avoine":     ["Céréales à paille", "Céréales", "Grandes cultures"],
+  "Triticale":  ["Céréales à paille", "Céréales", "Grandes cultures"],
+  // Maïs
+  "Maïs":       ["Céréales", "Grandes cultures"],
+  "Maïs doux":  ["Céréales", "Grandes cultures"],
+  // Oléagineux
+  "Tournesol":  ["Grandes cultures"],
+  "Colza":      ["Crucifères oléagineuses", "Grandes cultures"],
+  "Lin":        ["Grandes cultures"],
+  "Soja":       ["Graines protéagineuses", "Grandes cultures"],
+  // Légumineuses
+  "Pois":       ["Graines protéagineuses", "Légumineuses potagères (sèches)"],
+  "Haricots":   ["Haricots et Pois non écossés frais", "Haricots et Pois écossés frais"],
+  // Fruits à pépins — enregistrés sous "Fruits à pépins" dans E-Phy
+  "Pommier":    ["Fruits à pépins", "Cultures fruitières"],
+  "Poirier":    ["Fruits à pépins", "Cultures fruitières"],
+  // Fruits à noyau
+  "Pêcher - Abricotier": ["Fruits à noyau", "Cultures fruitières"],
+  "Cerisier":   ["Fruits à noyau", "Cultures fruitières"],
+  "Prunier":    ["Fruits à noyau", "Cultures fruitières"],
+  // Fruits à coque
+  "Amandier":   ["Fruits à coque", "Cultures fruitières"],
+  "Noyer":      ["Fruits à coque", "Cultures fruitières"],
+  "Noisetier":  ["Fruits à coque", "Cultures fruitières"],
+  "Pistachier": ["Fruits à coque", "Cultures fruitières"],
+  // Petits fruits
+  "Kiwi":       ["Cultures fruitières"],
+  "Fraisier":   ["Petit fruits", "Petits fruits", "Cultures fruitières"],
+  "Framboisier":["Petit fruits", "Petits fruits", "Cultures fruitières"],
+  "Cassissier": ["Petit fruits", "Petits fruits", "Cultures fruitières"],
+  // Agrumes
+  "Agrumes":    ["Cultures fruitières"],
+  // Légumes
+  "Tomate - Aubergine": ["Cultures légumières", "Cultures maraîchères"],
+  "Poivron":    ["Cultures légumières", "Cucurbitacées à peau comestible"],
+  "Laitue":     ["Cultures légumières"],
+  "Carotte":    ["Cultures légumières"],
+  "Oignon":     ["Cultures légumières"],
+  "Poireau":    ["Cultures légumières"],
+  "Pomme de terre": ["Cultures légumières"],
+  "Artichaut":  ["Cultures légumières"],
+  "Asperge":    ["Cultures légumières"],
+  "Epinard":    ["Cultures légumières"],
+  // Cucurbitacées
+  "Concombre":  ["Cucurbitacées à peau comestible", "Cultures légumières"],
+  "Courgette":  ["Cucurbitacées à peau comestible", "Cultures légumières"],
+  "Melon":      ["Cucurbitacées à peau non comestible", "Cultures légumières"],
+  // Prairies et fourrages
+  "Prairies":   ["Graminées fourragères", "Légumineuses fourragères"],
+  "Gazons de graminées": ["Graminées fourragères"],
+};
+
 export default function SearchScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string; q?: string }>();
@@ -80,11 +140,16 @@ export default function SearchScreen() {
       setIsSearching(true);
       setSearchType("culture");
       setTimeout(() => {
-        // Trouver tous les AMM qui ont un usage sur cette culture
+        // Construire la liste des cultures à chercher : la culture elle-même + ses alias génériques
+        const culturesToSearch = new Set<string>([cultureName]);
+        const aliases = CULTURE_ALIASES[cultureName] || [];
+        aliases.forEach((alias) => culturesToSearch.add(alias));
+
+        // Trouver tous les AMM qui ont un usage sur l'une de ces cultures
         const ammList: string[] = [];
         Object.entries(usages).forEach(([amm, ammUsages]) => {
-          const hasMatch = ammUsages.some(
-            (u) => u.culture?.toLowerCase() === cultureName.toLowerCase()
+          const hasMatch = ammUsages.some((u) =>
+            culturesToSearch.has(u.culture || "")
           );
           if (hasMatch) ammList.push(amm);
         });
@@ -455,7 +520,10 @@ export default function SearchScreen() {
                           styles.suggestionItem,
                           pressed && { backgroundColor: "#F0F9FF" },
                         ]}
-                        onPress={() => handleCultureSearch(culture)}
+                        onPress={() => {
+                        setCultureQuery(culture);
+                        setShowCultureSuggestions(false);
+                      }}
                       >
                         <Text style={styles.suggestionText}>{culture}</Text>
                       </Pressable>
