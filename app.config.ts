@@ -54,6 +54,8 @@ const config: ExpoConfig = {
     buildNumber: "83",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      CFBundleDevelopmentRegion: "fr",
+      CFBundleLocalizations: ["fr", "en"],
     },
   },
   android: {
