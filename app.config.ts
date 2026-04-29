@@ -41,7 +41,7 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.1.0",
+  version: "1.1.1",
   // Pas de restriction d'orientation pour compatibilité grand écran (Android 16+)
   orientation: "default",
   icon: "./assets/images/icon.png",
@@ -51,7 +51,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    buildNumber: "83",
+    buildNumber: "84",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       CFBundleDevelopmentRegion: "fr",
@@ -59,7 +59,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    versionCode: 82,
+    versionCode: 83,
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
       foregroundImage: "./assets/images/android-icon-foreground.png",
