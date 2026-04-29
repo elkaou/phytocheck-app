@@ -331,7 +331,74 @@ def convert_risks(csv_path):
     return risk_map
 
 
-def update_manifest(update_date_str, products_count, risks_count):
+def convert_usages(csv_path):
+    """Lit le CSV usages E-PHY et retourne un dict {amm: [{culture, application, cible, etat, dose, unite, nb_max_appli, condition}]}."""
+    print(f"  Fichier : {csv_path}")
+    usages_map = {}
+
+    with open_csv(csv_path) as f:
+        reader = csv.DictReader(f, delimiter=";")
+        headers = reader.fieldnames or []
+        print(f"  Colonnes détectées : {[h.strip() for h in headers[:6]]}...")
+
+        for row in reader:
+            row = normalize_row(row)
+
+            amm = row.get("numero AMM", "").strip()
+            if not amm:
+                continue
+
+            # Extraire les champs de l'identifiant usage (format: "Culture * Mode * Cible")
+            identifiant = row.get("identifiant usage", "").strip()
+            parts = [p.strip() for p in identifiant.split("*")]
+            culture = parts[0] if len(parts) > 0 else ""
+            application = parts[1] if len(parts) > 1 else ""
+            cible = parts[2] if len(parts) > 2 else ""
+
+            etat = row.get("etat", row.get("Etat", "")).strip()
+            dose = row.get("dose", row.get("Dose", "")).strip()
+            unite = row.get("unite", row.get("Unité", row.get("unite dose", ""))).strip()
+            nb_max = row.get("nombre max d'applications", row.get("nb max appli", "")).strip()
+            condition = row.get("conditions d'emploi", row.get("condition", "")).strip()
+            dar = row.get("DAR", row.get("dar", "")).strip()
+            znt = row.get("ZNT aquatique", row.get("znt", "")).strip()
+
+            if not culture:
+                continue
+
+            entry = {}
+            entry["culture"] = culture
+            if application:
+                entry["application"] = application
+            if cible:
+                entry["cible"] = cible
+            if etat:
+                entry["etat"] = etat
+            if dose:
+                entry["dose"] = dose
+            if unite:
+                entry["unite"] = unite
+            if nb_max:
+                entry["nb_max_appli"] = nb_max
+            if dar:
+                entry["dar"] = dar
+            if znt:
+                entry["znt"] = znt
+            if condition:
+                entry["condition"] = condition
+
+            if amm not in usages_map:
+                usages_map[amm] = []
+            usages_map[amm].append(entry)
+
+    # Trier par culture puis cible
+    for amm in usages_map:
+        usages_map[amm].sort(key=lambda x: (x.get("culture", ""), x.get("cible", "")))
+
+    return usages_map
+
+
+def update_manifest(update_date_str, products_count, risks_count, usages_count=None):
     """Met à jour manifest.json dans assets/data/ du projet ET dans le dépôt phytocheck-data."""
     manifest_data = {
         "version": "1.0",
@@ -339,6 +406,8 @@ def update_manifest(update_date_str, products_count, risks_count):
         "products_count": products_count,
         "risks_count": risks_count,
     }
+    if usages_count is not None:
+        manifest_data["usages_count"] = usages_count
 
     # ── 1. Toujours mettre à jour assets/data/manifest.json dans le projet ──
     local_manifest = PROJECT_ROOT / "assets" / "data" / "manifest.json"
@@ -387,7 +456,7 @@ def update_product_service(ts_path, update_date_str):
 
 
 
-def update_bundle_manifest(data_context_path, update_date_str, products_count, risks_count):
+def update_bundle_manifest(data_context_path, update_date_str, products_count, risks_count, usages_count=None):
     """Met à jour BUNDLE_MANIFEST dans lib/data-context.tsx."""
     if not data_context_path.exists():
         print(f"  AVERTISSEMENT : {data_context_path} introuvable, mise à jour ignorée.")
@@ -411,6 +480,12 @@ def update_bundle_manifest(data_context_path, update_date_str, products_count, r
         f'risks_count: {risks_count}',
         content,
     )
+    if usages_count is not None:
+        content = re.sub(
+            r'usages_count:\s*\d+',
+            f'usages_count: {usages_count}',
+            content,
+        )
     
     data_context_path.write_text(content, encoding="utf-8")
     print(f"  data-context.tsx mis à jour : date={update_date_str}, produits={products_count}, risques={risks_count}")
@@ -420,6 +495,7 @@ def main():
     products_csv = Path(args.products)
     risks_csv = Path(args.risks)
     pcp_csv = Path(args.pcp)
+    usages_csv = Path(args.usages)
     out_dir = Path(args.out_dir)
 
     # Vérifications
