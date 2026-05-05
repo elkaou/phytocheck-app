@@ -35,6 +35,7 @@ const MAPPING = {
   "list.bullet": "format-list-bulleted",
   "chevron.down": "expand-more",
   "chevron.up": "expand-less",
+  "arrow.clockwise": "refresh",
 } as IconMapping;
 
 /**

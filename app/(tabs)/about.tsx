@@ -1,13 +1,52 @@
-import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
+import { ScrollView, Text, View, Pressable, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { router } from "expo-router";
 import Constants from "expo-constants";
+import { useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useData } from "@/lib/data-context";
+import { clearDataCache, checkAndUpdateInBackground } from "@/lib/data-update-service";
 
 export default function AboutScreen() {
   const { products, updateDate } = useData();
   const appVersion = Constants.expoConfig?.version ?? "1.0.0";
+  const [checking, setChecking] = useState(false);
+  const [checkStatus, setCheckStatus] = useState<"idle" | "uptodate" | "updated">("idle");
+
+  const handleCheckUpdate = async () => {
+    if (checking) return;
+    setChecking(true);
+    setCheckStatus("idle");
+    let updated = false;
+    try {
+      // Vider le cache de vérification pour forcer la re-vérification
+      await clearDataCache();
+      // Lancer la vérification avec timeout
+      await new Promise<void>((resolve) => {
+        checkAndUpdateInBackground((manifest) => {
+          updated = true;
+          setCheckStatus("updated");
+          Alert.alert(
+            "Mise à jour appliquée",
+            `Nouvelles données téléchargées (${manifest.products_count?.toLocaleString("fr-FR") ?? "?"} produits). Relancez l'application pour voir les changements.`,
+            [{ text: "OK" }]
+          );
+          resolve();
+        });
+        // Timeout de 15s pour détecter l'absence de mise à jour
+        setTimeout(resolve, 15000);
+      });
+      if (!updated) {
+        setCheckStatus("uptodate");
+      }
+    } catch {
+      Alert.alert("Erreur", "Impossible de vérifier les mises à jour. Vérifiez votre connexion internet.");
+      setCheckStatus("idle");
+    } finally {
+      setChecking(false);
+    }
+  };
+
   return (
     <ScreenContainer containerClassName="bg-primary">
       {/* Header */}
@@ -71,6 +110,39 @@ export default function AboutScreen() {
               {products.length.toLocaleString("fr-FR")} produits phytosanitaires
               référencés.
             </Text>
+
+            {/* Bouton vérification mise à jour */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.updateButton,
+                pressed && !checking && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                checking && styles.updateButtonDisabled,
+              ]}
+              onPress={handleCheckUpdate}
+              disabled={checking}
+            >
+              {checking ? (
+                <>
+                  <ActivityIndicator size="small" color="#0a7ea5" />
+                  <Text style={styles.updateButtonText}>Vérification en cours...</Text>
+                </>
+              ) : checkStatus === "uptodate" ? (
+                <>
+                  <IconSymbol name="checkmark.circle.fill" size={18} color="#22C55E" />
+                  <Text style={[styles.updateButtonText, { color: "#22C55E" }]}>Données à jour</Text>
+                </>
+              ) : checkStatus === "updated" ? (
+                <>
+                  <IconSymbol name="checkmark.circle.fill" size={18} color="#22C55E" />
+                  <Text style={[styles.updateButtonText, { color: "#22C55E" }]}>Mise à jour appliquée</Text>
+                </>
+              ) : (
+                <>
+                  <IconSymbol name="arrow.clockwise" size={18} color="#0a7ea5" />
+                  <Text style={styles.updateButtonText}>Vérifier les mises à jour</Text>
+                </>
+              )}
+            </Pressable>
           </View>
 
           {/* Credits */}
@@ -167,5 +239,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#687076",
     lineHeight: 22,
+  },
+  updateButton: {
+    marginTop: 16,
+    borderWidth: 1.5,
+    borderColor: "#0a7ea5",
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#F0F9FF",
+  },
+  updateButtonDisabled: {
+    borderColor: "#CBD5E1",
+    backgroundColor: "#F8FAFC",
+  },
+  updateButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#0a7ea5",
   },
 });

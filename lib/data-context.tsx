@@ -9,11 +9,12 @@ import {
 // Données bundle (embarquées dans l'app - toujours disponibles)
 import bundleProducts from "@/assets/data/products.json";
 import bundleRiskPhrases from "@/assets/data/risk-phrases.json";
+import bundleUsages from "@/assets/data/usages.json";
 
 // Manifest bundle (mis à jour automatiquement par le script Python)
 const BUNDLE_MANIFEST = {
   version: "1.0",
-  updated_at: "29/04/2026",
+  updated_at: "05/05/2026",
   products_count: 17149,
   risks_count: 2492,
 };
@@ -48,7 +49,7 @@ interface DataContextValue {
 const DataContext = createContext<DataContextValue>({
   products: bundleProducts as Product[],
   riskPhrases: bundleRiskPhrases as Record<string, RiskPhrase[]>,
-  usages: {},
+  usages: bundleUsages as Record<string, ProductUsage[]>,
   updateDate: BUNDLE_MANIFEST.updated_at,
   dataSource: "bundle",
   isUpdating: false,
@@ -60,7 +61,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [riskPhrases, setRiskPhrases] = useState<Record<string, RiskPhrase[]>>(
     bundleRiskPhrases as Record<string, RiskPhrase[]>
   );
-  const [usages, setUsages] = useState<Record<string, ProductUsage[]>>({});
+  const [usages, setUsages] = useState<Record<string, ProductUsage[]>>(bundleUsages as Record<string, ProductUsage[]>);
   const [updateDate, setUpdateDate] = useState(BUNDLE_MANIFEST.updated_at);
   const [dataSource, setDataSource] = useState<DataSource>("bundle");
   const [isUpdating, setIsUpdating] = useState(false);

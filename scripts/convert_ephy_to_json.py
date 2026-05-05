@@ -264,15 +264,17 @@ def convert_pcp(csv_path, ephy_products):
             date_autorisation = ""
 
         # Construire les noms secondaires
-        # On met uniquement le produit de référence français en nom secondaire,
-        # PAS les noms des produits importés étrangers (ex: BELKAR importé d'Allemagne
-        # ne doit pas apparaître comme nom secondaire de HALOPI)
+        # On inclut :
+        # 1. Le produit de référence français (ex: AKA pour TOPMAX)
+        # 2. Les noms des produits importés (ex: TREVISTAR) pour qu'ils soient trouvables à la recherche
         noms_secondaires_parts = []
         ref_nom = entry.get("ref_nom", "")
         if ref_nom and ref_nom.upper() != entry["nom"].upper():
             noms_secondaires_parts.append(ref_nom)
-        # Note: les noms importés (entry["noms_importes"]) sont volontairement
-        # exclus des noms secondaires car ce sont des noms de produits étrangers
+        # Ajouter les noms importés étrangers pour permettre la recherche par nom étranger
+        for nom_importe in sorted(entry.get("noms_importes", set())):
+            if nom_importe.upper() != entry["nom"].upper() and nom_importe not in noms_secondaires_parts:
+                noms_secondaires_parts.append(nom_importe)
         noms_secondaires = " | ".join(noms_secondaires_parts)
 
         # Normaliser l'état
@@ -355,13 +357,13 @@ def convert_usages(csv_path):
             application = parts[1] if len(parts) > 1 else ""
             cible = parts[2] if len(parts) > 2 else ""
 
-            etat = row.get("etat", row.get("Etat", "")).strip()
-            dose = row.get("dose", row.get("Dose", "")).strip()
-            unite = row.get("unite", row.get("Unité", row.get("unite dose", ""))).strip()
-            nb_max = row.get("nombre max d'applications", row.get("nb max appli", "")).strip()
-            condition = row.get("conditions d'emploi", row.get("condition", "")).strip()
-            dar = row.get("DAR", row.get("dar", "")).strip()
-            znt = row.get("ZNT aquatique", row.get("znt", "")).strip()
+            etat = row.get("etat usage", row.get("etat", row.get("Etat", ""))).strip()
+            dose = row.get("dose retenue", row.get("dose", row.get("Dose", ""))).strip()
+            unite = row.get("dose retenue unite", row.get("unite", row.get("Unité", row.get("unite dose", "")))).strip()
+            nb_max = row.get("nombre max d'application", row.get("nombre max d'applications", row.get("nb max appli", ""))).strip()
+            condition = row.get("condition emploi", row.get("conditions d'emploi", row.get("condition", ""))).strip()
+            dar = row.get("delai avant recolte jour", row.get("DAR", row.get("dar", ""))).strip()
+            znt = row.get("ZNT aquatique (en m)", row.get("ZNT aquatique", row.get("znt", ""))).strip()
 
             if not culture:
                 continue
@@ -383,7 +385,7 @@ def convert_usages(csv_path):
             if dar:
                 entry["dar"] = dar
             if znt:
-                entry["znt"] = znt
+                entry["znt_aqua"] = znt
             if condition:
                 entry["condition"] = condition
 
