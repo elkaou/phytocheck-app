@@ -358,6 +358,9 @@ def convert_usages(csv_path):
             cible = parts[2] if len(parts) > 2 else ""
 
             etat = row.get("etat usage", row.get("etat", row.get("Etat", ""))).strip()
+            # Ignorer les usages retirés (plus homologués, pas de dose disponible)
+            if etat and "retrait" in etat.lower():
+                continue
             dose = row.get("dose retenue", row.get("dose", row.get("Dose", ""))).strip()
             unite = row.get("dose retenue unite", row.get("unite", row.get("Unité", row.get("unite dose", "")))).strip()
             nb_max = row.get("nombre max d'application", row.get("nombre max d'applications", row.get("nb max appli", ""))).strip()
