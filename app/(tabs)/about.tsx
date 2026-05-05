@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, Pressable, StyleSheet, ActivityIndicator, Alert } from "react-native";
+import { ScrollView, Text, View, Pressable, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { router } from "expo-router";
 import Constants from "expo-constants";
 import { useState } from "react";
@@ -112,14 +112,11 @@ export default function AboutScreen() {
             </Text>
 
             {/* Bouton vérification mise à jour */}
-            <Pressable
-              style={({ pressed }) => [
-                styles.updateButton,
-                pressed && !checking && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                checking && styles.updateButtonDisabled,
-              ]}
+            <TouchableOpacity
+              style={[styles.updateButton, checking && styles.updateButtonDisabled]}
               onPress={handleCheckUpdate}
               disabled={checking}
+              activeOpacity={0.75}
             >
               {checking ? (
                 <>
@@ -142,7 +139,7 @@ export default function AboutScreen() {
                   <Text style={styles.updateButtonText}>Vérifier les mises à jour</Text>
                 </>
               )}
-            </Pressable>
+            </TouchableOpacity>
           </View>
 
           {/* Credits */}
