@@ -96,11 +96,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (id) {
         try {
           // Synchroniser avec le serveur pour récupérer le searchCount.
-          // IMPORTANT : on envoie isPremium: false ici car le cache local (AsyncStorage)
-          // peut être obsolète (ex: abonnement résilié). C'est IAPProvider qui est
+          // On envoie isPremium: false + allowDowngrade: false : le serveur ne rétrograde
+          // pas un statut Premium déjà enregistré en base. C'est IAPProvider qui est
           // responsable de la vérification réelle via getAvailablePurchases() et qui
-          // appellera setPremium(true/false) une fois la vérification Google Play terminée.
-          const result = await syncDeviceMutation.mutateAsync({ deviceId: id, isPremium: false });
+          // appellera setPremium(true/false) avec allowDowngrade:true si l'abonnement a expiré.
+          const result = await syncDeviceMutation.mutateAsync({ deviceId: id, isPremium: false, allowDowngrade: false });
           if (!result.offline) {
             // Utiliser le compteur serveur (plus fiable que le local)
             setSearchCount(result.searchCount);
@@ -225,10 +225,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setPremium = useCallback(async (value: boolean) => {
     await setIsPremiumStorage(value);
     setIsPremiumState(value);
-    // Synchroniser le statut Premium avec le serveur
+    // Synchroniser le statut Premium avec le serveur.
+    // allowDowngrade: true car c'est IAPProvider qui appelle setPremium après vérification
+    // réelle de l'abonnement — il peut donc rétrograder true→false si l'abonnement a expiré.
     if (deviceId) {
       try {
-        await syncDeviceMutation.mutateAsync({ deviceId, isPremium: value });
+        await syncDeviceMutation.mutateAsync({ deviceId, isPremium: value, allowDowngrade: true });
       } catch {
         // Ignorer les erreurs réseau
       }

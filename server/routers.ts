@@ -297,10 +297,13 @@ ATTENTION :
         z.object({
           deviceId: z.string().min(1).max(255),
           isPremium: z.boolean(),
+          // allowDowngrade: si false, ne rétrograde pas isPremium true→false en base.
+          // Mettre false au démarrage de l'app, true quand IAPProvider confirme l'expiration.
+          allowDowngrade: z.boolean().default(true),
         })
       )
       .mutation(async ({ input }) => {
-        const device = await syncDevice(input.deviceId, input.isPremium);
+        const device = await syncDevice(input.deviceId, input.isPremium, input.allowDowngrade);
         if (!device) {
           return { searchCount: 0, isPremium: input.isPremium, offline: true };
         }

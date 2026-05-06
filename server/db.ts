@@ -104,11 +104,35 @@ export async function getUserByOpenId(openId: string) {
  * Synchronise un appareil avec le serveur.
  * Crée l'entrée si absente, met à jour isPremium et lastSeen si présente.
  * Retourne l'état actuel de l'appareil (searchCount, isPremium).
+ *
+ * @param allowDowngrade - Si false (défaut), ne rétrograde pas isPremium de true→false.
+ *   Utilisé au démarrage de l'app pour éviter d'écraser le statut Premium avant que
+ *   IAPProvider ait vérifié l'abonnement Google Play/Apple.
+ *   Mettre à true uniquement quand IAPProvider confirme l'expiration de l'abonnement.
  */
-export async function syncDevice(deviceId: string, isPremium: boolean): Promise<Device | null> {
+export async function syncDevice(
+  deviceId: string,
+  isPremium: boolean,
+  allowDowngrade = true
+): Promise<Device | null> {
   const db = await getDb();
   if (!db) return null;
   try {
+    if (!allowDowngrade && !isPremium) {
+      // Mode démarrage : ne pas écraser isPremium:true par false.
+      // On met uniquement à jour lastSeen, et isPremium seulement si on passe à true.
+      const existing = await db.select().from(devices).where(eq(devices.deviceId, deviceId)).limit(1);
+      if (existing.length > 0 && existing[0].isPremium) {
+        // L'appareil est déjà Premium en base → garder true, juste mettre à jour lastSeen
+        await db
+          .update(devices)
+          .set({ lastSeen: new Date() })
+          .where(eq(devices.deviceId, deviceId));
+        const result = await db.select().from(devices).where(eq(devices.deviceId, deviceId)).limit(1);
+        return result.length > 0 ? result[0] : null;
+      }
+      // Pas encore en base ou déjà false → comportement normal
+    }
     await db
       .insert(devices)
       .values({ deviceId, isPremium, searchCount: 0 })
