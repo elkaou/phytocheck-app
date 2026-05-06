@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ProductUsage } from "@/lib/data-context";
+import { getCultureSearchSet, CULTURE_ALIASES } from "@/lib/culture-aliases";
 
 interface UsagesModalProps {
   visible: boolean;
@@ -27,10 +28,18 @@ export function UsagesModal({ visible, productName, usages, onClose, initialCult
   const [selectedCible, setSelectedCible] = useState<string | null>(null);
 
   // Usages filtrés par la culture initiale (si fournie)
+  // On utilise getCultureSearchSet pour inclure les alias génériques E-Phy
+  // Ex: "Blé" → cherche aussi "Céréales à paille", "Céréales", "Grandes cultures"
   const cultureFilteredUsages = useMemo(() => {
     if (!initialCulture) return usages;
-    const q = initialCulture.toLowerCase().trim();
-    return usages.filter((u) => u.culture.toLowerCase().includes(q));
+    const cultureSet = getCultureSearchSet(initialCulture.trim());
+    // Convertir en minuscules pour la comparaison
+    const cultureSetLower = new Set(
+      Array.from(cultureSet).map((c) => c.toLowerCase())
+    );
+    return usages.filter((u) =>
+      cultureSetLower.has(u.culture.toLowerCase().trim())
+    );
   }, [usages, initialCulture]);
 
   // Liste des cibles disponibles pour les usages de la culture filtrée
@@ -52,11 +61,24 @@ export function UsagesModal({ visible, productName, usages, onClose, initialCult
     }
 
     // Filtre texte libre
+    // Si la saisie correspond à une culture connue, on cherche aussi ses alias génériques
+    // Ex: taper "Blé" affiche aussi les usages sur "Céréales à paille"
     if (search.trim()) {
       const q = search.toLowerCase().trim();
+      // Construire l'ensemble des cultures à matcher : la saisie + ses alias
+      // On cherche si la saisie correspond (en partie) à une clé de CULTURE_ALIASES
+      const matchedCultureSet = new Set<string>();
+      Object.entries(CULTURE_ALIASES).forEach(([key, aliases]) => {
+        if (key.toLowerCase().includes(q)) {
+          // La saisie matche une culture connue : inclure la culture et ses alias
+          matchedCultureSet.add(key.toLowerCase());
+          aliases.forEach((a) => matchedCultureSet.add(a.toLowerCase()));
+        }
+      });
       list = list.filter(
         (u) =>
           u.culture.toLowerCase().includes(q) ||
+          matchedCultureSet.has(u.culture.toLowerCase().trim()) ||
           (u.cible ?? "").toLowerCase().includes(q) ||
           (u.application ?? "").toLowerCase().includes(q)
       );
