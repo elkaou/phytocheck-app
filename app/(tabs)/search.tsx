@@ -217,16 +217,10 @@ export default function SearchScreen() {
         setHasSearched(true);
         setIsSearching(false);
 
+        // Remonter en haut pour voir les filtres (type + cible) dès l'affichage des résultats
         setTimeout(() => {
-          filtersRef.current?.measureLayout(
-            // @ts-ignore
-            scrollViewRef.current?.getInnerViewNode?.(),
-            (_x: number, y: number) => {
-              scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
-            },
-            () => {}
-          );
-        }, 250);
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }, 150);
       }, 100);
     },
     [usages, dynamicProducts]
