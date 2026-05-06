@@ -247,19 +247,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
+    maxHeight: 52,
   },
   ciblesContent: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     gap: 8,
+    flexDirection: "row",
+    alignItems: "center",
   },
   cibleChip: {
     backgroundColor: "#F3F4F6",
     borderRadius: 20,
     paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderWidth: 1.5,
     borderColor: "#E5E7EB",
+    alignSelf: "center",
+    flexShrink: 0,
   },
   cibleChipActive: {
     backgroundColor: "#0a7ea5",
@@ -269,6 +274,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: "#374151",
+    flexShrink: 0,
   },
   cibleChipTextActive: {
     color: "#FFFFFF",

@@ -113,6 +113,7 @@ export default function SearchScreen() {
 
   const scrollViewRef = useRef<ScrollView>(null);
   const resultsRef = useRef<View>(null);
+  const filtersRef = useRef<View>(null);
   const isNavigatingToProduct = useRef(false);
   const savedScrollY = useRef(0);
 
@@ -217,15 +218,15 @@ export default function SearchScreen() {
         setIsSearching(false);
 
         setTimeout(() => {
-          resultsRef.current?.measureLayout(
+          filtersRef.current?.measureLayout(
             // @ts-ignore
             scrollViewRef.current?.getInnerViewNode?.(),
             (_x: number, y: number) => {
-              scrollViewRef.current?.scrollTo({ y: y - 20, animated: true });
+              scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
             },
             () => {}
           );
-        }, 200);
+        }, 250);
       }, 100);
     },
     [usages, dynamicProducts]
@@ -634,7 +635,7 @@ export default function SearchScreen() {
 
           {/* Filtres de type affichés dans les résultats culture */}
           {!isSearching && hasSearched && searchType === "culture" && (
-            <View style={{ marginBottom: 12 }}>
+            <View ref={filtersRef} style={{ marginBottom: 12 }}>
               <Text style={styles.cultureResultTitle}>
                 Produits autorisés sur : <Text style={{ color: "#0a7ea5" }}>{cultureQuery}</Text>
               </Text>
