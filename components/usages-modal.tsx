@@ -7,6 +7,7 @@ import {
   FlatList,
   StyleSheet,
   TextInput,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -17,21 +18,52 @@ interface UsagesModalProps {
   productName: string;
   usages: ProductUsage[];
   onClose: () => void;
+  /** Culture pré-sélectionnée depuis la recherche par culture */
+  initialCulture?: string;
 }
 
-export function UsagesModal({ visible, productName, usages, onClose }: UsagesModalProps) {
+export function UsagesModal({ visible, productName, usages, onClose, initialCulture }: UsagesModalProps) {
   const [search, setSearch] = useState("");
+  const [selectedCible, setSelectedCible] = useState<string | null>(null);
 
+  // Usages filtrés par la culture initiale (si fournie)
+  const cultureFilteredUsages = useMemo(() => {
+    if (!initialCulture) return usages;
+    const q = initialCulture.toLowerCase().trim();
+    return usages.filter((u) => u.culture.toLowerCase().includes(q));
+  }, [usages, initialCulture]);
+
+  // Liste des cibles disponibles pour les usages de la culture filtrée
+  const availableCibles = useMemo(() => {
+    const cibles = new Set<string>();
+    cultureFilteredUsages.forEach((u) => {
+      if (u.cible) cibles.add(u.cible);
+    });
+    return Array.from(cibles).sort((a, b) => a.localeCompare(b, "fr"));
+  }, [cultureFilteredUsages]);
+
+  // Filtrage final : culture + cible sélectionnée + recherche texte
   const filtered = useMemo(() => {
-    if (!search.trim()) return usages;
-    const q = search.toLowerCase().trim();
-    return usages.filter(
-      (u) =>
-        u.culture.toLowerCase().includes(q) ||
-        (u.cible ?? "").toLowerCase().includes(q) ||
-        (u.application ?? "").toLowerCase().includes(q)
-    );
-  }, [usages, search]);
+    let list = cultureFilteredUsages;
+
+    // Filtre par cible sélectionnée
+    if (selectedCible) {
+      list = list.filter((u) => u.cible === selectedCible);
+    }
+
+    // Filtre texte libre
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      list = list.filter(
+        (u) =>
+          u.culture.toLowerCase().includes(q) ||
+          (u.cible ?? "").toLowerCase().includes(q) ||
+          (u.application ?? "").toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [cultureFilteredUsages, selectedCible, search]);
 
   const renderItem = ({ item }: { item: ProductUsage }) => (
     <View style={styles.usageCard}>
@@ -102,6 +134,7 @@ export function UsagesModal({ visible, productName, usages, onClose }: UsagesMod
               </Text>
               <Text style={styles.headerSubtitle} numberOfLines={1}>
                 {productName}
+                {initialCulture ? ` · ${initialCulture}` : ""}
               </Text>
             </View>
             <Pressable
@@ -112,7 +145,37 @@ export function UsagesModal({ visible, productName, usages, onClose }: UsagesMod
             </Pressable>
           </View>
 
-          {/* Compteur + barre de recherche */}
+          {/* Chips de filtre par cible (si plusieurs cibles disponibles) */}
+          {availableCibles.length > 1 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.ciblesScroll}
+              contentContainerStyle={styles.ciblesContent}
+            >
+              <Pressable
+                style={[styles.cibleChip, selectedCible === null && styles.cibleChipActive]}
+                onPress={() => setSelectedCible(null)}
+              >
+                <Text style={[styles.cibleChipText, selectedCible === null && styles.cibleChipTextActive]}>
+                  Toutes
+                </Text>
+              </Pressable>
+              {availableCibles.map((cible) => (
+                <Pressable
+                  key={cible}
+                  style={[styles.cibleChip, selectedCible === cible && styles.cibleChipActive]}
+                  onPress={() => setSelectedCible(selectedCible === cible ? null : cible)}
+                >
+                  <Text style={[styles.cibleChipText, selectedCible === cible && styles.cibleChipTextActive]}>
+                    {cible}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+
+          {/* Barre de recherche texte */}
           <View style={styles.searchBar}>
             <IconSymbol name="magnifyingglass" size={18} color="#687076" />
             <TextInput
@@ -125,9 +188,10 @@ export function UsagesModal({ visible, productName, usages, onClose }: UsagesMod
               clearButtonMode="while-editing"
             />
           </View>
+
           <Text style={styles.counter}>
             {filtered.length} usage{filtered.length > 1 ? "s" : ""}
-            {search.trim() ? ` sur ${usages.length}` : ""}
+            {(search.trim() || selectedCible) ? ` sur ${cultureFilteredUsages.length}` : ""}
           </Text>
 
           {/* Liste des usages */}
@@ -178,6 +242,36 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: 4,
+  },
+  ciblesScroll: {
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  ciblesContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  cibleChip: {
+    backgroundColor: "#F3F4F6",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+  },
+  cibleChipActive: {
+    backgroundColor: "#0a7ea5",
+    borderColor: "#0a7ea5",
+  },
+  cibleChipText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#374151",
+  },
+  cibleChipTextActive: {
+    color: "#FFFFFF",
   },
   searchBar: {
     flexDirection: "row",
@@ -232,27 +326,29 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   usageHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 8,
+    flexDirection: "column",
+    gap: 6,
   },
   cultureName: {
     fontSize: 16,
     fontWeight: "700",
     color: "#1A1A1A",
-    flex: 1,
+    flexShrink: 1,
   },
   cibleBadge: {
     backgroundColor: "#EFF6FF",
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    alignSelf: "flex-start",
+    maxWidth: "100%",
   },
   cibleText: {
     fontSize: 12,
     fontWeight: "600",
     color: "#1D4ED8",
+    flexShrink: 1,
+    flexWrap: "wrap",
   },
   applicationText: {
     fontSize: 13,

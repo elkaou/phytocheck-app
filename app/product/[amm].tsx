@@ -23,10 +23,12 @@ import { useApp } from "@/lib/app-context";
 import { useData, ProductUsage } from "@/lib/data-context";
 
 export default function ProductDetailScreen() {
-  const params = useLocalSearchParams<{ amm: string | string[]; name?: string | string[] }>();
+  const params = useLocalSearchParams<{ amm: string | string[]; name?: string | string[]; culture?: string | string[] }>();
   // useLocalSearchParams peut retourner string | string[] selon la plateforme
   const amm = Array.isArray(params.amm) ? params.amm[0] : params.amm;
   const name = Array.isArray(params.name) ? params.name[0] : params.name;
+  // Culture pré-sélectionnée depuis la recherche par culture (pour pré-filtrer les usages)
+  const initialCulture = Array.isArray(params.culture) ? params.culture[0] : params.culture;
   const router = useRouter();
   const { addProductToStock, isProductInStock, getProductQuantity, updateProductQuantity, isPremium, stock } = useApp();
   const { products: dynamicProducts, riskPhrases: dynamicRiskPhrases, usages: dynamicUsages } = useData();
@@ -45,8 +47,10 @@ export default function ProductDetailScreen() {
 
   const currentQuantity = amm ? getProductQuantity(amm) : 0;
 
-  // Récupérer les usages pour ce produit (par numéro AMM)
-  const productUsages: ProductUsage[] = amm ? (dynamicUsages[amm] ?? []) : [];
+  // Récupérer les usages pour ce produit (par numéro AMM) — exclure les usages retirés
+  const productUsages: ProductUsage[] = amm
+    ? (dynamicUsages[amm] ?? []).filter((u) => u.etat?.toLowerCase() !== "retrait")
+    : [];
   const hasUsages = productUsages.length > 0;
 
   const handleAddToStock = useCallback(async () => {
@@ -332,6 +336,7 @@ export default function ProductDetailScreen() {
         productName={name && name !== product.nom ? name : product.nom}
         usages={productUsages}
         onClose={() => setShowUsagesModal(false)}
+        initialCulture={initialCulture}
       />
     </View>
   );

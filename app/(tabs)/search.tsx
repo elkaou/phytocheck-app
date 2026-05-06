@@ -108,11 +108,45 @@ export default function SearchScreen() {
   const [cultureQuery, setCultureQuery] = useState("");
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<TypeFilter>("Tous");
   const [showCultureSuggestions, setShowCultureSuggestions] = useState(false);
+  // Filtre par cible/maladie dans les résultats culture
+  const [selectedCible, setSelectedCible] = useState<string | null>(null);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const resultsRef = useRef<View>(null);
   const isNavigatingToProduct = useRef(false);
   const savedScrollY = useRef(0);
+
+  // --- Cibles disponibles pour les résultats culture actuels ---
+  const availableCibles = useMemo(() => {
+    if (searchType !== "culture" || results.length === 0) return [];
+    const cibles = new Set<string>();
+    const culturesToSearch = new Set<string>([cultureQuery.trim()]);
+    const aliases = CULTURE_ALIASES[cultureQuery.trim()] || [];
+    aliases.forEach((alias) => culturesToSearch.add(alias));
+    results.forEach((product) => {
+      const productUsages = usages[product.amm] || [];
+      productUsages.forEach((u) => {
+        if (culturesToSearch.has(u.culture || "") && u.cible) {
+          cibles.add(u.cible);
+        }
+      });
+    });
+    return Array.from(cibles).sort((a, b) => a.localeCompare(b, "fr"));
+  }, [searchType, results, cultureQuery, usages]);
+
+  // Produits filtrés par cible sélectionnée
+  const cibleFilteredResults = useMemo(() => {
+    if (!selectedCible || searchType !== "culture") return results;
+    const culturesToSearch = new Set<string>([cultureQuery.trim()]);
+    const aliases = CULTURE_ALIASES[cultureQuery.trim()] || [];
+    aliases.forEach((alias) => culturesToSearch.add(alias));
+    return results.filter((product) => {
+      const productUsages = usages[product.amm] || [];
+      return productUsages.some(
+        (u) => culturesToSearch.has(u.culture || "") && u.cible === selectedCible
+      );
+    });
+  }, [selectedCible, results, searchType, cultureQuery, usages]);
 
   // --- Liste des cultures disponibles (triées alphabétiquement) ---
   const allCultures = useMemo(() => {
@@ -139,6 +173,7 @@ export default function SearchScreen() {
     (cultureName: string, typeFilter: TypeFilter) => {
       setIsSearching(true);
       setSearchType("culture");
+      setSelectedCible(null); // Réinitialiser le filtre cible à chaque nouvelle recherche
       setTimeout(() => {
         // Construire la liste des cultures à chercher : la culture elle-même + ses alias génériques
         const culturesToSearch = new Set<string>([cultureName]);
@@ -343,6 +378,10 @@ export default function SearchScreen() {
             params: {
               amm: item.amm,
               name: item.matchedName || item.nom,
+              // Passer la culture sélectionnée pour pré-filtrer les usages autorisés
+              ...(searchType === "culture" && cultureQuery.trim()
+                ? { culture: cultureQuery.trim() }
+                : {}),
             },
           });
         }}
@@ -374,15 +413,16 @@ export default function SearchScreen() {
         </View>
       </Pressable>
     ),
-    [router]
+    [router, searchType, cultureQuery]
   );
 
   // Titre du résultat selon le type de recherche
   const resultsTitle = useMemo(() => {
     if (searchType === "culture") {
-      const count = results.length;
+      const count = cibleFilteredResults.length;
       const filterLabel = selectedTypeFilter !== "Tous" ? ` — ${selectedTypeFilter}` : "";
-      return `${count} produit${count > 1 ? "s" : ""} autorisé${count > 1 ? "s" : ""} sur ${cultureQuery}${filterLabel}`;
+      const cibleLabel = selectedCible ? ` · ${selectedCible}` : "";
+      return `${count} produit${count > 1 ? "s" : ""} autorisé${count > 1 ? "s" : ""} sur ${cultureQuery}${filterLabel}${cibleLabel}`;
     }
     const count = filterHomologues
       ? results.filter((r) => r.classification !== "retire").length
@@ -598,6 +638,7 @@ export default function SearchScreen() {
               <Text style={styles.cultureResultTitle}>
                 Produits autorisés sur : <Text style={{ color: "#0a7ea5" }}>{cultureQuery}</Text>
               </Text>
+              {/* Filtre par type (Herbicide, Fongicide...) */}
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -625,6 +666,41 @@ export default function SearchScreen() {
                   </Pressable>
                 ))}
               </ScrollView>
+              {/* Filtre par cible/maladie (si des cibles sont disponibles) */}
+              {availableCibles.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={{ marginTop: 8 }}
+                  contentContainerStyle={{ gap: 8, paddingRight: 4 }}
+                >
+                  <Pressable
+                    style={[
+                      styles.cibleFilterButton,
+                      selectedCible === null && styles.cibleFilterButtonActive,
+                    ]}
+                    onPress={() => setSelectedCible(null)}
+                  >
+                    <Text style={[styles.cibleFilterText, selectedCible === null && styles.cibleFilterTextActive]}>
+                      Toutes cibles
+                    </Text>
+                  </Pressable>
+                  {availableCibles.map((cible) => (
+                    <Pressable
+                      key={cible}
+                      style={[
+                        styles.cibleFilterButton,
+                        selectedCible === cible && styles.cibleFilterButtonActive,
+                      ]}
+                      onPress={() => setSelectedCible(selectedCible === cible ? null : cible)}
+                    >
+                      <Text style={[styles.cibleFilterText, selectedCible === cible && styles.cibleFilterTextActive]}>
+                        {cible}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )}
             </View>
           )}
 
@@ -698,6 +774,8 @@ export default function SearchScreen() {
               </View>
               {(searchType !== "culture" && filterHomologues
                 ? results.filter((r) => r.classification !== "retire")
+                : searchType === "culture"
+                ? cibleFilteredResults
                 : results
               ).map((item, index) => (
                 <View key={`${item.amm}-${item.nom}-${index}`}>
@@ -860,6 +938,26 @@ const styles = StyleSheet.create({
     color: "#2E7D32",
   },
   typeFilterTextActive: {
+    color: "#FFFFFF",
+  },
+  // Filtre par cible/maladie
+  cibleFilterButton: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderWidth: 1.5,
+    borderColor: "#0a7ea5",
+  },
+  cibleFilterButtonActive: {
+    backgroundColor: "#0a7ea5",
+  },
+  cibleFilterText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#0a7ea5",
+  },
+  cibleFilterTextActive: {
     color: "#FFFFFF",
   },
   // Résultats culture
