@@ -74,3 +74,130 @@ export function getCultureSearchSet(culture: string): Set<string> {
   aliases.forEach(a => set.add(a));
   return set;
 }
+
+/**
+ * Noms courants qui ne figurent pas tels quels dans E-Phy mais qui
+ * correspondent à une culture E-Phy via CULTURE_ALIASES.
+ * Clé = nom courant affiché à l'utilisateur
+ * Valeur = culture E-Phy réelle utilisée pour la recherche
+ *
+ * Utilisé pour l'autocomplete : taper "Colza" propose "Crucifères oléagineuses"
+ * avec le libellé "Colza (Crucifères oléagineuses)".
+ */
+export const CULTURE_DISPLAY_NAMES: Record<string, string> = {
+  // Oléagineux
+  "Colza":             "Crucifères oléagineuses",
+  "Moutarde":          "Crucifères oléagineuses",
+  // Légumineuses / protéagineux
+  "Féverole":          "Graines protéagineuses",
+  "Feverole":          "Graines protéagineuses",
+  "Pois chiche":       "Légumineuses potagères (sèches)",
+  "Lentille":          "Légumineuses potagères (sèches)",
+  "Lupin":             "Graines protéagineuses",
+  // Céréales à paille (déjà dans E-Phy, mais alias utiles pour la recherche)
+  // Fruits
+  "Pomme":             "Fruits à pépins",
+  "Poire":             "Fruits à pépins",
+  "Pêche":             "Fruits à noyau",
+  "Abricot":           "Fruits à noyau",
+  "Cerise":            "Fruits à noyau",
+  "Prune":             "Fruits à noyau",
+  "Amande":            "Fruits à coque",
+  "Noix":              "Fruits à coque",
+  "Noisette":          "Fruits à coque",
+  "Fraise":            "Fraisier",
+  "Framboise":         "Framboisier",
+  "Cassis":            "Cassissier",
+  // Légumes
+  "Tomate":            "Tomate - Aubergine",
+  "Aubergine":         "Tomate - Aubergine",
+  "Courgette":         "Cucurbitées à peau comestible",
+  "Concombre":         "Cucurbitées à peau comestible",
+  "Melon":             "Cucurbitées à peau non comestible",
+  "Pastèque":          "Cucurbitées à peau non comestible",
+  "Betterave":         "Betterave industrielle et fourragère",
+  "Chou":              "Choux",
+  "Chou-fleur":        "Choux à inflorescence",
+  "Brocoli":           "Choux à inflorescence",
+  "Chou de Bruxelles": "Choux feuillus",
+  "Chou cabus":        "Choux pommés",
+  "Chicorée":          "Chicorées - Production de chicons",
+  "Endive":            "Chicorées - Production de chicons",
+  "Celeri":            "Céleris",
+  "Céleri":            "Céleris",
+  "Persil":            "Fines herbes",
+  "Ciboulette":        "Fines herbes",
+  "Basilic":           "Fines herbes",
+  "Navet":             "Navet",
+  // Vigne
+  "Raisin":            "Vigne",
+  // Grandes cultures
+  "Tournesol":         "Tournesol",
+  "Lin":               "Lin",
+  "Soja":              "Soja",
+  "Chanvre":           "Chanvre",
+  "Riz":               "Riz",
+  "Sorgho":            "Sorgho",
+  "Sarrasin":          "Sarrasin",
+};
+
+/**
+ * Type représentant une suggestion de culture dans l'autocomplete.
+ * - `value` : la culture E-Phy réelle utilisée pour la recherche
+ * - `label` : le libellé affiché à l'utilisateur (peut inclure le nom courant)
+ */
+export type CultureSuggestion = {
+  value: string;  // culture E-Phy réelle
+  label: string;  // libellé affiché
+};
+
+/**
+ * Retourne les suggestions de cultures pour une saisie donnée.
+ * Combine :
+ * 1. Les cultures E-Phy directes (ex: "Blé", "Vigne")
+ * 2. Les noms courants avec leur équivalent E-Phy (ex: "Colza" → "Crucifères oléagineuses")
+ *
+ * @param query - Saisie de l'utilisateur
+ * @param allCultures - Liste des cultures E-Phy disponibles dans les données
+ * @param limit - Nombre maximum de suggestions
+ */
+export function getCultureSuggestions(
+  query: string,
+  allCultures: string[],
+  limit = 10
+): CultureSuggestion[] {
+  if (!query.trim() || query.trim().length < 2) return [];
+
+  const normalize = (s: string) =>
+    s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const q = normalize(query);
+
+  const results: CultureSuggestion[] = [];
+  const seen = new Set<string>(); // éviter les doublons sur la valeur E-Phy
+
+  // 1. Cultures E-Phy directes qui matchent la saisie
+  for (const culture of allCultures) {
+    if (normalize(culture).includes(q)) {
+      if (!seen.has(culture)) {
+        seen.add(culture);
+        results.push({ value: culture, label: culture });
+      }
+    }
+  }
+
+  // 2. Noms courants qui matchent la saisie
+  for (const [displayName, ePhyCulture] of Object.entries(CULTURE_DISPLAY_NAMES)) {
+    if (normalize(displayName).includes(q)) {
+      // Vérifier que la culture E-Phy existe dans les données
+      if (allCultures.includes(ePhyCulture) && !seen.has(ePhyCulture)) {
+        seen.add(ePhyCulture);
+        results.push({
+          value: ePhyCulture,
+          label: `${displayName} \u2192 ${ePhyCulture}`,
+        });
+      }
+    }
+  }
+
+  return results.slice(0, limit);
+}
