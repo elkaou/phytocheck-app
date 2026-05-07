@@ -95,8 +95,9 @@ export default function ProductDetailScreen() {
         <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1 }}>
           <View style={styles.headerBar}>
             <Pressable
-              style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+              style={({ pressed }) => [{ padding: 10, margin: -10 }, pressed && { opacity: 0.6 }]}
               onPress={() => router.back()}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
               <IconSymbol name="arrow.left" size={24} color="#FFFFFF" />
             </Pressable>
@@ -122,8 +123,9 @@ export default function ProductDetailScreen() {
         {/* Header bar */}
         <View style={styles.headerBar}>
           <Pressable
-            style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+            style={({ pressed }) => [{ padding: 10, margin: -10 }, pressed && { opacity: 0.6 }]}
             onPress={() => router.back()}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
             <IconSymbol name="arrow.left" size={24} color="#FFFFFF" />
           </Pressable>
