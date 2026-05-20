@@ -58,7 +58,7 @@ const riskPhrases: Record<string, RiskPhrase[]> = riskPhrasesData as Record<stri
 
 // Total count
 export const TOTAL_PRODUCTS = products.length;
-export const DB_UPDATE_DATE = "05/05/2026";
+export const DB_UPDATE_DATE = "08/04/2026";
 
 // Détermine si un produit est retiré, en se basant sur le champ etat
 // OU sur la dateRetrait si etat est vide (cas du CSV E-Phy où la colonne peut être absente)
@@ -211,20 +211,19 @@ function _searchProducts(
       // Match par nom principal ou AMM → priorité haute
       primaryResults.push(classifyProductWithData(product, dataRiskPhrases));
     } else if (normalizedSecondary.includes(normalizedQuery)) {
-      // Match par nom secondaire → priorité basse
-      const classified = classifyProductWithData(product, dataRiskPhrases);
-      // Trouver quel nom secondaire a matché
+      // Match par nom secondaire → une carte par nom secondaire qui matche
       if (product.nomsSecondaires) {
         const secondaryNames = product.nomsSecondaires.split(" | ");
         for (const sn of secondaryNames) {
+          if (primaryResults.length + secondaryResults.length >= limit) break;
           const normalizedSN = sn.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[®™©℠]/g, "");
           if (normalizedSN.includes(normalizedQuery)) {
+            const classified = classifyProductWithData(product, dataRiskPhrases);
             classified.matchedName = sn.trim();
-            break;
+            secondaryResults.push(classified);
           }
         }
       }
-      secondaryResults.push(classified);
     }
   }
 
