@@ -33,7 +33,25 @@ export const appRouter = router({
       try {
         console.log("[analyzeLabel] Starting OCR analysis, imageUrl length:", input.imageUrl.length);
         
-        // Call LLM directly with the Data URL
+        // If the imageUrl is a Data URL (base64), upload it to S3 first to get a public URL.
+        // The LLM proxy does not support large base64 Data URLs — it returns empty content.
+        let imageUrl = input.imageUrl;
+        if (imageUrl.startsWith("data:")) {
+          console.log("[analyzeLabel] Detected Data URL, uploading to S3...");
+          const matches = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+          if (matches) {
+            const mimeType = matches[1];
+            const base64Data = matches[2];
+            const buffer = Buffer.from(base64Data, "base64");
+            const ext = mimeType.split("/")[1] || "jpg";
+            const key = `ocr-temp/${Date.now()}.${ext}`;
+            const uploaded = await storagePut(key, buffer, mimeType);
+            imageUrl = uploaded.url;
+            console.log("[analyzeLabel] Uploaded to S3, URL:", imageUrl.substring(0, 80) + "...");
+          }
+        }
+
+        // Call LLM with the public URL
         const response = await invokeLLM({
           messages: [
             {
@@ -88,7 +106,7 @@ ATTENTION :
                 {
                   type: "image_url",
                   image_url: {
-                    url: input.imageUrl,
+                    url: imageUrl,
                   },
                 },
               ],
@@ -259,7 +277,7 @@ ATTENTION :
                   {
                   type: "image_url",
                   image_url: {
-                    url: input.imageUrl,
+                    url: imageUrl,
                   },
                   },
                 ],
