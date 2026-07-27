@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { Platform } from "react-native";
 import * as Application from "expo-application";
+import * as SecureStore from "expo-secure-store";
 import {
   getStock,
   addToStock,
@@ -39,13 +40,29 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | null>(null);
 
-/** Récupère l'identifiant unique de l'appareil selon la plateforme */
+const SECURE_DEVICE_ID_KEY = "phytocheck_device_id";
+
+/**
+ * Récupère l'identifiant unique de l'appareil selon la plateforme.
+ * Sur iOS, l'IDFV est réinitialisé à chaque désinstallation. Pour éviter
+ * de perdre le compteur de recherches, on persiste l'ID dans le Keychain
+ * (SecureStore) qui survit aux désinstallations sur iOS.
+ */
 async function getDeviceId(): Promise<string | null> {
   try {
     if (Platform.OS === "android") {
       return Application.getAndroidId();
     } else if (Platform.OS === "ios") {
-      return await Application.getIosIdForVendorAsync();
+      // 1. Chercher d'abord dans le Keychain (survit aux désinstallations)
+      const stored = await SecureStore.getItemAsync(SECURE_DEVICE_ID_KEY);
+      if (stored) return stored;
+      // 2. Pas encore stocké : utiliser l'IDFV actuel et le persister dans le Keychain
+      const idfv = await Application.getIosIdForVendorAsync();
+      if (idfv) {
+        await SecureStore.setItemAsync(SECURE_DEVICE_ID_KEY, idfv);
+        return idfv;
+      }
+      return null;
     }
     // Web : pas d'identifiant fiable
     return null;
