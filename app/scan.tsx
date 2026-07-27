@@ -55,10 +55,22 @@ export default function ScanScreen() {
       try {
         console.log("[Scan] Starting image processing for URI:", uri);
         console.log("[Scan] Platform:", Platform.OS);
-        
-        // Read file directly with FileSystem (same as working label-scanner)
+
+        // Compresser l'image avant envoi : redimensionner à 1200px max, qualité 0.7
+        // Réduit la taille de ~1.5MB à ~200-300KB pour accélérer l'analyse LLM
+        setStatusText("Compression de l'image...");
+        console.log("[Scan] Compressing image...");
+        const compressed = await manipulateAsync(
+          uri,
+          [{ resize: { width: 1200 } }],
+          { compress: 0.7, format: SaveFormat.JPEG }
+        );
+        console.log("[Scan] Image compressed, URI:", compressed.uri);
+
+        // Read file directly with FileSystem
+        setStatusText("Lecture de l'image...");
         console.log("[Scan] Reading file with FileSystem.readAsStringAsync...");
-        const base64 = await FileSystem.readAsStringAsync(uri, {
+        const base64 = await FileSystem.readAsStringAsync(compressed.uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
         console.log("[Scan] Base64 obtained successfully, length:", base64.length);
