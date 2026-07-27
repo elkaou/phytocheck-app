@@ -95,6 +95,11 @@ ATTENTION :
             },
           ],
           response_format: { type: "json_object" },
+          // IMPORTANT: disable thinking mode for vision tasks — thinking with budget_tokens:128
+          // causes the model to return only 3 chars (empty JSON) when processing large images.
+          // @ts-ignore — extra payload field passed through to the API
+          thinking: { budget_tokens: 0 },
+          maxTokens: 1024,
         });
 
         console.log("[analyzeLabel] LLM response received:", {
