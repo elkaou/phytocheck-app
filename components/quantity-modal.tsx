@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Modal,
   View,
@@ -15,6 +15,9 @@ import { normalizeStockQuantityInput, parseStockQuantity } from "@/lib/quantity"
 interface QuantityModalProps {
   visible: boolean;
   productName: string;
+  mode?: "add" | "edit";
+  initialQuantity?: number;
+  initialUnit?: "L" | "Kg";
   onCancel: () => void;
   onConfirm: (quantity: number, unit: "L" | "Kg") => void;
 }
@@ -22,16 +25,29 @@ interface QuantityModalProps {
 export function QuantityModal({
   visible,
   productName,
+  mode = "add",
+  initialQuantity,
+  initialUnit = "L",
   onCancel,
   onConfirm,
 }: QuantityModalProps) {
   const colors = useColors();
   const [quantity, setQuantity] = useState("");
-  const [unit, setUnit] = useState<"L" | "Kg">("L");
+  const [unit, setUnit] = useState<"L" | "Kg">(initialUnit);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (visible) {
+      setQuantity(initialQuantity !== undefined ? String(initialQuantity) : "");
+      setUnit(initialUnit);
+      setError(null);
+    }
+  }, [visible, initialQuantity, initialUnit]);
 
   const handleConfirm = () => {
-    const qty = parseStockQuantity(quantity);
+    const qty = parseStockQuantity(quantity, mode === "edit");
     if (qty === null) {
+      setError(mode === "edit" ? "Saisissez une quantité valide (0 pour retirer le produit)." : "Saisissez une quantité supérieure à 0.");
       return;
     }
     onConfirm(qty, unit);
@@ -52,8 +68,12 @@ export function QuantityModal({
       >
         <View style={[styles.modalView, { backgroundColor: colors.background }]}>
           <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-            Quantité en stock
+            {mode === "edit" ? "Modifier la quantité" : "Quantité en stock"}
           </Text>
+
+          {mode === "edit" && (
+            <Text style={[styles.helperText, { color: colors.muted }]}>Saisissez la quantité totale présente dans votre stock. Entrez 0 pour retirer le produit.</Text>
+          )}
 
           <View style={styles.section}>
             <Text style={[styles.sectionLabel, { color: colors.muted }]}>
@@ -71,12 +91,16 @@ export function QuantityModal({
               placeholder="Ex. 25 ou 0,6"
               keyboardType="decimal-pad"
               value={quantity}
-              onChangeText={(value) => setQuantity(normalizeStockQuantityInput(value))}
+              onChangeText={(value) => {
+                setQuantity(normalizeStockQuantityInput(value));
+                setError(null);
+              }}
               autoFocus
               returnKeyType="done"
               onSubmitEditing={handleConfirm}
               placeholderTextColor={colors.muted}
             />
+            {error && <Text style={styles.errorText}>{error}</Text>}
           </View>
 
           <View style={styles.section}>
@@ -146,7 +170,7 @@ export function QuantityModal({
               onPress={handleConfirm}
               style={[styles.actionButton, { backgroundColor: colors.primary }]}
             >
-              <Text style={styles.confirmButtonText}>Ajouter</Text>
+              <Text style={styles.confirmButtonText}>{mode === "edit" ? "Enregistrer" : "Ajouter"}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -187,12 +211,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
+  helperText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
   quantityInput: {
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
+  },
+  errorText: {
+    color: "#DC2626",
+    fontSize: 13,
+    lineHeight: 18,
   },
   unitRow: {
     flexDirection: "row",

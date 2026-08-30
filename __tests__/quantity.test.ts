@@ -30,4 +30,9 @@ describe("parseStockQuantity", () => {
     expect(parseStockQuantity("-2")).toBeNull();
     expect(parseStockQuantity("0,6.5")).toBeNull();
   });
+
+  it("accepte zéro uniquement lors de la modification d’un stock existant", () => {
+    expect(parseStockQuantity("0", true)).toBe(0);
+    expect(parseStockQuantity("0,6", true)).toBe(0.6);
+  });
 });
