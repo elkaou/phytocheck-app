@@ -63,7 +63,7 @@ export default function PrivacyPolicyScreen() {
 
           <Text style={styles.sectionTitle}>Contact</Text>
           <Text style={styles.paragraph}>
-            Pour toute question concernant cette politique de confidentialité, contactez François Courouble à l'adresse francois@siteswebs.fr ou sur https://siteswebs.fr/application-phytocheck
+            Pour toute question concernant cette politique de confidentialité, contactez François Courouble à l'adresse francois@siteswebs.fr ou sur https://phytocheck.com
           </Text>
 
           <Text style={styles.sectionTitle}>Conformité</Text>

@@ -192,7 +192,7 @@ Pour toute question concernant ces Conditions Générales d'Utilisation, vous po
 
 **François Courouble**  
 Email : francois@siteswebs.fr  
-Site web : https://siteswebs.fr/application-phytocheck
+Site web : https://phytocheck.com
 
 ## 13. RAPPEL IMPORTANT
 

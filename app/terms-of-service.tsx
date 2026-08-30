@@ -78,7 +78,7 @@ export default function TermsOfServiceScreen() {
 
           <Text style={styles.sectionTitle}>9. Contact</Text>
           <Text style={styles.paragraph}>
-            Pour toute question concernant ces Conditions d'Utilisation, contactez François Courouble à l'adresse francois@siteswebs.fr ou sur https://siteswebs.fr/application-phytocheck
+            Pour toute question concernant ces Conditions d'Utilisation, contactez François Courouble à l'adresse francois@siteswebs.fr ou sur https://phytocheck.com
           </Text>
 
           <View style={styles.reminderBox}>

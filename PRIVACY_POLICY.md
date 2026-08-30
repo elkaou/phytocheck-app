@@ -96,7 +96,7 @@ Pour toute question concernant cette politique de confidentialité, vous pouvez 
 
 **François Courouble**  
 Email : francois@siteswebs.fr  
-Site web : https://siteswebs.fr/application-phytocheck
+Site web : https://phytocheck.com
 
 ## Conformité
 
