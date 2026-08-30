@@ -12,7 +12,9 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
+import { QuantityModal } from "@/components/quantity-modal";
 import { useApp } from "@/lib/app-context";
+import { formatStockQuantity } from "@/lib/quantity";
 import {
   getClassificationLabel,
   getClassificationColor,
@@ -30,11 +32,13 @@ export default function StockScreen() {
     stockStats,
     isPremium,
     removeProductFromStock,
+    updateProductQuantity,
     refreshStock,
     stockLimit,
   } = useApp();
 
   const [filter, setFilter] = useState<FilterType>("all");
+  const [itemBeingEdited, setItemBeingEdited] = useState<StockItem | null>(null);
 
   useEffect(() => {
     refreshStock();
@@ -58,6 +62,24 @@ export default function StockScreen() {
       );
     },
     [removeProductFromStock]
+  );
+
+  const handleEditQuantity = useCallback((item: StockItem) => {
+    setItemBeingEdited(item);
+  }, []);
+
+  const handleQuantityConfirm = useCallback(
+    async (quantity: number) => {
+      if (!itemBeingEdited) return;
+
+      const success = await updateProductQuantity(itemBeingEdited.amm, quantity);
+      if (!success) {
+        Alert.alert("Erreur", "La quantité n’a pas pu être mise à jour.");
+        return;
+      }
+      setItemBeingEdited(null);
+    },
+    [itemBeingEdited, updateProductQuantity]
   );
 
 
@@ -462,12 +484,10 @@ export default function StockScreen() {
                   styles.stockCard,
                   pressed && { opacity: 0.7 },
                 ]}
-                onPress={() =>
-                  router.push({
-                    pathname: "/product/[amm]" as any,
-                    params: { amm: item.amm },
-                  })
-                }
+                onPress={() => handleEditQuantity(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`Modifier la quantité restante de ${item.secondaryName || item.nom}`}
+                accessibilityHint="Ouvre la saisie de la quantité totale restante"
               >
                 <View style={styles.stockCardContent}>
                   <Text style={styles.stockName} numberOfLines={1}>
@@ -502,10 +522,11 @@ export default function StockScreen() {
                     </View>
                     <View style={styles.stockQuantityBadge}>
                       <Text style={styles.stockQuantityText}>
-                        Qté : {item.quantite || 1} {item.unite || "L"}
+                        Qté : {formatStockQuantity(item.quantite ?? 0)} {item.unite || "L"}
                       </Text>
                     </View>
                   </View>
+                  <Text style={styles.stockEditHint}>Touchez pour modifier la quantité restante</Text>
                 </View>
                 <Pressable
                   style={({ pressed }) => [
@@ -521,6 +542,16 @@ export default function StockScreen() {
           )}
         </ScrollView>
       </View>
+
+      <QuantityModal
+        visible={itemBeingEdited !== null}
+        productName={itemBeingEdited?.secondaryName || itemBeingEdited?.nom || "Produit"}
+        mode="edit"
+        initialQuantity={itemBeingEdited?.quantite ?? 0}
+        initialUnit={itemBeingEdited?.unite ?? "L"}
+        onCancel={() => setItemBeingEdited(null)}
+        onConfirm={handleQuantityConfirm}
+      />
     </ScreenContainer>
   );
 }
@@ -658,6 +689,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     color: "#0a7ea5",
+  },
+  stockEditHint: {
+    color: "#64748B",
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 8,
   },
   deleteButton: {
     width: 36,

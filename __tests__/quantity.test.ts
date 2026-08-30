@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeStockQuantityInput, parseStockQuantity } from "../lib/quantity";
+import { formatStockQuantity, normalizeStockQuantityInput, parseStockQuantity } from "../lib/quantity";
 
 describe("normalizeStockQuantityInput", () => {
   it("convertit immédiatement la virgule du clavier iOS en point", () => {
@@ -34,5 +34,12 @@ describe("parseStockQuantity", () => {
   it("accepte zéro uniquement lors de la modification d’un stock existant", () => {
     expect(parseStockQuantity("0", true)).toBe(0);
     expect(parseStockQuantity("0,6", true)).toBe(0.6);
+  });
+});
+
+describe("formatStockQuantity", () => {
+  it("masque les imprécisions binaires dans les anciennes quantités", () => {
+    expect(formatStockQuantity(0.19999999999999996)).toBe("0,2");
+    expect(formatStockQuantity(1.25)).toBe("1,25");
   });
 });

@@ -23,3 +23,14 @@ export function parseStockQuantity(value: string, allowZero = false): number | n
   const isValid = allowZero ? quantity >= 0 : quantity > 0;
   return Number.isFinite(quantity) && isValid ? quantity : null;
 }
+
+/**
+ * Formate une quantité pour l’affichage sans exposer les imprécisions binaires
+ * (par exemple 0.19999999999999996 après un ancien incrément).
+ */
+export function formatStockQuantity(value: number): string {
+  if (!Number.isFinite(value)) return "0";
+
+  const rounded = Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000;
+  return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 6 }).format(rounded);
+}

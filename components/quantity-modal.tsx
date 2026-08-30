@@ -10,7 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { useColors } from "@/hooks/use-colors";
-import { normalizeStockQuantityInput, parseStockQuantity } from "@/lib/quantity";
+import { formatStockQuantity, normalizeStockQuantityInput, parseStockQuantity } from "@/lib/quantity";
 
 interface QuantityModalProps {
   visible: boolean;
@@ -38,7 +38,7 @@ export function QuantityModal({
 
   useEffect(() => {
     if (visible) {
-      setQuantity(initialQuantity !== undefined ? String(initialQuantity) : "");
+      setQuantity(initialQuantity !== undefined ? formatStockQuantity(initialQuantity) : "");
       setUnit(initialUnit);
       setError(null);
     }
