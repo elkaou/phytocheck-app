@@ -519,7 +519,16 @@ export default function SearchScreen() {
                       selectedTypeFilter === filter && styles.typeFilterButtonActive,
                       pressed && { opacity: 0.8 },
                     ]}
-                    onPress={() => setSelectedTypeFilter(filter)}
+                    onPress={() => {
+                      setSelectedTypeFilter(filter);
+                      // Si une culture est déjà saisie, lancer directement la recherche
+                      if (cultureQuery.trim()) {
+                        setIsSearching(true);
+                        setTimeout(() => {
+                          searchByCulture(cultureQuery.trim(), filter);
+                        }, 50);
+                      }
+                    }}
                   >
                     <Text
                       style={[
