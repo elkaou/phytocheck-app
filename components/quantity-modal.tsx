@@ -10,6 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { useColors } from "@/hooks/use-colors";
+import { normalizeStockQuantityInput, parseStockQuantity } from "@/lib/quantity";
 
 interface QuantityModalProps {
   visible: boolean;
@@ -29,8 +30,8 @@ export function QuantityModal({
   const [unit, setUnit] = useState<"L" | "Kg">("L");
 
   const handleConfirm = () => {
-    const qty = parseFloat(quantity);
-    if (isNaN(qty) || qty <= 0) {
+    const qty = parseStockQuantity(quantity);
+    if (qty === null) {
       return;
     }
     onConfirm(qty, unit);
@@ -67,10 +68,10 @@ export function QuantityModal({
                   color: colors.foreground,
                 },
               ]}
-              placeholder="Ex: 25"
+              placeholder="Ex. 25 ou 0,6"
               keyboardType="decimal-pad"
               value={quantity}
-              onChangeText={setQuantity}
+              onChangeText={(value) => setQuantity(normalizeStockQuantityInput(value))}
               autoFocus
               returnKeyType="done"
               onSubmitEditing={handleConfirm}
