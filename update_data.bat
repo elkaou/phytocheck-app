@@ -1,13 +1,13 @@
 @echo off
 :: ============================================================
-:: update_data.bat - Mise à jour automatique des données E-PHY
+:: update_data.bat - Mise à jour automatique des données E-PHY et de leurs métadonnées
 :: PhytoCheck - Source : data.gouv.fr (ANSES)
 :: ============================================================
 ::
 :: UTILISATION :
 ::   Double-cliquez sur update_data.bat (ou lancez depuis PowerShell)
 ::   Le script télécharge automatiquement les dernières données E-Phy
-::   depuis data.gouv.fr, les convertit et publie sur GitHub Pages.
+::   depuis data.gouv.fr, les convertit, met à jour les métadonnées et publie sur GitHub Pages.
 ::
 :: PRÉREQUIS :
 ::   - Python installé (https://www.python.org/downloads/)
@@ -153,7 +153,7 @@ if errorlevel 1 (
     goto :push_github_pages
 )
 
-git add assets\data\products.json assets\data\risk-phrases.json lib\product-service.ts
+git add assets\data\products.json assets\data\risk-phrases.json lib\product-service.ts TERMS_OF_SERVICE.md docs\terms-of-service.html
 git commit -m "Mise a jour E-PHY du %TODAY%"
 
 if errorlevel 1 (

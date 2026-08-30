@@ -23,6 +23,7 @@ Le script met également à jour automatiquement :
     - DB_UPDATE_DATE dans lib/product-service.ts
     - BUNDLE_MANIFEST dans lib/data-context.tsx
     - manifest.json dans le dépôt phytocheck-data (GitHub Pages)
+    - la date de la base E-Phy dans les CGU Markdown et HTML
 """
 
 import csv
@@ -43,6 +44,8 @@ DEFAULT_PCP_CSV = PROJECT_ROOT / "permis_de_commerce_parallele_utf8.csv"
 DEFAULT_USAGES_CSV = PROJECT_ROOT / "usages_des_produits_autorises_utf8.csv"
 OUT_DIR = PROJECT_ROOT / "assets" / "data"
 PRODUCT_SERVICE = PROJECT_ROOT / "lib" / "product-service.ts"
+TERMS_OF_SERVICE = PROJECT_ROOT / "TERMS_OF_SERVICE.md"
+TERMS_OF_SERVICE_HTML = PROJECT_ROOT / "docs" / "terms-of-service.html"
 
 # Chemins possibles pour le dépôt phytocheck-data (manifest GitHub Pages)
 # Le script cherche automatiquement dans les emplacements courants
@@ -495,6 +498,36 @@ def update_bundle_manifest(data_context_path, update_date_str, products_count, r
     data_context_path.write_text(content, encoding="utf-8")
     print(f"  data-context.tsx mis à jour : date={update_date_str}, produits={products_count}, risques={risks_count}")
 
+
+def update_terms_database_date(update_date_str):
+    """Met à jour la date de la base E-Phy dans les deux versions des CGU."""
+    targets = (
+        (
+            TERMS_OF_SERVICE,
+            r"(\*\*Date actuelle de la base\*\*\s*:\s*)[^\r\n]+",
+            rf"\g<1>{update_date_str}",
+        ),
+        (
+            TERMS_OF_SERVICE_HTML,
+            r"(<p><strong>Date actuelle de la base</strong>\s*:\s*)[^<]+(</p>)",
+            rf"\g<1>{update_date_str}\g<2>",
+        ),
+    )
+
+    for document_path, pattern, replacement in targets:
+        if not document_path.exists():
+            print(f"  AVERTISSEMENT : {document_path} introuvable, mise à jour des CGU ignorée.")
+            continue
+
+        content = document_path.read_text(encoding="utf-8")
+        updated_content, replacements = re.subn(pattern, replacement, content, count=1)
+        if replacements != 1:
+            print(f"  AVERTISSEMENT : date E-Phy introuvable dans {document_path.name}, mise à jour ignorée.")
+            continue
+
+        document_path.write_text(updated_content, encoding="utf-8")
+        print(f"  {document_path.name} mis à jour : date E-Phy={update_date_str}")
+
 def main():
     args = parse_args()
     products_csv = Path(args.products)
@@ -568,13 +601,16 @@ def main():
     else:
         print(f"\n[4/6] Conversion usages désactivée (--no-usages).")
 
-    # ── Mise à jour product-service.ts et manifest.json ────────────────────────
+    # ── Mise à jour des métadonnées de données et des documents ────────────────
     today = date.today().strftime("%d/%m/%Y")
     if not args.no_update_ts:
-        print("\n[5/6] Mise à jour de lib/product-service.ts...")
+        print("\n[5/7] Mise à jour de lib/product-service.ts...")
         update_product_service(PRODUCT_SERVICE, today)
 
-    print("\n[6/6] Mise à jour de manifest.json et data-context.tsx...")
+    print("\n[6/7] Mise à jour de la date E-Phy dans les CGU...")
+    update_terms_database_date(today)
+
+    print("\n[7/7] Mise à jour de manifest.json et data-context.tsx...")
     update_manifest(today, len(products), len(risks), usages_count)
     update_bundle_manifest(DATA_CONTEXT, today, len(products), len(risks), usages_count)
 
@@ -598,6 +634,7 @@ def main():
     print(f"  ✓ lib/product-service.ts (DB_UPDATE_DATE)")
     print(f"  ✓ manifest.json (GitHub Pages)")
     print(f"  ✓ lib/data-context.tsx (BUNDLE_MANIFEST)")
+    print(f"  ✓ CGU Markdown et HTML (date de la base E-Phy)")
     print("\nProchaines étapes :")
     print("  1. Vérifiez les changements : git diff")
     print("  2. Lancez : git add -A && git commit -m 'Mise à jour E-PHY' && git push")
