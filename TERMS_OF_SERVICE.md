@@ -1,6 +1,6 @@
 # Conditions Générales d'Utilisation de PhytoCheck
 
-**Dernière mise à jour : 30 Août 2026**
+**Dernière mise à jour : 31 Août 2026**
 
 ## 1. Acceptation des conditions
 
