@@ -222,6 +222,9 @@ importers:
       eslint-config-expo:
         specifier: ~10.0.0
         version: 10.0.0(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
+      metro-minify-terser:
+        specifier: 0.83.2
+        version: 0.83.2
       prettier:
         specifier: ^3.7.4
         version: 3.7.4
