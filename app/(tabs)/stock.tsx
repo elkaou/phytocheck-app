@@ -10,11 +10,14 @@ import {
 } from "react-native";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
+import * as XLSX from "xlsx";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { QuantityModal } from "@/components/quantity-modal";
 import { useApp } from "@/lib/app-context";
 import { formatStockQuantity } from "@/lib/quantity";
+import { createStockWorkbook, createStockWorkbookBase64 } from "@/lib/stock-export";
 import {
   getClassificationLabel,
   getClassificationColor,
@@ -350,6 +353,40 @@ export default function StockScreen() {
     }
   }, [stock]);
 
+  const handleExportExcel = useCallback(async () => {
+    try {
+      const filename = `PhytoCheck-Stock-${new Date().toISOString().split("T")[0]}.xlsx`;
+
+      if (Platform.OS === "web") {
+        XLSX.writeFile(createStockWorkbook(stock), filename);
+        return;
+      }
+
+      const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+      const fileContents = createStockWorkbookBase64(stock);
+      await FileSystem.writeAsStringAsync(fileUri, fileContents, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert("Export Excel", "Le partage de fichiers n’est pas disponible sur cet appareil.");
+        return;
+      }
+
+      await Sharing.shareAsync(fileUri, {
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        dialogTitle: "Exporter le stock en Excel",
+        UTI: "org.openxmlformats.spreadsheetml.sheet",
+      });
+    } catch (error) {
+      console.error("Error exporting Excel:", error);
+      Alert.alert(
+        "Erreur",
+        "Une erreur est survenue lors de l’export Excel. Veuillez réessayer."
+      );
+    }
+  }, [stock]);
+
   return (
     <ScreenContainer containerClassName="bg-primary">
       {/* Header */}
@@ -365,39 +402,40 @@ export default function StockScreen() {
       </View>
 
       <View style={styles.content}>
-        {/* Export PDF Button */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.exportButton,
-            !isPremium && styles.exportButtonDisabled,
-            pressed && isPremium && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-          ]}
-          onPress={() => {
-            if (!isPremium) {
-              Alert.alert(
-                "Fonctionnalité Premium",
-                "L'export PDF est réservé aux utilisateurs Premium. Passez à Premium pour débloquer cette fonctionnalité.",
-                [
-                  { text: "Annuler", style: "cancel" },
-                  {
-                    text: "Voir Premium",
-                    onPress: () => router.push("/premium" as any),
-                  },
-                ]
-              );
-            } else {
-              handleExportPDF();
-            }
-          }}
-          disabled={!isPremium}
-        >
-          <Text style={[
-            styles.exportButtonText,
-            !isPremium && styles.exportButtonTextDisabled,
-          ]}>
-            {isPremium ? "📄 Exporter le stock en PDF" : "🔒 Export PDF (Premium)"}
-          </Text>
-        </Pressable>
+        <View style={styles.exportButtonsRow}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.exportButton,
+              !isPremium && styles.exportButtonDisabled,
+              pressed && isPremium && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+            ]}
+            onPress={handleExportPDF}
+            disabled={!isPremium}
+            accessibilityRole="button"
+            accessibilityLabel="Exporter le stock en PDF"
+            accessibilityState={{ disabled: !isPremium }}
+          >
+            <Text style={[styles.exportButtonText, !isPremium && styles.exportButtonTextDisabled]}>
+              {isPremium ? "Export PDF" : "🔒 Export PDF"}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.exportButton,
+              !isPremium && styles.exportButtonDisabled,
+              pressed && isPremium && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+            ]}
+            onPress={handleExportExcel}
+            disabled={!isPremium}
+            accessibilityRole="button"
+            accessibilityLabel="Exporter le stock en Excel"
+            accessibilityState={{ disabled: !isPremium }}
+          >
+            <Text style={[styles.exportButtonText, !isPremium && styles.exportButtonTextDisabled]}>
+              {isPremium ? "Export Excel" : "🔒 Export Excel"}
+            </Text>
+          </Pressable>
+        </View>
 
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
@@ -478,16 +516,9 @@ export default function StockScreen() {
             </View>
           ) : (
             filteredStock.map((item) => (
-              <Pressable
+              <View
                 key={item.amm}
-                style={({ pressed }) => [
-                  styles.stockCard,
-                  pressed && { opacity: 0.7 },
-                ]}
-                onPress={() => handleEditQuantity(item)}
-                accessibilityRole="button"
-                accessibilityLabel={`Modifier la quantité restante de ${item.secondaryName || item.nom}`}
-                accessibilityHint="Ouvre la saisie de la quantité totale restante"
+                style={styles.stockCard}
               >
                 <View style={styles.stockCardContent}>
                   <Text style={styles.stockName} numberOfLines={1}>
@@ -520,24 +551,37 @@ export default function StockScreen() {
                         )}
                       </Text>
                     </View>
-                    <View style={styles.stockQuantityBadge}>
-                      <Text style={styles.stockQuantityText}>
-                        Qté : {formatStockQuantity(item.quantite ?? 0)} {item.unite || "L"}
-                      </Text>
-                    </View>
                   </View>
-                  <Text style={styles.stockEditHint}>Touchez pour modifier la quantité restante</Text>
                 </View>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.deleteButton,
-                    pressed && { opacity: 0.6 },
-                  ]}
-                  onPress={() => handleRemove(item)}
-                >
-                  <Text style={styles.deleteButtonText}>✕</Text>
-                </Pressable>
-              </Pressable>
+                <View style={styles.stockCardActions}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.stockQuantityButton,
+                      pressed && { opacity: 0.72 },
+                    ]}
+                    onPress={() => handleEditQuantity(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Modifier la quantité de ${item.secondaryName || item.nom}`}
+                    accessibilityHint="Ouvre la saisie de la quantité restante totale"
+                  >
+                    <Text style={styles.stockQuantityText}>
+                      Qté : {formatStockQuantity(item.quantite ?? 0)} {item.unite || "L"}
+                    </Text>
+                    <Text style={styles.stockQuantityEditIcon}>✎</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.deleteButton,
+                      pressed && { opacity: 0.6 },
+                    ]}
+                    onPress={() => handleRemove(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Supprimer ${item.secondaryName || item.nom} du stock`}
+                  >
+                    <Text style={styles.deleteButtonText}>✕</Text>
+                  </Pressable>
+                </View>
+              </View>
             ))
           )}
         </ScrollView>
@@ -587,11 +631,17 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   exportButton: {
+    flex: 1,
     backgroundColor: "#0a7ea5",
     borderRadius: 12,
     paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     alignItems: "center",
+    justifyContent: "center",
+  },
+  exportButtonsRow: {
+    flexDirection: "row",
+    gap: 10,
     marginBottom: 16,
   },
   exportButtonDisabled: {
@@ -599,7 +649,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   exportButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
     color: "#FFFFFF",
   },
@@ -646,13 +696,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
   },
   stockCardContent: {
-    flex: 1,
-    marginRight: 12,
+    width: "100%",
   },
   stockName: {
     fontSize: 16,
@@ -665,41 +711,53 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   stockCardBottom: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
     marginTop: 6,
   },
   stockBadge: {
+    alignSelf: "flex-start",
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
+    maxWidth: "100%",
   },
   stockBadgeText: {
     fontSize: 11,
     fontWeight: "bold",
+    flexShrink: 1,
   },
-  stockQuantityBadge: {
-    backgroundColor: "#F0F4F8",
+  stockCardActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginTop: 12,
+  },
+  stockQuantityButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    minHeight: 44,
+    flex: 1,
+    backgroundColor: "#E6F4FA",
     borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   stockQuantityText: {
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "700",
     color: "#0a7ea5",
   },
-  stockEditHint: {
-    color: "#64748B",
-    fontSize: 12,
-    fontWeight: "500",
-    marginTop: 8,
+  stockQuantityEditIcon: {
+    color: "#0a7ea5",
+    fontSize: 17,
+    fontWeight: "700",
   },
   deleteButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: "#FEF2F2",
     alignItems: "center",
     justifyContent: "center",
