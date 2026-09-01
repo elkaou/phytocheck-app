@@ -26,7 +26,7 @@ Les informations sur les produits phytosanitaires proviennent de la **base de do
 
 La base de données intégrée dans l'application est mise à jour périodiquement. La date de la dernière mise à jour est affichée sur l'écran d'accueil de l'application.
 
-**Date actuelle de la base** : 17/08/2026
+**Date actuelle de la base** : 01/09/2026
 
 ## 4. DÉCHARGE DE RESPONSABILITÉ
 

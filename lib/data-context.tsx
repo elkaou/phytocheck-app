@@ -14,9 +14,9 @@ import bundleUsages from "@/assets/data/usages.json";
 // Manifest bundle (mis à jour automatiquement par le script Python)
 const BUNDLE_MANIFEST = {
   version: "1.0",
-  updated_at: "17/08/2026",
-  products_count: 17199,
-  risks_count: 2528,
+  updated_at: "01/09/2026",
+  products_count: 17202,
+  risks_count: 2531,
 };
 
 // Type pour un usage produit
