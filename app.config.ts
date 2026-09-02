@@ -41,7 +41,7 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.1.10",
+  version: "1.1.11",
   // Pas de restriction d'orientation pour compatibilité grand écran (Android 16+)
   orientation: "default",
   icon: "./assets/images/icon.png",
