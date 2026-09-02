@@ -123,6 +123,8 @@ const config: ExpoConfig = {
       {
         android: {
           buildArchs: ["armeabi-v7a", "arm64-v8a"],
+          enableMinifyInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
           minSdkVersion: 24,
           kotlinVersion: "2.2.0",
         },
