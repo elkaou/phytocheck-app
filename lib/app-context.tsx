@@ -7,6 +7,7 @@ import {
   addToStock,
   removeFromStock,
   updateStockQuantity,
+  replaceStock,
   getSearchCount,
   incrementSearchCount,
   getIsPremium,
@@ -17,7 +18,11 @@ import {
   FREE_SEARCH_LIMIT,
   FREE_STOCK_LIMIT,
 } from "./store";
-import { ClassifiedProduct } from "./product-service";
+import { ClassifiedProduct, Product, RiskPhrase } from "./product-service";
+import {
+  checkStockRegulatoryStatus as checkRegulatoryStatus,
+  StockRegulatoryChange,
+} from "./stock-regulatory-check";
 import { trpc } from "./trpc";
 
 interface AppContextType {
@@ -36,6 +41,10 @@ interface AppContextType {
   performSearch: () => Promise<boolean>;
   setPremium: (value: boolean) => Promise<void>;
   refreshStock: () => Promise<void>;
+  checkStockRegulatoryStatus: (
+    products: Product[],
+    riskPhrases: Record<string, RiskPhrase[]>,
+  ) => Promise<StockRegulatoryChange[]>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -165,6 +174,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [refreshStock]
   );
 
+  const checkStockRegulatoryStatus = useCallback(
+    async (
+      products: Product[],
+      riskPhrases: Record<string, RiskPhrase[]>,
+    ): Promise<StockRegulatoryChange[]> => {
+      const storedStock = await getStock();
+      const result = checkRegulatoryStatus(storedStock, products, riskPhrases);
+      if (result.changes.length === 0) return [];
+
+      const saved = await replaceStock(result.updatedStock);
+      if (saved) await refreshStock();
+      return result.changes;
+    },
+    [refreshStock],
+  );
+
   const getProductQuantity = useCallback(
     (amm: string): number => {
       const item = stock.find((i) => i.amm === amm);
@@ -267,6 +292,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addProductToStock,
         removeProductFromStock,
         updateProductQuantity,
+        checkStockRegulatoryStatus,
         isProductInStock,
         getProductQuantity,
         performSearch,

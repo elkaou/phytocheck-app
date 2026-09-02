@@ -93,6 +93,16 @@ export async function updateStockQuantity(amm: string, quantity: number): Promis
   }
 }
 
+// Remplace le stock après un recalcul de statut effectué sur la base E‑Phy active.
+export async function replaceStock(stock: StockItem[]): Promise<boolean> {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.STOCK, JSON.stringify(stock));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Remove from stock
 export async function removeFromStock(amm: string): Promise<boolean> {
   try {

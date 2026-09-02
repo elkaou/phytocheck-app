@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   ScrollView,
   Text,
@@ -7,15 +7,20 @@ import {
   StyleSheet,
   Alert,
   Platform,
+  TextInput,
 } from "react-native";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
 import * as XLSX from "xlsx";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { ScreenContainer } from "@/components/screen-container";
 import { QuantityModal } from "@/components/quantity-modal";
 import { useApp } from "@/lib/app-context";
+import { useData } from "@/lib/data-context";
+import { StockRegulatoryChange } from "@/lib/stock-regulatory-check";
 import { formatStockQuantity } from "@/lib/quantity";
 import { createStockWorkbook, createStockWorkbookBase64 } from "@/lib/stock-export";
 import {
@@ -25,6 +30,7 @@ import {
   ProductClassification,
 } from "@/lib/product-service";
 import { StockItem, FREE_STOCK_LIMIT } from "@/lib/store";
+import { stockItemMatchesSearch } from "@/lib/stock-search";
 
 type FilterType = "all" | "homologue" | "retire" | "homologue_cmr" | "homologue_toxique";
 
@@ -37,15 +43,56 @@ export default function StockScreen() {
     removeProductFromStock,
     updateProductQuantity,
     refreshStock,
+    checkStockRegulatoryStatus,
     stockLimit,
   } = useApp();
+  const { products, riskPhrases, updateDate } = useData();
 
   const [filter, setFilter] = useState<FilterType>("all");
   const [itemBeingEdited, setItemBeingEdited] = useState<StockItem | null>(null);
+  const [isStockSearchOpen, setIsStockSearchOpen] = useState(false);
+  const [stockSearchQuery, setStockSearchQuery] = useState("");
+  const isCheckingRegulatoryStatus = useRef(false);
 
   useEffect(() => {
     refreshStock();
   }, [refreshStock]);
+
+  const showRegulatoryAlert = useCallback((changes: StockRegulatoryChange[]) => {
+    const details = changes
+      .slice(0, 5)
+      .map((change) => {
+        const suffix = change.dateRetrait ? ` (retrait : ${change.dateRetrait})` : "";
+        return `• ${change.productName} : ${getClassificationLabel(change.currentClassification)}${suffix}`;
+      })
+      .join("\n");
+    const remaining = changes.length > 5 ? `\n• … et ${changes.length - 5} autre${changes.length > 6 ? "s" : ""}` : "";
+
+    Alert.alert(
+      "Mise à jour réglementaire",
+      `${changes.length} produit${changes.length > 1 ? "s ont" : " a"} changé de statut selon la base E‑Phy du ${updateDate}.\n\n${details}${remaining}`,
+      [{ text: "Compris" }],
+    );
+  }, [updateDate]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      if (isCheckingRegulatoryStatus.current) return () => { isActive = false; };
+
+      isCheckingRegulatoryStatus.current = true;
+      void checkStockRegulatoryStatus(products, riskPhrases)
+        .then((changes: StockRegulatoryChange[]) => {
+          if (isActive && changes.length > 0) showRegulatoryAlert(changes);
+        })
+        .catch((error: unknown) => console.warn("Vérification réglementaire du stock impossible:", error))
+        .finally(() => {
+          isCheckingRegulatoryStatus.current = false;
+        });
+
+      return () => { isActive = false; };
+    }, [checkStockRegulatoryStatus, products, riskPhrases, showRegulatoryAlert]),
+  );
 
   const handleRemove = useCallback(
     (item: StockItem) => {
@@ -71,6 +118,16 @@ export default function StockScreen() {
     setItemBeingEdited(item);
   }, []);
 
+  const handleOpenProduct = useCallback((item: StockItem) => {
+    router.push({
+      pathname: "/product/[amm]",
+      params: {
+        amm: item.amm,
+        name: item.secondaryName || item.nom,
+      },
+    });
+  }, [router]);
+
   const handleQuantityConfirm = useCallback(
     async (quantity: number) => {
       if (!itemBeingEdited) return;
@@ -89,13 +146,23 @@ export default function StockScreen() {
 
   // Filter and sort stock alphabetically
   const filteredStock = useMemo(() => {
-    const filtered = filter === "all" ? stock : stock.filter((item) => item.classification === filter);
+    const filtered = stock.filter((item) => {
+      const matchesClassification = filter === "all" || item.classification === filter;
+      return matchesClassification && stockItemMatchesSearch(item, stockSearchQuery);
+    });
     return [...filtered].sort((a, b) => {
       const nameA = (a.secondaryName || a.nom).toLowerCase();
       const nameB = (b.secondaryName || b.nom).toLowerCase();
       return nameA.localeCompare(nameB, "fr", { sensitivity: "base" });
     });
-  }, [stock, filter]);
+  }, [stock, filter, stockSearchQuery]);
+
+  const handleStockSearchToggle = useCallback(() => {
+    setIsStockSearchOpen((isOpen) => {
+      if (isOpen) setStockSearchQuery("");
+      return !isOpen;
+    });
+  }, []);
 
   const handleFilterToggle = useCallback((filterType: FilterType) => {
     setFilter((current) => (current === filterType ? "all" : filterType));
@@ -392,13 +459,42 @@ export default function StockScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Gestion du stock</Text>
-        <View style={styles.counterBadge}>
-          <Text style={styles.counterText}>
-            {isPremium
-              ? `${stock.length} produit${stock.length > 1 ? "s" : ""} en stock`
-              : `Produits : ${stock.length} / ${FREE_STOCK_LIMIT}`}
-          </Text>
+        <View style={styles.headerActions}>
+          <View style={styles.counterBadge}>
+            <Text style={styles.counterText}>
+              {isPremium
+                ? `${stock.length} produit${stock.length > 1 ? "s" : ""} en stock`
+                : `Produits : ${stock.length} / ${FREE_STOCK_LIMIT}`}
+            </Text>
+          </View>
+          <Pressable
+            style={({ pressed }) => [styles.stockSearchButton, pressed && { opacity: 0.72 }]}
+            onPress={handleStockSearchToggle}
+            accessibilityRole="button"
+            accessibilityLabel={isStockSearchOpen ? "Fermer la recherche dans le stock" : "Rechercher dans le stock"}
+            accessibilityHint="Recherche un produit déjà enregistré par nom ou numéro AMM"
+          >
+            <MaterialIcons name={isStockSearchOpen ? "close" : "search"} size={23} color="#0a7ea5" />
+          </Pressable>
         </View>
+        {isStockSearchOpen ? (
+          <View style={styles.stockSearchField}>
+            <MaterialIcons name="search" size={20} color="#687076" />
+            <TextInput
+              style={styles.stockSearchInput}
+              value={stockSearchQuery}
+              onChangeText={setStockSearchQuery}
+              placeholder="Nom, nom secondaire ou AMM"
+              placeholderTextColor="#8B949E"
+              autoFocus
+              autoCorrect={false}
+              autoCapitalize="characters"
+              clearButtonMode="while-editing"
+              returnKeyType="search"
+              accessibilityLabel="Rechercher un produit dans le stock"
+            />
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.content}>
@@ -509,7 +605,9 @@ export default function StockScreen() {
           {filteredStock.length === 0 ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyText}>
-                {filter === "all"
+                {stockSearchQuery.trim()
+                  ? "Aucun produit ne correspond à cette recherche"
+                  : filter === "all"
                   ? "Aucun produit dans le stock"
                   : "Aucun produit dans cette catégorie"}
               </Text>
@@ -521,9 +619,21 @@ export default function StockScreen() {
                 style={styles.stockCard}
               >
                 <View style={styles.stockCardContent}>
-                  <Text style={styles.stockName} numberOfLines={1}>
-                    {item.secondaryName ? `${item.secondaryName} (${item.nom})` : item.nom}
-                  </Text>
+                  <Pressable
+                    onPress={() => handleOpenProduct(item)}
+                    style={({ pressed }) => [
+                      styles.stockNameButton,
+                      pressed && { opacity: 0.65 },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ouvrir la fiche de ${item.secondaryName || item.nom}`}
+                    accessibilityHint="Affiche les informations détaillées du produit"
+                  >
+                    <Text style={styles.stockName} numberOfLines={1}>
+                      {item.secondaryName ? `${item.secondaryName} (${item.nom})` : item.nom}
+                    </Text>
+                    <Text style={styles.stockNameChevron}>›</Text>
+                  </Pressable>
                   <Text style={styles.stockAMM}>AMM : {item.amm}</Text>
                   <View style={styles.stockCardBottom}>
                     <View
@@ -613,7 +723,13 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     marginBottom: 12,
   },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   counterBadge: {
+    flex: 1,
     backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: 10,
     paddingHorizontal: 16,
@@ -623,6 +739,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#FFFFFF",
+  },
+  stockSearchButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stockSearchField: {
+    minHeight: 48,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+  },
+  stockSearchInput: {
+    flex: 1,
+    minHeight: 46,
+    paddingVertical: 8,
+    color: "#1A1A1A",
+    fontSize: 15,
   },
   content: {
     flex: 1,
@@ -700,10 +841,23 @@ const styles = StyleSheet.create({
   stockCardContent: {
     width: "100%",
   },
+  stockNameButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    minHeight: 36,
+  },
   stockName: {
     fontSize: 16,
     fontWeight: "600",
     color: "#1A1A1A",
+    flex: 1,
+  },
+  stockNameChevron: {
+    color: "#0a7ea5",
+    fontSize: 28,
+    fontWeight: "400",
+    lineHeight: 28,
   },
   stockAMM: {
     fontSize: 13,

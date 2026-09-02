@@ -58,7 +58,7 @@ const riskPhrases: Record<string, RiskPhrase[]> = riskPhrasesData as Record<stri
 
 // Total count
 export const TOTAL_PRODUCTS = products.length;
-export const DB_UPDATE_DATE = "01/09/2026";
+export const DB_UPDATE_DATE = "08/04/2026";
 
 // Détermine si un produit est retiré, en se basant sur le champ etat
 // OU sur la dateRetrait si etat est vide (cas du CSV E-Phy où la colonne peut être absente)
@@ -233,7 +233,7 @@ function _searchProducts(
 }
 
 // Classify avec données dynamiques
-function classifyProductWithData(
+export function classifyProductWithData(
   product: Product,
   dataRiskPhrases: Record<string, RiskPhrase[]>
 ): ClassifiedProduct {
