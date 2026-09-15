@@ -1,6 +1,6 @@
 # Conditions Générales d'Utilisation de PhytoCheck
 
-**Dernière mise à jour : 31 Août 2026**
+**Dernière mise à jour : 20 février 2026**
 
 ## 1. Acceptation des conditions
 
@@ -26,7 +26,7 @@ Les informations sur les produits phytosanitaires proviennent de la **base de do
 
 La base de données intégrée dans l'application est mise à jour périodiquement. La date de la dernière mise à jour est affichée sur l'écran d'accueil de l'application.
 
-**Date actuelle de la base** : 01/09/2026
+**Date actuelle de la base** : 17/08/2026
 
 ## 4. DÉCHARGE DE RESPONSABILITÉ
 
@@ -50,7 +50,7 @@ Bien que nous nous efforcions de maintenir les données à jour et exactes, **no
 
 ### 4.4 Limitation de responsabilité
 
-**LE DÉVELOPPEUR DE PHYTOCHECK, FRANCK COURRÈGES, SE DÉGAGE DE TOUTE RESPONSABILITÉ CONCERNANT :**
+**LE DÉVELOPPEUR DE PHYTOCHECK, FRANÇOIS COUROUBLE, SE DÉGAGE DE TOUTE RESPONSABILITÉ CONCERNANT :**
 
 1. **Utilisation des produits** : Toute utilisation, manipulation, stockage ou élimination de produits phytosanitaires basée sur les informations fournies par l'application
 2. **Erreurs ou omissions** : Toute erreur, omission, inexactitude ou obsolescence des données
@@ -206,4 +206,4 @@ Site web : https://phytocheck.com
 
 *En utilisant PhytoCheck, vous reconnaissez avoir lu, compris et accepté ces Conditions Générales d'Utilisation.*
 
-*Version 1.1.6 - 30 Août 2026*
+*Version 1.0.0 - 20 février 2026*
