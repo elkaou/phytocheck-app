@@ -18,14 +18,14 @@ import bundleEmergencyAuthorizations from "@/assets/data/emergency-authorization
 // Mis à jour automatiquement par le script E-Phy lors d'une actualisation de la base.
 const BUNDLE_MANIFEST = {
   version: "1.0",
-  updated_at: "05/05/2026",
-  products_count: 17149,
-  risks_count: 2492,
+  updated_at: "02/10/2026",
+  products_count: 17221,
+  risks_count: 2541,
 };
 
 // Instantané Article 53 inclus dans le build pour la consultation hors ligne.
 const BUNDLE_EMERGENCY_MANIFEST = {
-  updated_at: "2026-10-02T11:49:03Z",
+  updated_at: "02/10/2026",
 };
 
 export interface ProductUsage {
