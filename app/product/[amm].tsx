@@ -19,6 +19,7 @@ import {
   getClassificationLabel,
   getClassificationColor,
   getClassificationBgColor,
+  createEmergencyAuthorizationProduct,
 } from "@/lib/product-service";
 import {
   formatEmergencyAuthorizationDate,
@@ -66,6 +67,12 @@ export default function ProductDetailScreen() {
     () => (amm ? getEmergencyAuthorizationsForAmm(emergencyAuthorizations, amm) : []),
     [amm, emergencyAuthorizations],
   );
+  const emergencyStockProduct = useMemo(
+    () => emergencyAuthorizationsForProduct[0]
+      ? createEmergencyAuthorizationProduct(emergencyAuthorizationsForProduct[0])
+      : null,
+    [emergencyAuthorizationsForProduct],
+  );
 
   const openOfficialDecision = useCallback((url: string) => {
     void Linking.openURL(url).catch(() => {
@@ -74,19 +81,20 @@ export default function ProductDetailScreen() {
   }, []);
 
   const handleAddToStock = useCallback(async () => {
-    if (!product) return;
+    if (!product && !emergencyStockProduct) return;
     setShowQuantityModal(true);
-  }, [product]);
+  }, [product, emergencyStockProduct]);
 
   const handleQuantityConfirm = useCallback(async (quantity: number, unit: "L" | "Kg") => {
-    if (!product) return;
+    const productToStore = product ?? emergencyStockProduct;
+    if (!productToStore) return;
     
     setShowQuantityModal(false);
 
     // Pass secondary name if the product was accessed via a secondary name
-    const secondaryName = name && name !== product.nom ? name : undefined;
-    const displayName = secondaryName || product.nom;
-    const result = await addProductToStock(product, quantity, unit, secondaryName);
+    const secondaryName = product && name && name !== product.nom ? name : undefined;
+    const displayName = secondaryName || productToStore.nom;
+    const result = await addProductToStock(productToStore, quantity, unit, secondaryName);
     if (result === "added") {
       Alert.alert("Ajouté", `"${displayName}" a été ajouté à votre stock (${quantity} ${unit}).`, [
         {
@@ -107,7 +115,7 @@ export default function ProductDetailScreen() {
         "Vous avez atteint la limite de 20 produits en stock. Passez à Premium pour un stock illimité."
       );
     }
-  }, [product, addProductToStock, router]);
+  }, [product, emergencyStockProduct, name, addProductToStock, router]);
 
   if (!product) {
     const emergencyProductName = emergencyAuthorizationsForProduct[0]?.productName ?? name ?? "Produit";
@@ -166,9 +174,45 @@ export default function ProductDetailScreen() {
                   </View>
                 ))}
               </View>
+              <View style={styles.emergencyStockNotice}>
+                <IconSymbol name="info.circle.fill" size={19} color="#1D4ED8" />
+                <Text style={styles.emergencyStockNoticeText}>
+                  Vous pouvez enregistrer ce produit dans le stock. Il restera identifié comme une autorisation temporaire Article 53 jusqu’à sa présence éventuelle dans E‑Phy.
+                </Text>
+              </View>
+              {inStock ? (
+                <View style={styles.stockSection}>
+                  <View style={[styles.inStockBadge, styles.emergencyInStockBadge]}>
+                    <IconSymbol name="checkmark.circle.fill" size={20} color="#1D4ED8" />
+                    <Text style={[styles.inStockText, styles.emergencyInStockText]}>
+                      En stock (quantité : {currentQuantity})
+                    </Text>
+                  </View>
+                  <Text style={styles.stockEditNotice}>Pour modifier la quantité restante, ouvrez l’onglet Stock et touchez ce produit.</Text>
+                </View>
+              ) : (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.emergencyAddButton,
+                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                  ]}
+                  onPress={handleAddToStock}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ajouter ${emergencyProductName} au stock comme autorisation temporaire`}
+                >
+                  <IconSymbol name="plus.circle.fill" size={22} color="#FFFFFF" />
+                  <Text style={styles.addButtonText}>Ajouter au stock</Text>
+                </Pressable>
+              )}
             </ScrollView>
           )}
         </SafeAreaView>
+        <QuantityModal
+          visible={showQuantityModal}
+          productName={emergencyProductName}
+          onCancel={() => setShowQuantityModal(false)}
+          onConfirm={handleQuantityConfirm}
+        />
       </View>
     );
   }
@@ -453,6 +497,24 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginTop: 8,
   },
+  emergencyStockNotice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 9,
+    backgroundColor: "#EFF6FF",
+    borderRadius: 12,
+    padding: 14,
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+  },
+  emergencyStockNoticeText: {
+    flex: 1,
+    color: "#1E3A8A",
+    fontSize: 13,
+    lineHeight: 19,
+  },
   classificationSection: {
     paddingHorizontal: 20,
     paddingTop: 20,
@@ -646,6 +708,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
   },
+  emergencyAddButton: {
+    backgroundColor: "#1D4ED8",
+    borderRadius: 14,
+    paddingVertical: 18,
+    marginHorizontal: 20,
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
   addButtonText: {
     fontSize: 18,
     fontWeight: "bold",
@@ -671,6 +744,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#22C55E",
+  },
+  emergencyInStockBadge: {
+    backgroundColor: "#EFF6FF",
+    borderColor: "#BFDBFE",
+  },
+  emergencyInStockText: {
+    color: "#1D4ED8",
   },
   stockEditNotice: {
     color: "#64748B",

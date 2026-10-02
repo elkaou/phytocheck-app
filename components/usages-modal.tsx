@@ -12,7 +12,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ProductUsage } from "@/lib/data-context";
-import { getCultureSearchSet, CULTURE_ALIASES } from "@/lib/culture-aliases";
+import {
+  cultureMatchesSearch,
+  getCultureSearchSet,
+  CULTURE_ALIASES,
+} from "@/lib/culture-aliases";
 
 interface UsagesModalProps {
   visible: boolean;
@@ -32,14 +36,7 @@ export function UsagesModal({ visible, productName, usages, onClose, initialCult
   // Ex: "Blé" → cherche aussi "Céréales à paille", "Céréales", "Grandes cultures"
   const cultureFilteredUsages = useMemo(() => {
     if (!initialCulture) return usages;
-    const cultureSet = getCultureSearchSet(initialCulture.trim());
-    // Convertir en minuscules pour la comparaison
-    const cultureSetLower = new Set(
-      Array.from(cultureSet).map((c) => c.toLowerCase())
-    );
-    return usages.filter((u) =>
-      cultureSetLower.has(u.culture.toLowerCase().trim())
-    );
+    return usages.filter((u) => cultureMatchesSearch(u.culture, initialCulture));
   }, [usages, initialCulture]);
 
   // Liste des cibles disponibles pour les usages de la culture filtrée

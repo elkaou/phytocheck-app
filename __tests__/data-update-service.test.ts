@@ -1,176 +1,163 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock AsyncStorage
-const mockStorage: Record<string, string> = {};
+// vi.mock est remonté avant les imports : les données partagées doivent donc l’être aussi.
+const mocks = vi.hoisted(() => {
+  const fileBase = "file:///mock/";
+  const mockStorage: Record<string, string> = {};
+  const mockFiles: Record<string, string> = {};
+  const mockDownloadAsync = vi.fn(async (url: string, destination: string) => {
+    if (url.includes("products.json")) {
+      mockFiles[destination] = JSON.stringify([{ amm: "123" }]);
+    } else if (url.includes("risk-phrases.json")) {
+      mockFiles[destination] = JSON.stringify({ "123": [{ code: "H300" }] });
+    } else if (url.includes("usages.json")) {
+      mockFiles[destination] = JSON.stringify({});
+    } else if (url.includes("emergency-authorizations.json")) {
+      mockFiles[destination] = JSON.stringify([]);
+    }
+    return { uri: destination, status: 200 };
+  });
+  return { fileBase, mockStorage, mockFiles, mockDownloadAsync };
+});
+
+const { fileBase: FILE_BASE, mockStorage, mockFiles, mockDownloadAsync } = mocks;
+const PRODUCTS_PATH = `${FILE_BASE}phytocheck_products.json`;
+const RISK_PHRASES_PATH = `${FILE_BASE}phytocheck_risk_phrases.json`;
+const USAGES_PATH = `${FILE_BASE}phytocheck_usages.json`;
+
 vi.mock("@react-native-async-storage/async-storage", () => ({
   default: {
-    getItem: vi.fn((key: string) => Promise.resolve(mockStorage[key] || null)),
+    getItem: vi.fn((key: string) => Promise.resolve(mocks.mockStorage[key] ?? null)),
     setItem: vi.fn((key: string, value: string) => {
-      mockStorage[key] = value;
+      mocks.mockStorage[key] = value;
       return Promise.resolve();
     }),
     removeItem: vi.fn((key: string) => {
-      delete mockStorage[key];
+      delete mocks.mockStorage[key];
       return Promise.resolve();
     }),
   },
 }));
 
-// Mock fetch
+vi.mock("expo-file-system/legacy", () => ({
+  documentDirectory: mocks.fileBase,
+  EncodingType: { UTF8: "utf8" },
+  getInfoAsync: vi.fn((path: string) => Promise.resolve({ exists: path in mocks.mockFiles })),
+  readAsStringAsync: vi.fn((path: string) => Promise.resolve(mocks.mockFiles[path] ?? "")),
+  downloadAsync: mocks.mockDownloadAsync,
+  moveAsync: vi.fn(({ from, to }: { from: string; to: string }) => {
+    mocks.mockFiles[to] = mocks.mockFiles[from];
+    delete mocks.mockFiles[from];
+    return Promise.resolve();
+  }),
+  deleteAsync: vi.fn((path: string) => {
+    delete mocks.mockFiles[path];
+    return Promise.resolve();
+  }),
+}));
+
+vi.mock("react-native", () => ({
+  Platform: { OS: "ios" },
+}));
+
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-// Import after mocks
 import {
   checkAndUpdateInBackground,
-  loadCachedData,
   clearDataCache,
+  loadCachedData,
 } from "@/lib/data-update-service";
+
+function waitForBackgroundUpdate(bundleDate = "25/03/2026"): Promise<boolean> {
+  return new Promise((resolve) => {
+    checkAndUpdateInBackground(() => resolve(true), bundleDate);
+    setTimeout(() => resolve(false), 3000);
+  });
+}
 
 describe("data-update-service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
+    Object.keys(mockFiles).forEach((key) => delete mockFiles[key]);
     mockFetch.mockReset();
   });
 
-  describe("cache-busting URLs", () => {
-    it("should add _cb parameter to manifest URL when fetching", async () => {
-      // Setup: no cache, so it should always fetch
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            updated_at: "08/04/2026",
-            products_count: 17136,
-            risks_count: 2485,
-          }),
-      });
-      // Products fetch
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve([{ amm: "123" }]),
-      });
-      // Risk phrases fetch
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ "123": [{ code: "H300" }] }),
-      });
-
-      await new Promise<void>((resolve) => {
-        checkAndUpdateInBackground(() => {
-          resolve();
-        }, "25/03/2026");
-        // Fallback timeout
-        setTimeout(resolve, 3000);
-      });
-
-      // Verify manifest URL has cache-buster
-      const manifestCall = mockFetch.mock.calls[0];
-      expect(manifestCall[0]).toContain("manifest.json");
-      expect(manifestCall[0]).toContain("_cb=");
-
-      // Verify products URL has cache-buster
-      if (mockFetch.mock.calls.length >= 2) {
-        const productsCall = mockFetch.mock.calls[1];
-        expect(productsCall[0]).toContain("products.json");
-        expect(productsCall[0]).toContain("_cb=");
-      }
+  it("ajoute un cache-buster au manifest et aux téléchargements E‑Phy", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        updated_at: "08/04/2026",
+        products_count: 1,
+        risks_count: 1,
+      }),
     });
+
+    expect(await waitForBackgroundUpdate()).toBe(true);
+
+    expect(mockFetch.mock.calls[0][0]).toContain("manifest.json");
+    expect(mockFetch.mock.calls[0][0]).toContain("_cb=");
+    expect(mockDownloadAsync.mock.calls[0][0]).toContain("products.json");
+    expect(mockDownloadAsync.mock.calls[0][0]).toContain("_cb=");
   });
 
-  describe("date comparison", () => {
-    it("should detect update when remote date is newer than cached date", async () => {
-      // Simulate cached version from 25/03/2026
-      mockStorage["@phytocheck/remote_version"] = "25/03/2026";
-      mockStorage["@phytocheck/last_remote_update"] = "0"; // Force re-check
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            updated_at: "08/04/2026",
-            products_count: 17136,
-            risks_count: 2485,
-          }),
-      });
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve([{ amm: "test" }]),
-      });
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({}),
-      });
-
-      let updateCalled = false;
-      await new Promise<void>((resolve) => {
-        checkAndUpdateInBackground(() => {
-          updateCalled = true;
-          resolve();
-        }, "25/03/2026");
-        setTimeout(resolve, 3000);
-      });
-
-      expect(updateCalled).toBe(true);
-      expect(mockStorage["@phytocheck/remote_version"]).toBe("08/04/2026");
+  it("met à jour le cache quand la date distante est plus récente", async () => {
+    mockStorage["@phytocheck/remote_version"] = "25/03/2026";
+    mockStorage["@phytocheck/last_remote_update"] = "0";
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        updated_at: "08/04/2026",
+        products_count: 1,
+        risks_count: 1,
+      }),
     });
 
-    it("should NOT trigger update when remote date equals cached date", async () => {
-      mockStorage["@phytocheck/remote_version"] = "08/04/2026";
-      mockStorage["@phytocheck/last_remote_update"] = "0"; // Force re-check
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            updated_at: "08/04/2026",
-            products_count: 17136,
-            risks_count: 2485,
-          }),
-      });
-
-      let updateCalled = false;
-      await new Promise<void>((resolve) => {
-        checkAndUpdateInBackground(() => {
-          updateCalled = true;
-        }, "25/03/2026");
-        setTimeout(resolve, 2000);
-      });
-
-      expect(updateCalled).toBe(false);
-    });
+    expect(await waitForBackgroundUpdate()).toBe(true);
+    expect(mockStorage["@phytocheck/remote_version"]).toBe("08/04/2026");
+    expect(JSON.parse(mockFiles[PRODUCTS_PATH])).toEqual([{ amm: "123" }]);
   });
 
-  describe("loadCachedData", () => {
-    it("should return null when no cache exists", async () => {
-      const result = await loadCachedData();
-      expect(result).toBeNull();
+  it("ne télécharge pas E‑Phy quand la version et les fichiers locaux sont identiques", async () => {
+    mockStorage["@phytocheck/remote_version"] = "08/04/2026";
+    mockStorage["@phytocheck/last_remote_update"] = "0";
+    mockFiles[PRODUCTS_PATH] = JSON.stringify([{ amm: "123" }]);
+    mockFiles[USAGES_PATH] = JSON.stringify({});
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        updated_at: "08/04/2026",
+        products_count: 1,
+        risks_count: 1,
+      }),
     });
 
-    it("should return cached data when available", async () => {
-      mockStorage["@phytocheck/remote_products"] = JSON.stringify([{ amm: "123" }]);
-      mockStorage["@phytocheck/remote_risk_phrases"] = JSON.stringify({ "123": [] });
-      mockStorage["@phytocheck/remote_version"] = "08/04/2026";
-
-      const result = await loadCachedData();
-      expect(result).not.toBeNull();
-      expect(result!.updatedAt).toBe("08/04/2026");
-      expect(result!.products).toHaveLength(1);
-    });
+    expect(await waitForBackgroundUpdate()).toBe(false);
+    expect(mockDownloadAsync).not.toHaveBeenCalled();
   });
 
-  describe("clearDataCache", () => {
-    it("should remove all cache keys", async () => {
-      mockStorage["@phytocheck/remote_products"] = "data";
-      mockStorage["@phytocheck/remote_risk_phrases"] = "data";
-      mockStorage["@phytocheck/remote_version"] = "08/04/2026";
-      mockStorage["@phytocheck/last_remote_update"] = "123";
+  it("charge les données E‑Phy depuis le cache de fichiers", async () => {
+    mockStorage["@phytocheck/remote_version"] = "08/04/2026";
+    mockFiles[PRODUCTS_PATH] = JSON.stringify([{ amm: "123" }]);
+    mockFiles[RISK_PHRASES_PATH] = JSON.stringify({ "123": [] });
+    mockFiles[USAGES_PATH] = JSON.stringify({ "123": [] });
 
-      await clearDataCache();
+    const result = await loadCachedData();
 
-      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-      expect(AsyncStorage.removeItem).toHaveBeenCalledTimes(4);
-    });
+    expect(result).toMatchObject({ updatedAt: "08/04/2026" });
+    expect(result?.products).toEqual([{ amm: "123" }]);
+  });
+
+  it("supprime les métadonnées et les fichiers réglementaires", async () => {
+    mockStorage["@phytocheck/remote_version"] = "08/04/2026";
+    mockStorage["@phytocheck/last_remote_update"] = "123";
+    mockFiles[PRODUCTS_PATH] = "[]";
+
+    await clearDataCache();
+
+    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+    expect(AsyncStorage.removeItem).toHaveBeenCalledTimes(3);
+    expect(mockFiles[PRODUCTS_PATH]).toBeUndefined();
   });
 });

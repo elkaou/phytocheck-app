@@ -64,15 +64,45 @@ export const CULTURE_ALIASES: Record<string, string[]> = {
   "Gazons de graminées": ["Graminées fourragères"],
 };
 
+/** Normalise les libellés E‑Phy pour les comparer sans casse ni accent. */
+export function normalizeCultureName(value: string): string {
+  return value
+    .trim()
+    .toLocaleLowerCase("fr-FR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function getCultureAliasKey(culture: string): string | undefined {
+  const normalizedCulture = normalizeCultureName(culture);
+  return Object.keys(CULTURE_ALIASES).find(
+    (key) => normalizeCultureName(key) === normalizedCulture,
+  );
+}
+
 /**
  * Retourne l'ensemble des cultures à rechercher pour une culture donnée :
  * la culture elle-même + tous ses alias génériques.
  */
 export function getCultureSearchSet(culture: string): Set<string> {
-  const set = new Set<string>([culture]);
-  const aliases = CULTURE_ALIASES[culture] || [];
+  const key = getCultureAliasKey(culture);
+  const set = new Set<string>([culture.trim()]);
+  if (key) set.add(key);
+  const aliases = key ? CULTURE_ALIASES[key] : [];
   aliases.forEach(a => set.add(a));
   return set;
+}
+
+/**
+ * Compare un libellé de culture E‑Phy avec une recherche utilisateur et ses
+ * alias, sans être sensible aux différences de casse ou d’accent.
+ */
+export function cultureMatchesSearch(culture: string | undefined, searchCulture: string): boolean {
+  if (!culture || !searchCulture.trim()) return false;
+  const normalizedCulture = normalizeCultureName(culture);
+  return Array.from(getCultureSearchSet(searchCulture)).some(
+    (candidate) => normalizeCultureName(candidate) === normalizedCulture,
+  );
 }
 
 /**

@@ -24,6 +24,8 @@ import { StockRegulatoryChange } from "@/lib/stock-regulatory-check";
 import { StockEmergencyAuthorizationChange } from "@/lib/emergency-stock-check";
 import {
   formatEmergencyAuthorizationDate,
+  formatEmergencyAuthorizationRemainingDays,
+  getEmergencyAuthorizationReminderForAmm,
 } from "@/lib/emergency-authorizations";
 import { formatStockQuantity } from "@/lib/quantity";
 import { createStockWorkbook, createStockWorkbookBase64 } from "@/lib/stock-export";
@@ -203,6 +205,15 @@ export default function StockScreen() {
     });
   }, [stock, filter, stockSearchQuery]);
 
+  const stockEmergencyReminders = useMemo(() => {
+    const reminders = new Map<string, NonNullable<ReturnType<typeof getEmergencyAuthorizationReminderForAmm>>>();
+    stock.forEach((item) => {
+      const reminder = getEmergencyAuthorizationReminderForAmm(emergencyAuthorizations, item.amm);
+      if (reminder) reminders.set(item.amm, reminder);
+    });
+    return reminders;
+  }, [stock, emergencyAuthorizations]);
+
   const handleStockSearchToggle = useCallback(() => {
     setIsStockSearchOpen((isOpen) => {
       if (isOpen) setStockSearchQuery("");
@@ -326,6 +337,7 @@ export default function StockScreen() {
             .badge-retire { background: #fee2e2; color: #b91c1c; }
             .badge-cmr { background: #fef9c3; color: #a16207; }
             .badge-toxique { background: #ffedd5; color: #c2410c; }
+            .badge-emergency { background: #dbeafe; color: #1d4ed8; }
 
             /* FOOTER */
             .page-footer {
@@ -400,6 +412,7 @@ export default function StockScreen() {
                       retire: "badge-retire",
                       homologue_cmr: "badge-cmr",
                       homologue_toxique: "badge-toxique",
+                      autorisation_urgence: "badge-emergency",
                     }[item.classification] ?? "badge-homologue";
                     const dateAjout = item.dateAjout
                       ? new Date(item.dateAjout).toLocaleDateString("fr-FR")
@@ -659,11 +672,10 @@ export default function StockScreen() {
               </Text>
             </View>
           ) : (
-            filteredStock.map((item) => (
-              <View
-                key={item.amm}
-                style={styles.stockCard}
-              >
+            filteredStock.map((item) => {
+              const emergencyReminder = stockEmergencyReminders.get(item.amm);
+              return (
+              <View key={item.amm} style={styles.stockCard}>
                 <View style={styles.stockCardContent}>
                   <Pressable
                     onPress={() => handleOpenProduct(item)}
@@ -707,6 +719,22 @@ export default function StockScreen() {
                         )}
                       </Text>
                     </View>
+                    {emergencyReminder ? (
+                      <View style={styles.stockEmergencyReminder}>
+                        <MaterialIcons name="schedule" size={18} color="#1D4ED8" />
+                        <View style={styles.stockEmergencyReminderContent}>
+                          <Text style={styles.stockEmergencyReminderTitle}>
+                            Autorisation d’urgence — Article 53
+                          </Text>
+                          <Text style={styles.stockEmergencyReminderText}>
+                            {formatEmergencyAuthorizationRemainingDays(emergencyReminder.daysRemaining)} · jusqu’au {formatEmergencyAuthorizationDate(emergencyReminder.authorization.expiresAt)}
+                            {emergencyReminder.activeDecisionCount > 1
+                              ? ` · +${emergencyReminder.activeDecisionCount - 1} autre décision`
+                              : ""}
+                          </Text>
+                        </View>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
                 <View style={styles.stockCardActions}>
@@ -738,7 +766,8 @@ export default function StockScreen() {
                   </Pressable>
                 </View>
               </View>
-            ))
+              );
+            })
           )}
         </ScrollView>
       </View>
@@ -924,6 +953,33 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "bold",
     flexShrink: 1,
+  },
+  stockEmergencyReminder: {
+    alignSelf: "stretch",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    borderRadius: 8,
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+  },
+  stockEmergencyReminderContent: {
+    flex: 1,
+  },
+  stockEmergencyReminderTitle: {
+    color: "#1E3A8A",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  stockEmergencyReminderText: {
+    color: "#1D4ED8",
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 2,
   },
   stockCardActions: {
     flexDirection: "row",

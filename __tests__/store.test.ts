@@ -100,6 +100,23 @@ describe("store", () => {
       expect(stock[0].quantite).toBe(2);
     });
 
+    it("should persist an Article 53-only product as a temporary authorization", async () => {
+      const product = makeProduct("2260551", "autorisation_urgence");
+      product.nom = "AVADEX FACTOR";
+      product.etat = "AUTORISATION_ARTICLE_53";
+
+      await addToStock(product, 2, "L");
+      const stock = await getStock();
+
+      expect(stock[0]).toMatchObject({
+        amm: "2260551",
+        nom: "AVADEX FACTOR",
+        classification: "autorisation_urgence",
+        etat: "AUTORISATION_ARTICLE_53",
+        quantite: 2,
+      });
+    });
+
     it("should remove a product from stock", async () => {
       const product = makeProduct("1234567");
       await addToStock(product);

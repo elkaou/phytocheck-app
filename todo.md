@@ -826,3 +826,10 @@
 - [x] Afficher une section distincte « Autorisations d’urgence 120 jours » dans la recherche par culture
 - [x] Alerter dans Stock sur les nouvelles autorisations, les échéances à 14 jours et les décisions expirées, sans altérer le statut E‑Phy
 - [x] Ajouter les tests Article 53, lancer TypeScript et le bundling mobile, puis créer un checkpoint et publier sur GitHub
+
+## Version 1.1.13 — Correctifs Article 53 après tests terrain
+- [x] Afficher les autorisations d’urgence avant les résultats E‑Phy dans la recherche par culture
+- [x] Permettre d’ajouter au stock les produits uniquement publiés en autorisation Article 53, en les identifiant explicitement comme temporaires
+- [x] Afficher dans chaque carte Stock concernée l’échéance et le nombre de jours restant d’une autorisation Article 53 active
+- [x] Rendre les alias de culture insensibles à la casse et aux accents afin que « Haricots » inclue ALTACOR comme « Haricots et pois non écossés frais »
+- [x] Ajouter les tests de régression, valider TypeScript et les bundles Android/iOS, puis publier sur GitHub

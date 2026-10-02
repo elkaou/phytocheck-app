@@ -3,6 +3,7 @@ import {
   searchProducts,
   getProductByAMM,
   classifyProduct,
+  createEmergencyAuthorizationProduct,
   getClassificationLabel,
   getClassificationColor,
   TOTAL_PRODUCTS,
@@ -111,6 +112,7 @@ describe("product-service", () => {
       expect(getClassificationLabel("retire")).toBe("Retiré");
       expect(getClassificationLabel("homologue_cmr")).toBe("Homologué — CMR");
       expect(getClassificationLabel("homologue_toxique")).toBe("Homologué — Toxique");
+      expect(getClassificationLabel("autorisation_urgence")).toBe("Autorisation d’urgence — Article 53");
     });
   });
 
@@ -120,6 +122,33 @@ describe("product-service", () => {
       expect(getClassificationColor("retire")).toBe("#EF4444");
       expect(getClassificationColor("homologue_cmr")).toBe("#F59E0B");
       expect(getClassificationColor("homologue_toxique")).toBe("#C2410C"); // Orange foncé
+      expect(getClassificationColor("autorisation_urgence")).toBe("#1D4ED8");
+    });
+  });
+
+  describe("createEmergencyAuthorizationProduct", () => {
+    it("crée une fiche stockable sans simuler une homologation E‑Phy", () => {
+      const product = createEmergencyAuthorizationProduct({
+        id: "article53-avadex",
+        amm: "2260551",
+        productName: "AVADEX FACTOR",
+        cultures: "orge",
+        purpose: "Désherbage",
+        activeSubstances: "Tri-allate",
+        issuedAt: "2026-09-23",
+        expiresAt: "2027-01-21",
+        decisionPdfUrl: "https://agriculture.gouv.fr/telecharger/156224",
+        sourcePageUrl: "https://agriculture.gouv.fr/exemple",
+        sourceRetrievedAt: "2026-10-02T10:00:00Z",
+      });
+
+      expect(product).toMatchObject({
+        amm: "2260551",
+        nom: "AVADEX FACTOR",
+        classification: "autorisation_urgence",
+        etat: "AUTORISATION_ARTICLE_53",
+        gammeUsage: "Autorisation d’urgence Article 53",
+      });
     });
   });
 });

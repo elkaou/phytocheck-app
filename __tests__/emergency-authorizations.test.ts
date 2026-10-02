@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   EmergencyAuthorization,
+  formatEmergencyAuthorizationRemainingDays,
   getEmergencyAuthorizationDaysRemaining,
   getEmergencyAuthorizationsForAmm,
   getEmergencyAuthorizationsForCulture,
+  getEmergencyAuthorizationReminderForAmm,
   isEmergencyAuthorizationActive,
 } from "../lib/emergency-authorizations";
 
@@ -53,5 +55,23 @@ describe("emergency authorizations", () => {
       authorization,
     ]);
     expect(getEmergencyAuthorizationsForCulture([authorization], "Vigne", new Date(2026, 9, 2))).toEqual([]);
+  });
+
+  it("fournit un rappel permanent avec l’échéance la plus proche", () => {
+    const later = { ...authorization, id: "article53-test-later", expiresAt: "2027-01-30" };
+    const reminder = getEmergencyAuthorizationReminderForAmm(
+      [later, authorization],
+      "2260551",
+      new Date(2027, 0, 20),
+    );
+
+    expect(reminder).toMatchObject({
+      authorization: { id: "article53-test-1" },
+      daysRemaining: 1,
+      activeDecisionCount: 2,
+    });
+    expect(formatEmergencyAuthorizationRemainingDays(reminder!.daysRemaining)).toBe("Expire demain");
+    expect(formatEmergencyAuthorizationRemainingDays(0)).toBe("Expire aujourd’hui");
+    expect(formatEmergencyAuthorizationRemainingDays(12)).toBe("Expire dans 12 jours");
   });
 });

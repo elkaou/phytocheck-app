@@ -7,6 +7,7 @@ const CLASSIFICATION_LABELS: Record<string, string> = {
   retire: "PPNU / retiré",
   homologue_cmr: "Homologué — CMR",
   homologue_toxique: "Homologué — toxique",
+  autorisation_urgence: "Autorisation d’urgence — Article 53",
 };
 
 export function createStockWorkbook(stock: StockItem[]): XLSX.WorkBook {

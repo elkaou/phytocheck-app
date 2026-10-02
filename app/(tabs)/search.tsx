@@ -23,7 +23,11 @@ import {
 } from "@/lib/product-service";
 import { useApp } from "@/lib/app-context";
 import { useData } from "@/lib/data-context";
-import { CULTURE_ALIASES, getCultureSuggestions, type CultureSuggestion } from "@/lib/culture-aliases";
+import {
+  cultureMatchesSearch,
+  getCultureSuggestions,
+  type CultureSuggestion,
+} from "@/lib/culture-aliases";
 import {
   formatEmergencyAuthorizationDate,
   getEmergencyAuthorizationsForCulture,
@@ -71,13 +75,10 @@ export default function SearchScreen() {
   const availableCibles = useMemo(() => {
     if (searchType !== "culture" || results.length === 0) return [];
     const cibles = new Set<string>();
-    const culturesToSearch = new Set<string>([cultureQuery.trim()]);
-    const aliases = CULTURE_ALIASES[cultureQuery.trim()] || [];
-    aliases.forEach((alias) => culturesToSearch.add(alias));
     results.forEach((product) => {
       const productUsages = usages[product.amm] || [];
       productUsages.forEach((u) => {
-        if (culturesToSearch.has(u.culture || "") && u.cible) {
+        if (cultureMatchesSearch(u.culture, cultureQuery) && u.cible) {
           cibles.add(u.cible);
         }
       });
@@ -88,13 +89,10 @@ export default function SearchScreen() {
   // Produits filtrés par cible sélectionnée
   const cibleFilteredResults = useMemo(() => {
     if (!selectedCible || searchType !== "culture") return results;
-    const culturesToSearch = new Set<string>([cultureQuery.trim()]);
-    const aliases = CULTURE_ALIASES[cultureQuery.trim()] || [];
-    aliases.forEach((alias) => culturesToSearch.add(alias));
     return results.filter((product) => {
       const productUsages = usages[product.amm] || [];
       return productUsages.some(
-        (u) => culturesToSearch.has(u.culture || "") && u.cible === selectedCible
+        (u) => cultureMatchesSearch(u.culture, cultureQuery) && u.cible === selectedCible
       );
     });
   }, [selectedCible, results, searchType, cultureQuery, usages]);
@@ -129,16 +127,12 @@ export default function SearchScreen() {
       setSearchType("culture");
       setSelectedCible(null); // Réinitialiser le filtre cible à chaque nouvelle recherche
       setTimeout(() => {
-        // Construire la liste des cultures à chercher : la culture elle-même + ses alias génériques
-        const culturesToSearch = new Set<string>([cultureName]);
-        const aliases = CULTURE_ALIASES[cultureName] || [];
-        aliases.forEach((alias) => culturesToSearch.add(alias));
-
-        // Trouver tous les AMM qui ont un usage sur l'une de ces cultures
+        // Trouver les AMM dont l'usage correspond à la culture demandée ou à un alias.
+        // La comparaison reste robuste à « Pois/pois » et aux accents E‑Phy.
         const ammList: string[] = [];
         Object.entries(usages).forEach(([amm, ammUsages]) => {
           const hasMatch = ammUsages.some((u) =>
-            culturesToSearch.has(u.culture || "")
+            cultureMatchesSearch(u.culture, cultureName)
           );
           if (hasMatch) ammList.push(amm);
         });
@@ -688,6 +682,43 @@ export default function SearchScreen() {
             </View>
           )}
 
+          {/* Les dérogations temporaires sont prioritaires : elles peuvent répondre à un besoin urgent. */}
+          {!isSearching && hasSearched && searchType === "culture" && emergencyCultureResults.length > 0 && (
+            <View style={styles.emergencyResultsSection}>
+              <View style={styles.emergencyResultsHeader}>
+                <Text style={styles.emergencyResultsTitle}>Autorisations d’urgence — 120 jours</Text>
+                <Text style={styles.emergencyResultsCount}>
+                  {emergencyCultureResults.length} décision{emergencyCultureResults.length > 1 ? "s" : ""} active{emergencyCultureResults.length > 1 ? "s" : ""}
+                </Text>
+              </View>
+              <Text style={styles.emergencyResultsHint}>
+                Dérogations temporaires Article 53, présentées séparément des homologations E‑Phy.
+              </Text>
+              {emergencyCultureResults.map((authorization) => (
+                <Pressable
+                  key={authorization.id}
+                  style={({ pressed }) => [styles.emergencyResultCard, pressed && { opacity: 0.72 }]}
+                  onPress={() => handleOpenEmergencyProduct(authorization.amm, authorization.productName)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ouvrir la fiche de ${authorization.productName}, autorisation d’urgence`}
+                >
+                  <View style={styles.emergencyResultTopRow}>
+                    <Text style={styles.emergencyResultName}>{authorization.productName}</Text>
+                    <View style={styles.emergencyValidityBadge}>
+                      <Text style={styles.emergencyValidityText}>
+                        Jusqu’au {formatEmergencyAuthorizationDate(authorization.expiresAt)}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.emergencyResultAmm}>AMM : {authorization.amm}</Text>
+                  <Text style={styles.emergencyResultLabel}>Culture(s) : {authorization.cultures}</Text>
+                  <Text style={styles.emergencyResultLabel}>Cible : {authorization.purpose}</Text>
+                  <Text style={styles.emergencyResultLink}>Voir la fiche et la décision officielle ›</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+
           {/* Résultats */}
           {!isSearching && results.length > 0 && (
             <View ref={resultsRef} style={{ marginTop: 16 }}>
@@ -746,42 +777,6 @@ export default function SearchScreen() {
                 <View key={`${item.amm}-${item.nom}-${index}`}>
                   {renderProduct({ item })}
                 </View>
-              ))}
-            </View>
-          )}
-
-          {!isSearching && hasSearched && searchType === "culture" && emergencyCultureResults.length > 0 && (
-            <View style={styles.emergencyResultsSection}>
-              <View style={styles.emergencyResultsHeader}>
-                <Text style={styles.emergencyResultsTitle}>Autorisations d’urgence — 120 jours</Text>
-                <Text style={styles.emergencyResultsCount}>
-                  {emergencyCultureResults.length} décision{emergencyCultureResults.length > 1 ? "s" : ""} active{emergencyCultureResults.length > 1 ? "s" : ""}
-                </Text>
-              </View>
-              <Text style={styles.emergencyResultsHint}>
-                Dérogations temporaires Article 53, présentées séparément des homologations E‑Phy.
-              </Text>
-              {emergencyCultureResults.map((authorization) => (
-                <Pressable
-                  key={authorization.id}
-                  style={({ pressed }) => [styles.emergencyResultCard, pressed && { opacity: 0.72 }]}
-                  onPress={() => handleOpenEmergencyProduct(authorization.amm, authorization.productName)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Ouvrir la fiche de ${authorization.productName}, autorisation d’urgence`}
-                >
-                  <View style={styles.emergencyResultTopRow}>
-                    <Text style={styles.emergencyResultName}>{authorization.productName}</Text>
-                    <View style={styles.emergencyValidityBadge}>
-                      <Text style={styles.emergencyValidityText}>
-                        Jusqu’au {formatEmergencyAuthorizationDate(authorization.expiresAt)}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.emergencyResultAmm}>AMM : {authorization.amm}</Text>
-                  <Text style={styles.emergencyResultLabel}>Culture(s) : {authorization.cultures}</Text>
-                  <Text style={styles.emergencyResultLabel}>Cible : {authorization.purpose}</Text>
-                  <Text style={styles.emergencyResultLink}>Voir la fiche et la décision officielle ›</Text>
-                </Pressable>
               ))}
             </View>
           )}

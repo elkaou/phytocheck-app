@@ -98,6 +98,33 @@ export function getEmergencyAuthorizationsForAmm(
     .sort((left, right) => left.expiresAt.localeCompare(right.expiresAt));
 }
 
+export interface EmergencyAuthorizationReminder {
+  authorization: EmergencyAuthorization;
+  daysRemaining: number;
+  activeDecisionCount: number;
+}
+
+/** Retourne l’échéance active la plus proche pour une carte de stock. */
+export function getEmergencyAuthorizationReminderForAmm(
+  authorizations: EmergencyAuthorization[],
+  amm: string,
+  now: Date = new Date(),
+): EmergencyAuthorizationReminder | null {
+  const active = getEmergencyAuthorizationsForAmm(authorizations, amm, now);
+  const authorization = active[0];
+  if (!authorization) return null;
+
+  const daysRemaining = getEmergencyAuthorizationDaysRemaining(authorization, now);
+  if (daysRemaining === null || daysRemaining < 0) return null;
+  return { authorization, daysRemaining, activeDecisionCount: active.length };
+}
+
+export function formatEmergencyAuthorizationRemainingDays(daysRemaining: number): string {
+  if (daysRemaining <= 0) return "Expire aujourd’hui";
+  if (daysRemaining === 1) return "Expire demain";
+  return `Expire dans ${daysRemaining} jours`;
+}
+
 /**
  * Recherche les décisions actives couvrant une culture E-Phy ou l'un de ses alias.
  * La décision reste toujours affichée avec son libellé ministériel exact.

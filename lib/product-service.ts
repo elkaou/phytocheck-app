@@ -1,5 +1,6 @@
 import productsData from "@/assets/data/products.json";
 import riskPhrasesData from "@/assets/data/risk-phrases.json";
+import type { EmergencyAuthorization } from "./emergency-authorizations";
 
 // Types
 export interface Product {
@@ -25,7 +26,8 @@ export type ProductClassification =
   | "homologue"
   | "retire"
   | "homologue_cmr"
-  | "homologue_toxique";
+  | "homologue_toxique"
+  | "autorisation_urgence";
 
 export interface ClassifiedProduct extends Product {
   classification: ProductClassification;
@@ -33,6 +35,33 @@ export interface ClassifiedProduct extends Product {
   isCMR: boolean;
   isToxique: boolean;
   matchedName?: string; // Nom secondaire par lequel le produit a été trouvé
+}
+
+/**
+ * Crée une fiche stockable quand une AMM est uniquement publiée au titre de
+ * l’article 53 et n’existe pas encore dans le catalogue E‑Phy téléchargé.
+ * Elle reste explicitement distincte d’une homologation E‑Phy permanente.
+ */
+export function createEmergencyAuthorizationProduct(
+  authorization: EmergencyAuthorization,
+): ClassifiedProduct {
+  return {
+    amm: authorization.amm,
+    nom: authorization.productName,
+    nomsSecondaires: "",
+    titulaire: "Non renseigné dans la décision Article 53",
+    gammeUsage: "Autorisation d’urgence Article 53",
+    substancesActives: authorization.activeSubstances,
+    fonctions: "Autorisation d’urgence",
+    formulation: "",
+    etat: "AUTORISATION_ARTICLE_53",
+    dateRetrait: "",
+    dateAutorisation: authorization.issuedAt,
+    classification: "autorisation_urgence",
+    riskPhrases: [],
+    isCMR: false,
+    isToxique: false,
+  };
 }
 
 // CMR codes: Cancérogène, Mutagène, Reprotoxique
@@ -290,6 +319,8 @@ export function getClassificationLabel(classification: ProductClassification): s
       return "Homologué — CMR";
     case "homologue_toxique":
       return "Homologué — Toxique";
+    case "autorisation_urgence":
+      return "Autorisation d’urgence — Article 53";
   }
 }
 
@@ -304,6 +335,8 @@ export function getClassificationColor(classification: ProductClassification): s
       return "#F59E0B";
     case "homologue_toxique":
       return "#C2410C"; // Orange foncé
+    case "autorisation_urgence":
+      return "#1D4ED8";
   }
 }
 
@@ -318,5 +351,7 @@ export function getClassificationBgColor(classification: ProductClassification):
       return "#FFFBEB";
     case "homologue_toxique":
       return "#FFF7ED"; // Orange clair
+    case "autorisation_urgence":
+      return "#EFF6FF";
   }
 }

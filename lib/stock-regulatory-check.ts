@@ -17,7 +17,7 @@ export interface StockRegulatoryCheckResult {
 }
 
 function isClassification(value: string): value is ProductClassification {
-  return value === "homologue" || value === "retire" || value === "homologue_cmr" || value === "homologue_toxique";
+  return value === "homologue" || value === "retire" || value === "homologue_cmr" || value === "homologue_toxique" || value === "autorisation_urgence";
 }
 
 /**
