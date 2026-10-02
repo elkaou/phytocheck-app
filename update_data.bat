@@ -153,15 +153,22 @@ if errorlevel 1 (
     goto :push_github_pages
 )
 
-git add assets\data\products.json assets\data\risk-phrases.json lib\product-service.ts TERMS_OF_SERVICE.md docs\terms-of-service.html
+git remote get-url github >nul 2>&1
+if errorlevel 1 (
+    set APP_REMOTE=origin
+) else (
+    set APP_REMOTE=github
+)
+
+git add assets\data\products.json assets\data\risk-phrases.json assets\data\usages.json assets\data\manifest.json lib\data-context.tsx lib\product-service.ts TERMS_OF_SERVICE.md docs\terms-of-service.html
 git commit -m "Mise a jour E-PHY du %TODAY%"
 
 if errorlevel 1 (
     echo [INFO] Aucun changement dans phytocheck-app.
 ) else (
-    git push github main
-    if errorlevel 1 (
-        echo [AVERTISSEMENT] Push phytocheck-app echoue. Lancez manuellement : git push github main
+git push %APP_REMOTE% main
+if errorlevel 1 (
+        echo [AVERTISSEMENT] Push phytocheck-app echoue. Lancez manuellement : git push %APP_REMOTE% main
     ) else (
         echo [OK] phytocheck-app mis a jour sur GitHub.
     )
@@ -185,25 +192,15 @@ if not exist "%DATA_REPO%" (
 :: Copier les JSON dans le dépôt phytocheck-data
 copy /Y "assets\data\products.json" "%DATA_REPO%\products.json" >nul
 copy /Y "assets\data\risk-phrases.json" "%DATA_REPO%\risk-phrases.json" >nul
+copy /Y "assets\data\usages.json" "%DATA_REPO%\usages.json" >nul
+copy /Y "assets\data\manifest.json" "%DATA_REPO%\manifest.json" >nul
 
-:: Générer le manifest.json
-python -c "
-import json, datetime
-products = json.load(open('assets/data/products.json', encoding='utf-8'))
-risks = json.load(open('assets/data/risk-phrases.json', encoding='utf-8'))
-manifest = {
-    'version': '1.0',
-    'updated_at': datetime.date.today().strftime('%%d/%%m/%%Y'),
-    'products_count': len(products),
-    'risks_count': len(risks)
-}
-json.dump(manifest, open(r'%DATA_REPO%\manifest.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
-print(f'Manifest : {manifest[\"products_count\"]} produits, date {manifest[\"updated_at\"]}')
-"
+:: Le manifest est déjà généré par convert_ephy_to_json.py. Sa copie préserve
+:: aussi emergency_authorizations, géré séparément par le workflow Article 53.
 
 :: Commit et push vers GitHub Pages
 cd /d "%DATA_REPO%"
-git add products.json risk-phrases.json manifest.json
+git add products.json risk-phrases.json usages.json manifest.json
 git commit -m "Mise a jour E-PHY du %TODAY%"
 
 if errorlevel 1 (

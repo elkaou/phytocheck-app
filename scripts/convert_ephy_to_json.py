@@ -419,6 +419,27 @@ def update_manifest(update_date_str, products_count, risks_count, usages_count=N
 
     # ── 1. Toujours mettre à jour assets/data/manifest.json dans le projet ──
     local_manifest = PROJECT_ROOT / "assets" / "data" / "manifest.json"
+
+    # Le dépôt phytocheck-data contient aussi les métadonnées Article 53,
+    # produites par un workflow indépendant. Une actualisation E-Phy ne doit
+    # jamais les effacer lorsqu'elle régénère le manifest commun.
+    emergency_authorizations = None
+    manifest_candidates = [local_manifest, *MANIFEST_SEARCH_PATHS]
+    for candidate in manifest_candidates:
+        if not candidate.exists():
+            continue
+        try:
+            previous_manifest = json.loads(candidate.read_text(encoding="utf-8"))
+            emergency = previous_manifest.get("emergency_authorizations")
+            if isinstance(emergency, dict):
+                emergency_authorizations = emergency
+                break
+        except (OSError, json.JSONDecodeError):
+            continue
+
+    if emergency_authorizations is not None:
+        manifest_data["emergency_authorizations"] = emergency_authorizations
+
     try:
         with open(local_manifest, "w", encoding="utf-8") as f:
             json.dump(manifest_data, f, ensure_ascii=False, indent=2)

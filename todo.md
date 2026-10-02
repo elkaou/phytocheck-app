@@ -847,3 +847,9 @@
 ## Correctif test E‑Phy — total dynamique
 - [x] Retirer le nombre de produits E‑Phy figé du test : le catalogue reste testable après chaque mise à jour de données
 - [x] Valider la suite complète, TypeScript et le bundle Android, puis publier le correctif avant le build
+
+## Version 1.2.0 — Synchronisation E‑Phy hors connexion
+- [ ] Importer la source E‑Phy locale du 29/09/2026 et comparer son contenu à GitHub avant toute publication
+- [x] Corriger le script afin de publier produits, risques, usages et manifest tout en préservant les métadonnées Article 53
+- [ ] Régénérer les JSON, métadonnées et CGU de secours à partir de cette source plus récente
+- [x] Ajouter un test de non-régression du manifest Article 53, puis valider Android et publier le correctif de script avant l’AAB
