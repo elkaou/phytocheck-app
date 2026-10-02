@@ -843,3 +843,7 @@
 - [x] Passer la version commune Android/iOS à 1.2.0 et synchroniser les fichiers de verrouillage
 - [x] Valider le projet avec une installation npm propre, les tests, TypeScript et les bundles Android/iOS
 - [x] Publier sur GitHub avant la synchronisation du poste Windows et le build Android de production
+
+## Correctif test E‑Phy — total dynamique
+- [x] Retirer le nombre de produits E‑Phy figé du test : le catalogue reste testable après chaque mise à jour de données
+- [x] Valider la suite complète, TypeScript et le bundle Android, puis publier le correctif avant le build

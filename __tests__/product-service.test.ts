@@ -12,9 +12,8 @@ import {
 
 describe("product-service", () => {
   describe("TOTAL_PRODUCTS", () => {
-    it("should have loaded products from JSON", () => {
+    it("charge le catalogue E‑Phy embarqué", () => {
       expect(TOTAL_PRODUCTS).toBeGreaterThan(0);
-      expect(TOTAL_PRODUCTS).toBe(17131);
     });
   });
 
