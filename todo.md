@@ -838,3 +838,8 @@
 - [x] Afficher les décisions Article 53 actives dans l’encadré bleu de la recherche par nom ou AMM
 - [x] Tester la recherche partielle par nom et la recherche exacte par AMM avec AVADEX FACTOR
 - [x] Valider TypeScript et les bundles Android/iOS, puis publier la correction avant le premier build 1.1.13
+
+## Version 1.2.0 — Publication Article 53
+- [x] Passer la version commune Android/iOS à 1.2.0 et synchroniser les fichiers de verrouillage
+- [x] Valider le projet avec une installation npm propre, les tests, TypeScript et les bundles Android/iOS
+- [x] Publier sur GitHub avant la synchronisation du poste Windows et le build Android de production
