@@ -98,6 +98,32 @@ export function getEmergencyAuthorizationsForAmm(
     .sort((left, right) => left.expiresAt.localeCompare(right.expiresAt));
 }
 
+/**
+ * Recherche une décision Article 53 active par nom de produit ou numéro d’AMM.
+ * Elle suit la même recherche partielle, sans casse ni accent, que la recherche
+ * manuelle de produits E‑Phy afin de ne pas masquer un produit temporaire.
+ */
+export function searchEmergencyAuthorizations(
+  authorizations: EmergencyAuthorization[],
+  query: string,
+  now: Date = new Date(),
+): EmergencyAuthorization[] {
+  const normalizedQuery = normalize(query);
+  if (normalizedQuery.length < 2) return [];
+
+  return authorizations
+    .filter(
+      (authorization) =>
+        isEmergencyAuthorizationActive(authorization, now) &&
+        (normalize(authorization.productName).includes(normalizedQuery) ||
+          normalize(authorization.amm).includes(normalizedQuery)),
+    )
+    .sort((left, right) => {
+      const byName = left.productName.localeCompare(right.productName, "fr", { sensitivity: "base" });
+      return byName || left.expiresAt.localeCompare(right.expiresAt);
+    });
+}
+
 export interface EmergencyAuthorizationReminder {
   authorization: EmergencyAuthorization;
   daysRemaining: number;

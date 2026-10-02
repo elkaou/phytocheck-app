@@ -833,3 +833,8 @@
 - [x] Afficher dans chaque carte Stock concernée l’échéance et le nombre de jours restant d’une autorisation Article 53 active
 - [x] Rendre les alias de culture insensibles à la casse et aux accents afin que « Haricots » inclue ALTACOR comme « Haricots et pois non écossés frais »
 - [x] Ajouter les tests de régression, valider TypeScript et les bundles Android/iOS, puis publier sur GitHub
+
+## Version 1.1.13 — Correctif recherche produit Article 53
+- [x] Afficher les décisions Article 53 actives dans l’encadré bleu de la recherche par nom ou AMM
+- [x] Tester la recherche partielle par nom et la recherche exacte par AMM avec AVADEX FACTOR
+- [x] Valider TypeScript et les bundles Android/iOS, puis publier la correction avant le premier build 1.1.13

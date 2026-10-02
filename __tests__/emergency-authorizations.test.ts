@@ -8,6 +8,7 @@ import {
   getEmergencyAuthorizationsForCulture,
   getEmergencyAuthorizationReminderForAmm,
   isEmergencyAuthorizationActive,
+  searchEmergencyAuthorizations,
 } from "../lib/emergency-authorizations";
 
 const authorization: EmergencyAuthorization = {
@@ -38,6 +39,16 @@ describe("emergency authorizations", () => {
       authorization,
     ]);
     expect(getEmergencyAuthorizationsForAmm([authorization], "2260551", new Date(2027, 1, 1))).toEqual([]);
+  });
+
+  it("trouve AVADEX FACTOR par nom partiel ou AMM dans la recherche manuelle", () => {
+    const now = new Date(2026, 9, 2);
+
+    expect(searchEmergencyAuthorizations([authorization], "avadex", now)).toEqual([authorization]);
+    expect(searchEmergencyAuthorizations([authorization], "factor", now)).toEqual([authorization]);
+    expect(searchEmergencyAuthorizations([authorization], "2260551", now)).toEqual([authorization]);
+    expect(searchEmergencyAuthorizations([authorization], "av", now)).toEqual([authorization]);
+    expect(searchEmergencyAuthorizations([authorization], "x", now)).toEqual([]);
   });
 
   it("n'affiche plus une décision retirée de la publication ministérielle", () => {

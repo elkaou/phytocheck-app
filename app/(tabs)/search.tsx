@@ -31,6 +31,7 @@ import {
 import {
   formatEmergencyAuthorizationDate,
   getEmergencyAuthorizationsForCulture,
+  searchEmergencyAuthorizations,
 } from "@/lib/emergency-authorizations";
 
 // Filtres de type disponibles pour la recherche par culture
@@ -119,6 +120,20 @@ export default function SearchScreen() {
     if (searchType !== "culture" || !hasSearched || !cultureQuery.trim()) return [];
     return getEmergencyAuthorizationsForCulture(emergencyAuthorizations, cultureQuery.trim());
   }, [searchType, hasSearched, cultureQuery, emergencyAuthorizations]);
+
+  // Une recherche manuelle doit couvrir à la fois E‑Phy et les décisions
+  // Article 53 actives : certaines AMM temporaires, comme AVADEX FACTOR,
+  // ne sont pas encore disponibles dans le catalogue E‑Phy.
+  const emergencyNameResults = useMemo(() => {
+    if (searchType !== "name" || !hasSearched || !query.trim()) return [];
+    return searchEmergencyAuthorizations(emergencyAuthorizations, query.trim());
+  }, [searchType, hasSearched, query, emergencyAuthorizations]);
+
+  const emergencyResults = searchType === "culture"
+    ? emergencyCultureResults
+    : searchType === "name"
+      ? emergencyNameResults
+      : [];
 
   // --- Recherche par culture ---
   const searchByCulture = useCallback(
@@ -672,7 +687,7 @@ export default function SearchScreen() {
           )}
 
           {/* Aucun résultat */}
-          {!isSearching && hasSearched && results.length === 0 && emergencyCultureResults.length === 0 && (
+          {!isSearching && hasSearched && results.length === 0 && emergencyResults.length === 0 && (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
                 {searchType === "culture"
@@ -683,18 +698,18 @@ export default function SearchScreen() {
           )}
 
           {/* Les dérogations temporaires sont prioritaires : elles peuvent répondre à un besoin urgent. */}
-          {!isSearching && hasSearched && searchType === "culture" && emergencyCultureResults.length > 0 && (
+          {!isSearching && hasSearched && emergencyResults.length > 0 && (
             <View style={styles.emergencyResultsSection}>
               <View style={styles.emergencyResultsHeader}>
                 <Text style={styles.emergencyResultsTitle}>Autorisations d’urgence — 120 jours</Text>
                 <Text style={styles.emergencyResultsCount}>
-                  {emergencyCultureResults.length} décision{emergencyCultureResults.length > 1 ? "s" : ""} active{emergencyCultureResults.length > 1 ? "s" : ""}
+                  {emergencyResults.length} décision{emergencyResults.length > 1 ? "s" : ""} active{emergencyResults.length > 1 ? "s" : ""}
                 </Text>
               </View>
               <Text style={styles.emergencyResultsHint}>
                 Dérogations temporaires Article 53, présentées séparément des homologations E‑Phy.
               </Text>
-              {emergencyCultureResults.map((authorization) => (
+              {emergencyResults.map((authorization) => (
                 <Pressable
                   key={authorization.id}
                   style={({ pressed }) => [styles.emergencyResultCard, pressed && { opacity: 0.72 }]}
