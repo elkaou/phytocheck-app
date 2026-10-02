@@ -536,3 +536,293 @@
 - [x] Corriger products.json : 1150 produits PCP nettoyés (noms importés supprimés, ref français conservé)
 - [x] Belkar passe de 19 résultats à 2 (MOZZAR avec BELKAR en nom secondaire E-Phy + BELKAR PIMP)
 - [x] Tous les tests passent (50/50)
+
+## Build 92 - Amélioration layout cartes résultats de recherche
+
+- [x] Nom du produit sur toute la largeur (ligne 1)
+- [x] Nom principal (si secondaire) sur toute la largeur (ligne 2)
+- [x] AMM + titulaire à gauche, badge à droite (ligne 3-4)
+
+## Build 93 - Version 1.0.5
+
+- [x] Passer la version à 1.0.5 dans app.config.ts (version 1.0.5, versionCode 76, buildNumber 77)
+
+## Build 94 - Recherche par matière active
+
+- [x] Ajouter un champ de saisie "Rechercher par matière active" dans l'onglet Recherche
+- [x] Implémenter la logique de filtrage sur le champ substancesActives
+- [x] Afficher les résultats avec le même layout que la recherche par nom
+- [x] Tester et sauvegarder
+
+## Build 95 - Fix limite recherche matière active
+
+- [x] Supprimer la limite de 100 résultats pour la recherche par matière active (limité à 10000)
+
+## Build 96 - Amélioration recherche matière active
+
+- [ ] Générer une carte par nom secondaire (TREVI 500 SC et TYPY SC séparément pour OBLIX 500 SC)
+- [ ] Afficher le nom secondaire en titre de carte avec "(Nom principal : OBLIX 500 SC)" en dessous
+- [ ] Ajouter un bouton filtre vert "Homologués uniquement" à droite du compteur de résultats
+- [ ] Trier les résultats par ordre alphabétique
+
+## Version 1.0.6 - Nouvelles fonctionnalités recherche par matière active
+
+- [x] Afficher une carte par nom secondaire dans la recherche par matière active (ex: TREVI 500 SC et TYPY SC comme cartes séparées avec "(Nom principal : OBLIX 500 SC)" en dessous)
+- [x] Tri alphabétique des résultats de la recherche par matière active
+- [x] Bouton filtre "Homologués" (vert) à droite du compteur de résultats pour filtrer uniquement les produits homologués (non retirés)
+- [x] Incrémenter version à 1.0.6 (versionCode 77, buildNumber 78)
+
+## Version 1.0.6 - Correctif bug recherche par matière active
+
+- [x] Bug : Dans searchBySubstance, le nom principal n'apparaissait pas dans les résultats quand le produit avait des noms secondaires (ex: OBLIX 500 SC absent lors de la recherche "ethofumésate") — corrigé : le nom principal génère toujours sa propre carte, en plus des cartes des noms secondaires
+
+## Version 1.0.6 - Cohérence UX filtre homologués
+
+- [x] Ajouter le bouton filtre "Homologués" dans la recherche par nom/AMM (cohérence avec recherche matière active)
+
+## Version 1.0.7 - Correctif bug doSearch useCallback
+
+- [x] Bug : useCallback de doSearch avait un tableau de dépendances vide, empêchant la capture correcte de dynamicProducts/dynamicRiskPhrases et le bon fonctionnement de searchBySubstance (TREVI 500 SC absent, pas de tri alphabétique)
+
+## Version 1.0.7 - Retour sur les résultats de recherche
+
+- [x] Conserver l'état de recherche (résultats + position de scroll) quand l'utilisateur revient depuis la fiche produit vers l'écran de recherche
+
+## Version 1.0.7 - Correctif affichage cartes noms secondaires
+
+- [x] Bug : dans searchBySubstance, le nom principal et le nom secondaire sont inversés dans les cartes (matchedName contient le nom principal au lieu du nom secondaire) + tri alphabétique sur le mauvais champ
+
+## Version 1.0.7 - UX bouton filtre Homologués
+
+- [x] Améliorer le bouton filtre Homologués pour distinguer visuellement l'état actif (fond vert, coche) et inactif (contour vert)
+
+## Version 1.0.7 - Fix mise à jour automatique données
+
+- [x] Bug : la vérification du manifest est bloquée pendant 1h si le cache est >= au bundle, empêchant la détection de nouvelles données au démarrage
+
+## Version 1.0.8 - Fix mise à jour Android
+
+- [x] Bug critique : la mise à jour automatique des données ne se déclenche pas sur Android malgré l'intervalle de 1h dépassé — LAST_UPDATE n'était mis à jour que quand il n'y avait PAS de mise à jour, donc la vérification était sautée indéfiniment après la première détection
+- [x] Corriger le manifest : products_count corrigé à 17138 (pas 17131)
+- [x] Corriger BUNDLE_MANIFEST dans data-context.tsx : products_count = 17138
+- [x] Ajouter comparaison du products_count pour détecter les mises à jour du même jour
+
+## Script Python - Synchronisation manifest.json
+
+- [x] Mettre à jour convert_ephy_to_json.py pour synchroniser assets/data/manifest.json en plus de lib/data-context.tsx
+
+## Version 1.0.8 - Fix critique stockage données (FileSystem)
+
+- [x] Remplacer AsyncStorage par expo-file-system/legacy pour stocker products.json (5.5 Mo) et risk-phrases.json (818 Ko) - AsyncStorage ne supporte pas les gros fichiers
+- [x] Conserver AsyncStorage uniquement pour les métadonnées légères (LAST_UPDATE, REMOTE_VERSION)
+
+## Version 1.0.9 - Bouton Usages dans la fiche produit
+
+- [x] Embarquer usages.json dans le bundle (assets/data) pour affichage immédiat sans téléchargement
+
+- [x] Intégrer usages.json dans le système de téléchargement FileSystem (data-update-service.ts)
+- [x] Exposer les usages via DataContext
+- [x] Ajouter le bouton "Usages" dans la fiche produit (uniquement pour les produits autorisés)
+- [x] Créer la modal/page d'affichage des usages (culture, cible, dose, DAR, ZNT, conditions)
+- [x] Fix bug : useLocalSearchParams retourne string[] sur Android natif — normaliser amm avec Array.isArray() dans la fiche produit
+
+## Version 1.1.0 - Recherche par culture
+
+- [x] Ajouter une section "Recherche par culture" dans l'onglet Recherche (search.tsx)
+- [x] Champ texte avec autocomplétion sur les 130 cultures de usages.json
+- [x] Boutons filtres : Tous · Herbicide · Fongicide · Insecticide · Acaricide
+- [x] Liste des produits autorisés sur la culture sélectionnée, filtrés par type
+- [x] Navigation vers la fiche produit depuis les résultats culture
+- [x] Fix recherche par culture : ajouter alias (ex: "blé" → "Céréales à paille" + "Céréales") pour trouver les insecticides enregistrés sous cultures génériques
+
+## Version 1.1.2 - Amélioration recherche par culture
+- [x] Retarder le déclenchement de la recherche par culture (attendre que l'utilisateur choisisse le type)
+- [x] Compléter la table d'alias CULTURE_ALIASES pour tous les cas culture spécifique → culture générique
+
+## Version 1.1.3 - Fix langue App Store
+- [x] Ajouter CFBundleDevelopmentRegion=fr et CFBundleLocalizations=[fr,en] dans app.config.ts pour afficher FR sur l'App Store
+
+## Version 1.1.1 - Mise à jour numéros de version et icône
+
+- [x] Mise à jour version app à 1.1.1 (versionCode Android 83, buildNumber iOS 84)
+- [x] Remplacement de l'icône de l'application par la nouvelle icône fournie par l'utilisateur (fond blanc/orange avec QR code + feuille verte)
+
+## Version 1.1.3b - Fix script convert_ephy_to_json.py
+
+- [x] Fix NameError : usages_csv non défini dans main() (ligne manquante)
+- [x] Fix NameError : convert_usages() non définie dans le script (fonction ajoutée)
+- [x] Fix update_manifest() et update_bundle_manifest() pour accepter usages_count en paramètre
+- [x] Ajouter usages_count dans manifest.json pour permettre la détection des mises à jour usages
+
+## Version 1.1.2 - Fix bug usages autorisés
+
+- [x] Bug : la modal "Usages autorisés" n'affiche plus la dose, ZNT, nombre d'applications et descriptif — cause : usages.json sur GitHub phytocheck-data était l'ancien fichier sans ces champs (uploadé avant le fix du script). Solution : uploader le nouveau usages.json généré par le script corrigé
+
+- [x] Bug : convert_usages() ne génère que culture et application — cause : noms de colonnes CSV incorrects. Corrigé : dose retenue, dose retenue unite, etat usage, nombre max d'application, condition emploi, delai avant recolte jour, ZNT aquatique (en m)
+
+- [x] Bug : produits PCP avec nom importé étranger (ex: TREVISTAR) non trouvables à la recherche — corrigé : les noms importés sont maintenant ajoutés aux nomsSecondaires du produit PCP
+
+- [x] Ajout bouton "Vérifier les mises à jour" dans la section Base de données de l'écran À propos
+
+- [x] Mise à jour version app à 1.1.2
+
+## Version 1.1.4 - Amélioration recherche par culture
+
+- [x] Pré-filtrer les usages autorisés par la culture sélectionnée lors de la recherche (passer la culture comme paramètre à UsagesModal)
+- [x] Ajouter un filtre par cible/maladie dans les résultats de recherche par culture (ex: oïdium, pourriture grise, mildiou...)
+- [x] Filtrer les usages retirés dans la fiche produit (etat === "Retrait" exclus)
+- [x] Filtrer les usages retirés dans convert_ephy_to_json.py (ne pas les stocker dans usages.json)
+- [x] Fix bouton "Vérifier les mises à jour" sur Android (TouchableOpacity au lieu de Pressable)
+- [x] Fix filtre culture dans UsagesModal : utiliser getCultureSearchSet() au lieu de comparaison exacte (Blé → Céréales à paille)
+- [x] Extraire CULTURE_ALIASES dans lib/culture-aliases.ts (fichier partagé search.tsx + usages-modal.tsx)
+
+## Version 1.1.4 - Fix filtre culture (suite)
+
+- [x] Bug confirmé sur appareil : UsagesModal affiche "0 usage" pour CYTHRINE MAX avec filtre "Blé" — correction getCultureSearchSet() déjà en place dans le code (checkpoint 993ac04c), nécessite un nouveau build EAS pour être actif sur l'appareil
+- [x] Bug : barre de recherche texte dans UsagesModal ne trouve pas les usages quand l'utilisateur tape "Blé" (les usages sont sur "Céréales à paille") — filtre texte libre corrigé pour utiliser les alias CULTURE_ALIASES
+- [x] Mise à jour version app à 1.1.5 dans app.config.ts et package.json
+
+## Version 1.1.5 - Fix isPremium en base de données
+
+- [x] Bug : isPremium toujours False dans Render — le sync initial de démarrage envoie isPremium:false et écrase la valeur True en base avant que IAPProvider ait vérifié l'abonnement Google Play
+- [x] Fix : ajout paramètre allowDowngrade dans syncDevice (server/db.ts, server/routers.ts, lib/app-context.tsx) — le sync initial passe allowDowngrade:false, seul IAPProvider passe allowDowngrade:true
+
+## Version 1.1.5 - Fix autocomplétion cultures
+
+- [x] Bug : autocomplétion cultures — taper "col" ne propose pas "Colza" dans la recherche manuelle par culture — ajout CULTURE_DISPLAY_NAMES et getCultureSuggestions dans culture-aliases.ts, mise à jour du JSX search.tsx
+
+## Version 1.1.5 - Fix double-clic filtre type
+
+- [x] Bug : filtre type (Herbicide, Fongicide...) nécessite deux clics pour être pris en compte dans la recherche par culture — corrigé : si une culture est saisie, le clic sur un filtre déclenche directement la recherche
+
+## Version 1.1.5 - Fix zone cliquable flèche retour
+
+- [x] Bug iOS : zone cliquable de la flèche retour trop petite dans la fiche produit [amm].tsx — ajout padding 10, margin -10 et hitSlop 12px sur les deux boutons retour
+
+## Version 1.1.5 - Fix recherche nomsSecondaires
+
+- [ ] Bug : la recherche manuelle par nom ne cherche pas dans nomsSecondaires — taper "metafol" ne trouve pas "OBLIX MT" dont "METAFOL PAK" est un nom secondaire
+
+## Version 1.1.5 - Fix recherche noms secondaires multiples
+
+- [x] Bug : recherche par nom ne retourne que le premier nom secondaire qui matche par produit (ex: "METAFOL" trouve "METAFOL SUPER" mais pas "METAFOL PAK" pour OBLIX MT) — corrigé dans searchProducts : une carte créée par nom secondaire qui matche
+
+## Version 1.1.6 - Mise à jour version
+
+- [x] Mise à jour version app.config.ts et package.json à 1.1.6
+
+## Version 1.1.7 - Fix OCR scan photo
+
+- [x] Bug : Recherche par photo échoue avec "JSON parse error: Unexpected end of JSON input" — RÉSOLU : modèle gemini-2.5-flash déprécié remplacé par gemini-3-flash-preview + upload image S3 avant appel LLM
+
+## Version 1.1.8 - Fixes iOS + Compression OCR
+
+- [x] Fix : Persister le deviceId dans le Keychain iOS (SecureStore) pour survivre aux désinstallations
+- [x] Fix : Compression d'image avant envoi OCR (1200px max, qualité 0.7) pour réduire la taille ~1.5MB → ~200-300KB
+
+## Version 1.1.9 - Correction saisie de quantité sur iOS
+
+- [x] Bug iOS : la saisie avec virgule décimale (ex. `0,6`) est arrondie à `1` lors de l'ajout au stock ; accepter et normaliser la virgule, sans modifier le comportement Android déjà fonctionnel
+- [x] Mettre à jour les numéros de version pour publier ce correctif sous la version 1.1.9
+
+## Documents légaux - Harmonisation du site web
+
+- [x] Remplacer l’ancienne adresse du site par `https://phytocheck.com` dans les CGU, la politique de confidentialité et leurs vues intégrées
+- [x] Publier les documents légaux harmonisés sur le dépôt GitHub `elkaou/phytocheck-app`
+
+## Automatisation des documents E-Phy
+
+- [x] Mettre à jour automatiquement la date de la base E-Phy dans les CGU à chaque exécution du script de conversion et de synchronisation des données
+- [x] Aligner immédiatement la date affichée dans les CGU sur la dernière mise à jour E-Phy publiée
+
+## Documents légaux dynamiques
+
+- [x] Charger dynamiquement les CGU et la politique de confidentialité depuis GitHub Pages
+- [x] Prévoir un contenu local de secours pour consulter les documents sans connexion internet
+
+## Préparation du build
+
+- [ ] Corriger l’erreur TypeScript `imageUrl` non défini dans `server/routers.ts` avant le lancement du build EAS
+- [ ] Régénérer et publier `package-lock.json` avec `react-native-webview@13.15.0` pour permettre l’installation npm du build EAS
+
+## Régression iOS — saisie des quantités
+
+- [x] Corriger le parcours réel d’enregistrement afin que `0,6` soit sauvegardé comme quantité décimale sur iOS
+
+## Gestion précise du stock
+
+- [x] Permettre de saisir et d’enregistrer la quantité exacte d’un produit déjà en stock depuis sa fiche, avec prise en charge des décimales
+- [x] Ouvrir la saisie de quantité restante totale depuis un appui sur un produit de la liste Stock
+- [x] Retirer les commandes moins, quantité et plus de la fiche produit afin d’éviter les parcours contradictoires
+- [x] Revoir la disposition des cartes Stock : supprimer le chevauchement quantité/croix, retirer le texte d’aide répétitif et limiter la modification au bouton de quantité
+
+## Export du stock Premium
+
+- [x] Afficher deux boutons côte à côte : Export PDF et Export Excel
+- [x] Générer un fichier Excel structuré de l’inventaire du stock
+- [x] Réserver les deux exports aux utilisateurs Premium
+
+## Correctif dépendance Excel
+
+- [x] Déclarer `xlsx` et régénérer les fichiers package-lock et pnpm-lock pour permettre l’installation EAS
+
+## Correctif build Android — Metro
+
+- [x] Déclarer la dépendance Metro manquante et régénérer les fichiers de verrouillage afin de corriger l’échec EAS `metro-minify-terser`
+
+## Préparation R8 Android
+
+- [x] Générer localement un build Android Release avec optimisation, réduction et obscurcissement R8 activés — Gradle BUILD SUCCESSFUL (10 min 10 s)
+- [x] Installer l’APK R8 sur un appareil de test et vérifier les parcours critiques avant activation permanente — fonctionnement normal constaté
+- [x] Restaurer l’encodage de la configuration Expo et conserver uniquement les deux options R8 avant publication — commit GitHub 9aeb814
+
+## Contrôle réglementaire du stock
+
+- [x] Comparer les produits stockés aux données E‑Phy à l’ouverture de l’onglet Stock
+- [x] Alerter l’utilisateur si un produit est retiré, arrivé à échéance ou a connu un changement de statut
+
+## Navigation depuis le stock
+
+- [x] Ouvrir la fiche détaillée d’un produit lorsque son nom est touché dans la liste Stock
+
+## Recherche dans le stock
+
+- [x] Ajouter une loupe dans l’en-tête Stock pour filtrer localement les produits par nom, nom secondaire ou AMM
+
+## Version 1.1.10
+
+- [x] Mettre à jour la version de publication à 1.1.10 avant le build iOS
+- [x] Publier la version complète de l’onglet Stock incluant la loupe et l’ouverture de fiche depuis le nom
+- [ ] Synchroniser la version 1.1.10 vers GitHub puis relancer un build iOS pour remplacer le train App Store Connect 1.1.9 fermé
+
+## Version 1.1.11
+
+- [x] Passer les métadonnées de publication de PhytoCheck à 1.1.11 avec la configuration R8 Android — installation npm, tests Stock, TypeScript et bundle Android validés
+- [x] Publier sur GitHub la version 1.1.11 et la configuration R8 Android validée — commit efa7bc5
+- [ ] Synchroniser la copie locale Windows avec le commit efa7bc5 avant de relancer l’AAB Android 1.1.11
+- [x] Régénérer et publier package-lock.json avec les dépendances optionnelles nécessaires à npm ci sur EAS — commit ed9bfcf
+- [x] Déclarer explicitement expo-file-system afin de préserver le typage après une installation npm propre
+- [x] Déclarer explicitement babel-preset-expo afin de préserver le bundling Metro après une installation npm propre
+
+## Optimisation des coûts Render
+
+- [ ] Évaluer les options de réduction des coûts du backend et de la base Render sans perturber les fonctions de PhytoCheck
+
+## Aperçu de développement
+
+- [x] Redémarrer et rafraîchir l’aperçu afin qu’il charge la dernière version locale
+
+## Synchronisation GitHub avant build
+
+- [ ] Intégrer les nouveaux commits distants avant de publier la modification de quantité précise
+
+
+## Version 1.1.12 — Autorisations d’urgence Article 53 (120 jours)
+
+- [x] Créer et publier la source distincte `emergency-authorizations.json` depuis la page officielle du ministère
+- [x] Mettre en place la synchronisation quotidienne dans le dépôt `phytocheck-data`, avec conservation de l’historique des décisions
+- [x] Télécharger et mettre en cache les autorisations Article 53 dans l’application, avec contenu embarqué hors ligne
+- [x] Afficher les autorisations d’urgence actives dans la fiche produit, avec culture, cible, échéance et lien vers la décision officielle
+- [x] Afficher une section distincte « Autorisations d’urgence 120 jours » dans la recherche par culture
+- [x] Alerter dans Stock sur les nouvelles autorisations, les échéances à 14 jours et les décisions expirées, sans altérer le statut E‑Phy
+- [x] Ajouter les tests Article 53, lancer TypeScript et le bundling mobile, puis créer un checkpoint et publier sur GitHub

@@ -24,6 +24,10 @@ import {
 import { useApp } from "@/lib/app-context";
 import { useData } from "@/lib/data-context";
 import { CULTURE_ALIASES, getCultureSuggestions, type CultureSuggestion } from "@/lib/culture-aliases";
+import {
+  formatEmergencyAuthorizationDate,
+  getEmergencyAuthorizationsForCulture,
+} from "@/lib/emergency-authorizations";
 
 // Filtres de type disponibles pour la recherche par culture
 const TYPE_FILTERS = ["Tous", "Herbicide", "Fongicide", "Insecticide", "Acaricide"] as const;
@@ -33,7 +37,12 @@ export default function SearchScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string; q?: string }>();
   const { remainingSearches, isPremium, performSearch } = useApp();
-  const { products: dynamicProducts, riskPhrases: dynamicRiskPhrases, usages } = useData();
+  const {
+    products: dynamicProducts,
+    riskPhrases: dynamicRiskPhrases,
+    usages,
+    emergencyAuthorizations,
+  } = useData();
 
   // --- États recherche par nom/AMM ---
   const [query, setQuery] = useState(params.q || "");
@@ -105,6 +114,13 @@ export default function SearchScreen() {
   const cultureSuggestions = useMemo<CultureSuggestion[]>(() => {
     return getCultureSuggestions(cultureQuery, allCultures, 10);
   }, [cultureQuery, allCultures]);
+
+  // Les décisions Article 53 restent séparées des homologations E‑Phy : elles
+  // sont limitées dans le temps et dans le périmètre de chaque décision.
+  const emergencyCultureResults = useMemo(() => {
+    if (searchType !== "culture" || !hasSearched || !cultureQuery.trim()) return [];
+    return getEmergencyAuthorizationsForCulture(emergencyAuthorizations, cultureQuery.trim());
+  }, [searchType, hasSearched, cultureQuery, emergencyAuthorizations]);
 
   // --- Recherche par culture ---
   const searchByCulture = useCallback(
@@ -200,6 +216,14 @@ export default function SearchScreen() {
       }
     },
     [searchType, hasSearched, cultureQuery, searchByCulture]
+  );
+
+  const handleOpenEmergencyProduct = useCallback(
+    (amm: string, productName: string) => {
+      isNavigatingToProduct.current = true;
+      router.push({ pathname: "/product/[amm]", params: { amm, name: productName } });
+    },
+    [router],
   );
 
   // --- Recherche par nom/AMM ---
@@ -654,7 +678,7 @@ export default function SearchScreen() {
           )}
 
           {/* Aucun résultat */}
-          {!isSearching && hasSearched && results.length === 0 && (
+          {!isSearching && hasSearched && results.length === 0 && emergencyCultureResults.length === 0 && (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
                 {searchType === "culture"
@@ -722,6 +746,42 @@ export default function SearchScreen() {
                 <View key={`${item.amm}-${item.nom}-${index}`}>
                   {renderProduct({ item })}
                 </View>
+              ))}
+            </View>
+          )}
+
+          {!isSearching && hasSearched && searchType === "culture" && emergencyCultureResults.length > 0 && (
+            <View style={styles.emergencyResultsSection}>
+              <View style={styles.emergencyResultsHeader}>
+                <Text style={styles.emergencyResultsTitle}>Autorisations d’urgence — 120 jours</Text>
+                <Text style={styles.emergencyResultsCount}>
+                  {emergencyCultureResults.length} décision{emergencyCultureResults.length > 1 ? "s" : ""} active{emergencyCultureResults.length > 1 ? "s" : ""}
+                </Text>
+              </View>
+              <Text style={styles.emergencyResultsHint}>
+                Dérogations temporaires Article 53, présentées séparément des homologations E‑Phy.
+              </Text>
+              {emergencyCultureResults.map((authorization) => (
+                <Pressable
+                  key={authorization.id}
+                  style={({ pressed }) => [styles.emergencyResultCard, pressed && { opacity: 0.72 }]}
+                  onPress={() => handleOpenEmergencyProduct(authorization.amm, authorization.productName)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ouvrir la fiche de ${authorization.productName}, autorisation d’urgence`}
+                >
+                  <View style={styles.emergencyResultTopRow}>
+                    <Text style={styles.emergencyResultName}>{authorization.productName}</Text>
+                    <View style={styles.emergencyValidityBadge}>
+                      <Text style={styles.emergencyValidityText}>
+                        Jusqu’au {formatEmergencyAuthorizationDate(authorization.expiresAt)}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.emergencyResultAmm}>AMM : {authorization.amm}</Text>
+                  <Text style={styles.emergencyResultLabel}>Culture(s) : {authorization.cultures}</Text>
+                  <Text style={styles.emergencyResultLabel}>Cible : {authorization.purpose}</Text>
+                  <Text style={styles.emergencyResultLink}>Voir la fiche et la décision officielle ›</Text>
+                </Pressable>
               ))}
             </View>
           )}
@@ -991,6 +1051,81 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "bold",
     textAlign: "center",
+  },
+  emergencyResultsSection: {
+    marginTop: 22,
+    marginBottom: 10,
+  },
+  emergencyResultsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  emergencyResultsTitle: {
+    fontSize: 17,
+    fontWeight: "bold",
+    color: "#1D4ED8",
+    flex: 1,
+  },
+  emergencyResultsCount: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1D4ED8",
+  },
+  emergencyResultsHint: {
+    fontSize: 12,
+    color: "#475569",
+    lineHeight: 18,
+    marginTop: 5,
+    marginBottom: 10,
+  },
+  emergencyResultCard: {
+    backgroundColor: "#EFF6FF",
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 9,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+  },
+  emergencyResultTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  emergencyResultName: {
+    color: "#1E3A8A",
+    fontSize: 16,
+    fontWeight: "700",
+    flex: 1,
+  },
+  emergencyValidityBadge: {
+    backgroundColor: "#DBEAFE",
+    borderRadius: 7,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+  },
+  emergencyValidityText: {
+    color: "#1D4ED8",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  emergencyResultAmm: {
+    color: "#475569",
+    fontSize: 12,
+    marginTop: 5,
+  },
+  emergencyResultLabel: {
+    color: "#334155",
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 4,
+  },
+  emergencyResultLink: {
+    color: "#1D4ED8",
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 10,
   },
   hintCard: {
     backgroundColor: "#FFFFFF",

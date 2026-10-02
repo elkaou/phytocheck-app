@@ -23,6 +23,11 @@ import {
   checkStockRegulatoryStatus as checkRegulatoryStatus,
   StockRegulatoryChange,
 } from "./stock-regulatory-check";
+import {
+  checkSavedStockEmergencyAuthorizations,
+  StockEmergencyAuthorizationChange,
+} from "./emergency-stock-check";
+import type { EmergencyAuthorization } from "./emergency-authorizations";
 import { trpc } from "./trpc";
 
 interface AppContextType {
@@ -45,6 +50,9 @@ interface AppContextType {
     products: Product[],
     riskPhrases: Record<string, RiskPhrase[]>,
   ) => Promise<StockRegulatoryChange[]>;
+  checkStockEmergencyAuthorizations: (
+    authorizations: EmergencyAuthorization[],
+  ) => Promise<StockEmergencyAuthorizationChange[]>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -190,6 +198,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [refreshStock],
   );
 
+  const checkStockEmergencyAuthorizations = useCallback(
+    async (authorizations: EmergencyAuthorization[]): Promise<StockEmergencyAuthorizationChange[]> => {
+      const storedStock = await getStock();
+      return checkSavedStockEmergencyAuthorizations(storedStock, authorizations);
+    },
+    [],
+  );
+
   const getProductQuantity = useCallback(
     (amm: string): number => {
       const item = stock.find((i) => i.amm === amm);
@@ -293,6 +309,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         removeProductFromStock,
         updateProductQuantity,
         checkStockRegulatoryStatus,
+        checkStockEmergencyAuthorizations,
         isProductInStock,
         getProductQuantity,
         performSearch,

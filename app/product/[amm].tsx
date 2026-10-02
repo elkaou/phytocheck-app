@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ScrollView,
   Text,
@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   Alert,
+  Linking,
 } from "react-native";
 import { QuantityModal } from "@/components/quantity-modal";
 import { UsagesModal } from "@/components/usages-modal";
@@ -19,6 +20,10 @@ import {
   getClassificationColor,
   getClassificationBgColor,
 } from "@/lib/product-service";
+import {
+  formatEmergencyAuthorizationDate,
+  getEmergencyAuthorizationsForAmm,
+} from "@/lib/emergency-authorizations";
 import { useApp } from "@/lib/app-context";
 import { useData, ProductUsage } from "@/lib/data-context";
 
@@ -31,7 +36,12 @@ export default function ProductDetailScreen() {
   const initialCulture = Array.isArray(params.culture) ? params.culture[0] : params.culture;
   const router = useRouter();
   const { addProductToStock, isProductInStock, getProductQuantity, updateProductQuantity, isPremium, stock } = useApp();
-  const { products: dynamicProducts, riskPhrases: dynamicRiskPhrases, usages: dynamicUsages } = useData();
+  const {
+    products: dynamicProducts,
+    riskPhrases: dynamicRiskPhrases,
+    usages: dynamicUsages,
+    emergencyAuthorizations,
+  } = useData();
 
   const [product, setProduct] = useState<ClassifiedProduct | null>(null);
   const [showQuantityModal, setShowQuantityModal] = useState(false);
@@ -43,7 +53,7 @@ export default function ProductDetailScreen() {
       const p = getProductByAMM(amm, name, dynamicProducts, dynamicRiskPhrases);
       setProduct(p);
     }
-  }, [amm, name]);
+  }, [amm, name, dynamicProducts, dynamicRiskPhrases]);
 
   const currentQuantity = amm ? getProductQuantity(amm) : 0;
 
@@ -52,6 +62,16 @@ export default function ProductDetailScreen() {
     ? (dynamicUsages[amm] ?? []).filter((u) => u.etat?.toLowerCase() !== "retrait")
     : [];
   const hasUsages = productUsages.length > 0;
+  const emergencyAuthorizationsForProduct = useMemo(
+    () => (amm ? getEmergencyAuthorizationsForAmm(emergencyAuthorizations, amm) : []),
+    [amm, emergencyAuthorizations],
+  );
+
+  const openOfficialDecision = useCallback((url: string) => {
+    void Linking.openURL(url).catch(() => {
+      Alert.alert("Lien indisponible", "La décision officielle ne peut pas être ouverte pour le moment.");
+    });
+  }, []);
 
   const handleAddToStock = useCallback(async () => {
     if (!product) return;
@@ -62,7 +82,7 @@ export default function ProductDetailScreen() {
     if (!product) return;
     
     setShowQuantityModal(false);
-    
+
     // Pass secondary name if the product was accessed via a secondary name
     const secondaryName = name && name !== product.nom ? name : undefined;
     const displayName = secondaryName || product.nom;
@@ -90,6 +110,7 @@ export default function ProductDetailScreen() {
   }, [product, addProductToStock, router]);
 
   if (!product) {
+    const emergencyProductName = emergencyAuthorizationsForProduct[0]?.productName ?? name ?? "Produit";
     return (
       <View style={styles.container}>
         <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1 }}>
@@ -101,12 +122,52 @@ export default function ProductDetailScreen() {
             >
               <IconSymbol name="arrow.left" size={24} color="#FFFFFF" />
             </Pressable>
-            <Text style={styles.headerBarTitle}>Produit</Text>
+            <Text style={styles.headerBarTitle} numberOfLines={1}>{emergencyProductName}</Text>
             <View style={{ width: 24 }} />
           </View>
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Produit non trouvé</Text>
-          </View>
+          {emergencyAuthorizationsForProduct.length === 0 ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Produit non trouvé</Text>
+            </View>
+          ) : (
+            <ScrollView
+              style={styles.scrollContent}
+              contentContainerStyle={{ paddingBottom: 40 }}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.emergencyFallbackCard}>
+                <Text style={styles.emergencyFallbackTitle}>Produit signalé dans une autorisation d’urgence</Text>
+                <Text style={styles.emergencyFallbackText}>
+                  Cette AMM n’est pas présente dans le catalogue E‑Phy actuellement chargé. Consultez la décision ministérielle ci-dessous pour les conditions d’emploi applicables.
+                </Text>
+                <Text style={styles.ammText}>AMM : {amm}</Text>
+              </View>
+              <View style={styles.emergencyCard}>
+                <Text style={styles.emergencyTitle}>Autorisations d’urgence — 120 jours</Text>
+                {emergencyAuthorizationsForProduct.map((authorization) => (
+                  <View key={authorization.id} style={styles.emergencyDecision}>
+                    <View style={styles.emergencyExpiryBadge}>
+                      <Text style={styles.emergencyExpiryText}>
+                        Valide jusqu’au {formatEmergencyAuthorizationDate(authorization.expiresAt)}
+                      </Text>
+                    </View>
+                    <Text style={styles.emergencyDecisionLabel}>Culture(s)</Text>
+                    <Text style={styles.emergencyDecisionValue}>{authorization.cultures}</Text>
+                    <Text style={styles.emergencyDecisionLabel}>Cible / effet recherché</Text>
+                    <Text style={styles.emergencyDecisionValue}>{authorization.purpose}</Text>
+                    <Pressable
+                      style={({ pressed }) => [styles.emergencyDecisionLink, pressed && { opacity: 0.72 }]}
+                      onPress={() => openOfficialDecision(authorization.decisionPdfUrl)}
+                      accessibilityRole="link"
+                      accessibilityLabel={`Consulter la décision officielle pour ${authorization.productName}`}
+                    >
+                      <Text style={styles.emergencyDecisionLinkText}>Consulter la décision officielle (PDF)</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          )}
         </SafeAreaView>
       </View>
     );
@@ -231,6 +292,36 @@ export default function ProductDetailScreen() {
             ) : null}
           </View>
 
+          {emergencyAuthorizationsForProduct.length > 0 ? (
+            <View style={styles.emergencyCard}>
+              <Text style={styles.emergencyTitle}>Autorisations d’urgence — 120 jours</Text>
+              <Text style={styles.emergencyIntro}>
+                Valables uniquement dans le périmètre indiqué par chaque décision ministérielle.
+              </Text>
+              {emergencyAuthorizationsForProduct.map((authorization) => (
+                <View key={authorization.id} style={styles.emergencyDecision}>
+                  <View style={styles.emergencyExpiryBadge}>
+                    <Text style={styles.emergencyExpiryText}>
+                      Valide jusqu’au {formatEmergencyAuthorizationDate(authorization.expiresAt)}
+                    </Text>
+                  </View>
+                  <Text style={styles.emergencyDecisionLabel}>Culture(s)</Text>
+                  <Text style={styles.emergencyDecisionValue}>{authorization.cultures}</Text>
+                  <Text style={styles.emergencyDecisionLabel}>Cible / effet recherché</Text>
+                  <Text style={styles.emergencyDecisionValue}>{authorization.purpose}</Text>
+                  <Pressable
+                    style={({ pressed }) => [styles.emergencyDecisionLink, pressed && { opacity: 0.72 }]}
+                    onPress={() => openOfficialDecision(authorization.decisionPdfUrl)}
+                    accessibilityRole="link"
+                    accessibilityLabel={`Consulter la décision officielle pour ${authorization.productName}`}
+                  >
+                    <Text style={styles.emergencyDecisionLinkText}>Consulter la décision officielle (PDF)</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
           {/* Bouton Usages — uniquement pour les produits autorisés avec des usages disponibles */}
           {isAuthorise && hasUsages && (
             <Pressable
@@ -270,44 +361,7 @@ export default function ProductDetailScreen() {
                 <IconSymbol name="checkmark.circle.fill" size={20} color="#22C55E" />
                 <Text style={styles.inStockText}>En stock (quantité : {currentQuantity})</Text>
               </View>
-              <View style={styles.quantityRow}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.quantityButton,
-                    pressed && { opacity: 0.7 },
-                  ]}
-                  onPress={async () => {
-                    if (amm && currentQuantity > 1) {
-                      await updateProductQuantity(amm, currentQuantity - 1);
-                    } else if (amm && currentQuantity === 1) {
-                      Alert.alert(
-                        "Retirer du stock",
-                        "La quantité sera 0 et le produit sera retiré du stock.",
-                        [
-                          { text: "Annuler", style: "cancel" },
-                          {
-                            text: "Retirer",
-                            style: "destructive",
-                            onPress: () => updateProductQuantity(amm, 0),
-                          },
-                        ]
-                      );
-                    }
-                  }}
-                >
-                  <Text style={styles.quantityButtonText}>−</Text>
-                </Pressable>
-                <Text style={styles.quantityValue}>{currentQuantity}</Text>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.quantityButton,
-                    pressed && { opacity: 0.7 },
-                  ]}
-                  onPress={handleAddToStock}
-                >
-                  <Text style={styles.quantityButtonText}>+</Text>
-                </Pressable>
-              </View>
+              <Text style={styles.stockEditNotice}>Pour modifier la quantité restante, ouvrez l’onglet Stock et touchez ce produit.</Text>
             </View>
           ) : (
             <Pressable
@@ -381,6 +435,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#687076",
   },
+  emergencyFallbackCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: 20,
+  },
+  emergencyFallbackTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1E3A8A",
+  },
+  emergencyFallbackText: {
+    color: "#475569",
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 8,
+  },
   classificationSection: {
     paddingHorizontal: 20,
     paddingTop: 20,
@@ -446,6 +518,67 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#1A1A1A",
     lineHeight: 22,
+  },
+  emergencyCard: {
+    backgroundColor: "#EFF6FF",
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+  },
+  emergencyTitle: {
+    fontSize: 17,
+    fontWeight: "bold",
+    color: "#1D4ED8",
+  },
+  emergencyIntro: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: "#1E40AF",
+    marginTop: 6,
+  },
+  emergencyDecision: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#BFDBFE",
+  },
+  emergencyExpiryBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#DBEAFE",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginBottom: 10,
+  },
+  emergencyExpiryText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1D4ED8",
+  },
+  emergencyDecisionLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#475569",
+    marginTop: 7,
+  },
+  emergencyDecisionValue: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#1E293B",
+    marginTop: 2,
+  },
+  emergencyDecisionLink: {
+    marginTop: 12,
+    alignSelf: "flex-start",
+  },
+  emergencyDecisionLinkText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1D4ED8",
+    textDecorationLine: "underline",
   },
   usagesButton: {
     backgroundColor: "#2D9E6B",
@@ -539,33 +672,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#22C55E",
   },
-  quantityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 20,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    paddingVertical: 12,
-  },
-  quantityButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#0a7ea5",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  quantityButtonText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-  },
-  quantityValue: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#1A1A1A",
-    minWidth: 40,
+  stockEditNotice: {
+    color: "#64748B",
+    fontSize: 13,
+    lineHeight: 19,
     textAlign: "center",
   },
 });

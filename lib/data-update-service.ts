@@ -2,24 +2,35 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
 
-// URL de base GitHub Pages - source de vérité pour les données E-Phy
+import type { EmergencyAuthorization } from "./emergency-authorizations";
+
+// URL de base GitHub Pages — source de vérité pour les données réglementaires.
 const GITHUB_PAGES_BASE = "https://elkaou.github.io/phytocheck-data";
 
 // Clés AsyncStorage (métadonnées légères uniquement)
 const CACHE_KEYS = {
   LAST_UPDATE: "@phytocheck/last_remote_update",
   REMOTE_VERSION: "@phytocheck/remote_version",
+  EMERGENCY_VERSION: "@phytocheck/emergency_authorizations_version",
 };
 
-// Chemins fichiers locaux (FileSystem - pour les gros fichiers JSON)
+// Chemins fichiers locaux (FileSystem — pour les gros fichiers JSON)
 const FILE_PATHS = {
   PRODUCTS: (FileSystem.documentDirectory ?? "") + "phytocheck_products.json",
   RISK_PHRASES: (FileSystem.documentDirectory ?? "") + "phytocheck_risk_phrases.json",
   USAGES: (FileSystem.documentDirectory ?? "") + "phytocheck_usages.json",
+  EMERGENCY_AUTHORIZATIONS: (FileSystem.documentDirectory ?? "") + "phytocheck_emergency_authorizations.json",
 };
 
-// Intervalle minimum entre deux vérifications (1h en ms)
+// Intervalle minimum entre deux vérifications (1 h en ms)
 const CHECK_INTERVAL_MS = 1 * 60 * 60 * 1000;
+
+export interface EmergencyAuthorizationsManifest {
+  updated_at: string;
+  count: number;
+  active_source_count?: number;
+  source_url?: string;
+}
 
 export interface DataManifest {
   version: string;
@@ -27,41 +38,35 @@ export interface DataManifest {
   products_count: number;
   risks_count: number;
   usages_count?: number;
+  emergency_authorizations?: EmergencyAuthorizationsManifest;
 }
 
-export interface RemoteDataState {
-  products: unknown[] | null;
-  riskPhrases: Record<string, unknown[]> | null;
-  usages: Record<string, unknown[]> | null;
-  updatedAt: string | null;
-  source: "bundle" | "cache" | "remote";
+interface UpdatePlan {
+  manifest: DataManifest;
+  updateEphy: boolean;
+  updateEmergencyAuthorizations: boolean;
 }
 
-/**
- * Ajoute un paramètre cache-buster à une URL pour contourner le cache CDN.
- */
+/** Ajoute un paramètre cache-buster à une URL pour contourner le cache CDN. */
 function cacheBust(url: string): string {
   const separator = url.includes("?") ? "&" : "?";
   return `${url}${separator}_cb=${Date.now()}`;
 }
 
-/**
- * Parse une date au format DD/MM/YYYY en timestamp comparable.
- * Retourne 0 si le format est invalide.
- */
-function parseDateDDMMYYYY(dateStr: string): number {
-  if (!dateStr) return 0;
-  const parts = dateStr.split("/");
-  if (parts.length !== 3) return 0;
-  const [day, month, year] = parts;
-  const d = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
-  return isNaN(d.getTime()) ? 0 : d.getTime();
+/** Parse une date JJ/MM/AAAA ou un horodatage ISO vers un timestamp comparable. */
+function parseVersionTimestamp(value: string | undefined): number {
+  if (!value) return 0;
+  const parts = value.split("/");
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+  }
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-/**
- * Lit un fichier JSON depuis le système de fichiers local.
- * Retourne null si le fichier n'existe pas ou est invalide.
- */
+/** Lit un fichier JSON depuis le système de fichiers local. */
 async function readLocalFile(path: string): Promise<unknown | null> {
   try {
     if (Platform.OS === "web") return null;
@@ -77,34 +82,70 @@ async function readLocalFile(path: string): Promise<unknown | null> {
   }
 }
 
-/**
- * Vérifie si une mise à jour est disponible sur GitHub Pages.
- * Retourne le manifest si une mise à jour est disponible, null sinon.
- */
-async function checkForUpdate(bundleDate?: string): Promise<DataManifest | null> {
+function emergencyManifestIsValid(manifest: DataManifest): boolean {
+  const emergency = manifest.emergency_authorizations;
+  return Boolean(
+    emergency &&
+      typeof emergency.updated_at === "string" &&
+      typeof emergency.count === "number",
+  );
+}
+
+async function ephyNeedsUpdate(manifest: DataManifest, bundleDate?: string): Promise<boolean> {
+  const cachedVersion = await AsyncStorage.getItem(CACHE_KEYS.REMOTE_VERSION);
+  const remoteTimestamp = parseVersionTimestamp(manifest.updated_at);
+  const referenceVersion = cachedVersion ?? bundleDate ?? "01/01/2000";
+  const referenceTimestamp = parseVersionTimestamp(referenceVersion);
+
+  if (remoteTimestamp > referenceTimestamp) return true;
+
+  // Une mise à jour peut avoir lieu le même jour : comparer le volume des produits.
+  if (remoteTimestamp === referenceTimestamp && manifest.products_count !== undefined) {
+    const cachedProducts = await readLocalFile(FILE_PATHS.PRODUCTS);
+    if (Array.isArray(cachedProducts) && manifest.products_count !== cachedProducts.length) return true;
+  }
+
+  // Première installation après l'ajout des usages : les télécharger même avec même version.
+  const usagesInfo = await FileSystem.getInfoAsync(FILE_PATHS.USAGES);
+  return !usagesInfo.exists;
+}
+
+async function emergencyAuthorizationsNeedUpdate(
+  manifest: DataManifest,
+  bundleEmergencyDate?: string,
+): Promise<boolean> {
+  if (!emergencyManifestIsValid(manifest)) return false;
+  const emergency = manifest.emergency_authorizations!;
+  const cachedVersion = await AsyncStorage.getItem(CACHE_KEYS.EMERGENCY_VERSION);
+  const remoteTimestamp = parseVersionTimestamp(emergency.updated_at);
+  const referenceTimestamp = parseVersionTimestamp(cachedVersion ?? bundleEmergencyDate);
+
+  if (remoteTimestamp > referenceTimestamp) return true;
+
+  const cachedAuthorizations = await readLocalFile(FILE_PATHS.EMERGENCY_AUTHORIZATIONS);
+  return !Array.isArray(cachedAuthorizations) || cachedAuthorizations.length !== emergency.count;
+}
+
+/** Vérifie les nouveautés E-Phy et Article 53 présentes dans le manifest distant. */
+async function checkForUpdate(
+  bundleDate?: string,
+  bundleEmergencyDate?: string,
+): Promise<UpdatePlan | null> {
   try {
     const lastCheck = await AsyncStorage.getItem(CACHE_KEYS.LAST_UPDATE);
-    const cachedVersion = await AsyncStorage.getItem(CACHE_KEYS.REMOTE_VERSION);
-
-    console.log("[DataUpdate] checkForUpdate - bundleDate:", bundleDate, "cachedVersion:", cachedVersion);
-
-    // Vérifier l'intervalle uniquement si on a déjà vérifié récemment (1h)
     if (lastCheck) {
-      const elapsed = Date.now() - parseInt(lastCheck, 10);
+      const elapsed = Date.now() - Number(lastCheck);
       if (elapsed < CHECK_INTERVAL_MS) {
-        console.log("[DataUpdate] Skipping check - last check was", Math.round(elapsed / 60000), "min ago");
+        console.log("[DataUpdate] Skipping check — last check was", Math.round(elapsed / 60000), "min ago");
         return null;
       }
     }
 
-    // Fetch avec cache-buster pour contourner le cache CDN
     const manifestUrl = cacheBust(`${GITHUB_PAGES_BASE}/manifest.json`);
-    console.log("[DataUpdate] Fetching manifest:", manifestUrl);
-
     const response = await fetch(manifestUrl, {
       headers: {
         "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
+        Pragma: "no-cache",
       },
     });
 
@@ -114,137 +155,139 @@ async function checkForUpdate(bundleDate?: string): Promise<DataManifest | null>
       return null;
     }
 
-    const manifest: DataManifest = await response.json();
-    console.log("[DataUpdate] Remote manifest:", JSON.stringify(manifest));
+    const manifest = (await response.json()) as DataManifest;
+    const [updateEphy, updateEmergencyAuthorizations] = await Promise.all([
+      ephyNeedsUpdate(manifest, bundleDate),
+      emergencyAuthorizationsNeedUpdate(manifest, bundleEmergencyDate),
+    ]);
 
-    // Comparer avec la version en cache (ou le bundle si pas de cache)
-    const remoteTs = parseDateDDMMYYYY(manifest.updated_at);
-    const referenceVersion = cachedVersion ?? bundleDate ?? "01/01/2000";
-    const referenceTs = parseDateDDMMYYYY(referenceVersion);
+    console.log("[DataUpdate] Update plan:", JSON.stringify({
+      updateEphy,
+      updateEmergencyAuthorizations,
+      ephyDate: manifest.updated_at,
+      emergencyDate: manifest.emergency_authorizations?.updated_at,
+    }));
 
-    console.log("[DataUpdate] Comparing - remote:", manifest.updated_at, "(", remoteTs, ") vs reference:", referenceVersion, "(", referenceTs, ")");
-
-    if (remoteTs > referenceTs) {
-      console.log("[DataUpdate] New version available!");
+    if (!updateEphy && !updateEmergencyAuthorizations) {
       await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
-      return manifest;
+      return null;
     }
 
-    // Même date : vérifier si le nombre de produits a changé (mise à jour le même jour)
-    if (remoteTs === referenceTs && manifest.products_count !== undefined) {
-      const cachedProducts = await readLocalFile(FILE_PATHS.PRODUCTS);
-      if (Array.isArray(cachedProducts) && manifest.products_count !== cachedProducts.length) {
-        console.log("[DataUpdate] Same date but different count:", cachedProducts.length, "→", manifest.products_count);
-        await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
-        return manifest;
-      }
-    }
-
-    // Vérifier si usages.json est absent en cache (première install après ajout de la feature)
-    const usagesInfo = await FileSystem.getInfoAsync(FILE_PATHS.USAGES);
-    if (!usagesInfo.exists) {
-      console.log("[DataUpdate] usages.json missing from cache - triggering download");
-      await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
-      return manifest;
-    }
-
-    // Mettre à jour le timestamp de vérification (pas de mise à jour nécessaire)
-    await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
-    console.log("[DataUpdate] Already up to date");
-    return null;
+    return { manifest, updateEphy, updateEmergencyAuthorizations };
   } catch (error) {
     console.log("[DataUpdate] Error checking for update:", error);
     return null;
   }
 }
 
-/**
- * Télécharge et met en cache les données depuis GitHub Pages.
- * Utilise FileSystem pour les gros fichiers JSON (évite les limites d'AsyncStorage).
- * Retourne true si la mise à jour a réussi.
- */
-async function downloadAndCache(manifest: DataManifest): Promise<boolean> {
+async function downloadEphyData(manifest: DataManifest): Promise<boolean> {
+  const productsUrl = cacheBust(`${GITHUB_PAGES_BASE}/products.json`);
+  const riskUrl = cacheBust(`${GITHUB_PAGES_BASE}/risk-phrases.json`);
+  const usagesUrl = cacheBust(`${GITHUB_PAGES_BASE}/usages.json`);
+  const temporaryPaths = [
+    FILE_PATHS.PRODUCTS + ".tmp",
+    FILE_PATHS.RISK_PHRASES + ".tmp",
+    FILE_PATHS.USAGES + ".tmp",
+  ];
+
   try {
-    // Sur web, FileSystem non disponible
-    if (Platform.OS === "web") {
-      console.log("[DataUpdate] Web platform - skipping FileSystem download");
-      return false;
-    }
-
-    console.log("[DataUpdate] Downloading products, risk phrases and usages via FileSystem...");
-
-    const productsUrl = cacheBust(`${GITHUB_PAGES_BASE}/products.json`);
-    const riskUrl = cacheBust(`${GITHUB_PAGES_BASE}/risk-phrases.json`);
-    const usagesUrl = cacheBust(`${GITHUB_PAGES_BASE}/usages.json`);
-
-    // Télécharger directement vers le système de fichiers (évite de charger tout en mémoire)
     const [productsResult, riskResult, usagesResult] = await Promise.all([
-      FileSystem.downloadAsync(productsUrl, FILE_PATHS.PRODUCTS + ".tmp"),
-      FileSystem.downloadAsync(riskUrl, FILE_PATHS.RISK_PHRASES + ".tmp"),
-      FileSystem.downloadAsync(usagesUrl, FILE_PATHS.USAGES + ".tmp"),
+      FileSystem.downloadAsync(productsUrl, temporaryPaths[0]),
+      FileSystem.downloadAsync(riskUrl, temporaryPaths[1]),
+      FileSystem.downloadAsync(usagesUrl, temporaryPaths[2]),
     ]);
-
-    const tmpFiles = [
-      FILE_PATHS.PRODUCTS + ".tmp",
-      FILE_PATHS.RISK_PHRASES + ".tmp",
-      FILE_PATHS.USAGES + ".tmp",
-    ];
 
     if (productsResult.status !== 200 || riskResult.status !== 200) {
-      console.log("[DataUpdate] Download failed - products:", productsResult.status, "risks:", riskResult.status, "usages:", usagesResult.status);
-      await Promise.allSettled(tmpFiles.map(f => FileSystem.deleteAsync(f, { idempotent: true })));
+      console.log("[DataUpdate] E-Phy download failed:", productsResult.status, riskResult.status);
       return false;
     }
 
-    // Vérifier que products.json est valide (obligatoire)
-    const productsCheck = await readLocalFile(FILE_PATHS.PRODUCTS + ".tmp");
-    if (!Array.isArray(productsCheck) || !productsCheck.length) {
+    const productsCheck = await readLocalFile(temporaryPaths[0]);
+    if (!Array.isArray(productsCheck) || productsCheck.length === 0) {
       console.log("[DataUpdate] Downloaded products.json is invalid or empty");
-      await Promise.allSettled(tmpFiles.map(f => FileSystem.deleteAsync(f, { idempotent: true })));
       return false;
     }
 
-    console.log("[DataUpdate] Downloaded", productsCheck.length, "products - validating...");
-
-    // Renommer products et risk-phrases (obligatoires)
     await Promise.all([
-      FileSystem.moveAsync({ from: FILE_PATHS.PRODUCTS + ".tmp", to: FILE_PATHS.PRODUCTS }),
-      FileSystem.moveAsync({ from: FILE_PATHS.RISK_PHRASES + ".tmp", to: FILE_PATHS.RISK_PHRASES }),
+      FileSystem.moveAsync({ from: temporaryPaths[0], to: FILE_PATHS.PRODUCTS }),
+      FileSystem.moveAsync({ from: temporaryPaths[1], to: FILE_PATHS.RISK_PHRASES }),
     ]);
 
-    // Renommer usages si le téléchargement a réussi (optionnel - ne bloque pas si absent)
     if (usagesResult.status === 200) {
-      await FileSystem.moveAsync({ from: FILE_PATHS.USAGES + ".tmp", to: FILE_PATHS.USAGES });
-      console.log("[DataUpdate] usages.json cached successfully");
+      await FileSystem.moveAsync({ from: temporaryPaths[2], to: FILE_PATHS.USAGES });
     } else {
-      console.log("[DataUpdate] usages.json download failed (status:", usagesResult.status, ") - continuing without usages");
-      await FileSystem.deleteAsync(FILE_PATHS.USAGES + ".tmp", { idempotent: true });
+      await FileSystem.deleteAsync(temporaryPaths[2], { idempotent: true });
     }
 
-    // Sauvegarder uniquement les métadonnées dans AsyncStorage
-    await Promise.all([
-      AsyncStorage.setItem(CACHE_KEYS.REMOTE_VERSION, manifest.updated_at),
-      AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString()),
-    ]);
-
-    console.log("[DataUpdate] Cache updated successfully via FileSystem - version:", manifest.updated_at, "products:", productsCheck.length);
+    await AsyncStorage.setItem(CACHE_KEYS.REMOTE_VERSION, manifest.updated_at);
+    console.log("[DataUpdate] E-Phy cache updated:", productsCheck.length, "products");
     return true;
   } catch (error) {
-    console.log("[DataUpdate] Error downloading data:", error);
-    // Nettoyer les fichiers temporaires en cas d'erreur
-    await Promise.allSettled([
-      FileSystem.deleteAsync(FILE_PATHS.PRODUCTS + ".tmp", { idempotent: true }),
-      FileSystem.deleteAsync(FILE_PATHS.RISK_PHRASES + ".tmp", { idempotent: true }),
-      FileSystem.deleteAsync(FILE_PATHS.USAGES + ".tmp", { idempotent: true }),
+    console.log("[DataUpdate] Error downloading E-Phy data:", error);
+    return false;
+  } finally {
+    await Promise.allSettled(temporaryPaths.map((path) => FileSystem.deleteAsync(path, { idempotent: true })));
+  }
+}
+
+async function downloadEmergencyAuthorizations(manifest: DataManifest): Promise<boolean> {
+  const emergency = manifest.emergency_authorizations;
+  if (!emergencyManifestIsValid(manifest) || !emergency) return false;
+
+  const temporaryPath = FILE_PATHS.EMERGENCY_AUTHORIZATIONS + ".tmp";
+  try {
+    const result = await FileSystem.downloadAsync(
+      cacheBust(`${GITHUB_PAGES_BASE}/emergency-authorizations.json`),
+      temporaryPath,
+    );
+    if (result.status !== 200) {
+      console.log("[DataUpdate] Article 53 download failed:", result.status);
+      return false;
+    }
+
+    const data = await readLocalFile(temporaryPath);
+    if (!Array.isArray(data)) {
+      console.log("[DataUpdate] Downloaded Article 53 data is invalid");
+      return false;
+    }
+
+    await FileSystem.moveAsync({ from: temporaryPath, to: FILE_PATHS.EMERGENCY_AUTHORIZATIONS });
+    await AsyncStorage.setItem(CACHE_KEYS.EMERGENCY_VERSION, emergency.updated_at);
+    console.log("[DataUpdate] Article 53 cache updated:", data.length, "decisions");
+    return true;
+  } catch (error) {
+    console.log("[DataUpdate] Error downloading Article 53 data:", error);
+    return false;
+  } finally {
+    await FileSystem.deleteAsync(temporaryPath, { idempotent: true });
+  }
+}
+
+/** Télécharge uniquement les fichiers réellement modifiés dans le manifest. */
+async function downloadAndCache(plan: UpdatePlan): Promise<boolean> {
+  try {
+    if (Platform.OS === "web") {
+      console.log("[DataUpdate] Web platform — using embedded regulatory data");
+      return false;
+    }
+
+    const results = await Promise.all([
+      plan.updateEphy ? downloadEphyData(plan.manifest) : Promise.resolve(false),
+      plan.updateEmergencyAuthorizations
+        ? downloadEmergencyAuthorizations(plan.manifest)
+        : Promise.resolve(false),
     ]);
+
+    const success = results.some(Boolean);
+    if (success) await AsyncStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
+    return success;
+  } catch (error) {
+    console.log("[DataUpdate] Background download error:", error);
     return false;
   }
 }
 
-/**
- * Charge les données depuis le cache local (FileSystem).
- * Retourne null si aucun cache disponible.
- */
+/** Charge les données E-Phy depuis le cache local. */
 export async function loadCachedData(): Promise<{
   products: unknown[];
   riskPhrases: Record<string, unknown[]>;
@@ -255,10 +298,7 @@ export async function loadCachedData(): Promise<{
     if (Platform.OS === "web") return null;
 
     const updatedAt = await AsyncStorage.getItem(CACHE_KEYS.REMOTE_VERSION);
-    if (!updatedAt) {
-      console.log("[DataUpdate] No cached version found");
-      return null;
-    }
+    if (!updatedAt) return null;
 
     const [products, riskPhrases, usages] = await Promise.all([
       readLocalFile(FILE_PATHS.PRODUCTS),
@@ -266,13 +306,7 @@ export async function loadCachedData(): Promise<{
       readLocalFile(FILE_PATHS.USAGES),
     ]);
 
-    if (!Array.isArray(products) || !products.length || !riskPhrases) {
-      console.log("[DataUpdate] Cached files missing or invalid");
-      return null;
-    }
-
-    console.log("[DataUpdate] Loaded cache from FileSystem - version:", updatedAt, "products:", products.length, "usages:", usages ? Object.keys(usages as object).length : 0);
-
+    if (!Array.isArray(products) || !products.length || !riskPhrases) return null;
     return {
       products,
       riskPhrases: riskPhrases as Record<string, unknown[]>,
@@ -280,57 +314,52 @@ export async function loadCachedData(): Promise<{
       updatedAt,
     };
   } catch (error) {
-    console.log("[DataUpdate] Error loading cache:", error);
+    console.log("[DataUpdate] Error loading E-Phy cache:", error);
     return null;
   }
 }
 
-/**
- * Lance la vérification et mise à jour en arrière-plan.
- * Ne bloque jamais l'interface utilisateur.
- * Appelle onUpdate si de nouvelles données ont été téléchargées.
- */
+/** Charge les décisions Article 53 depuis le cache local. */
+export async function loadCachedEmergencyAuthorizations(): Promise<{
+  authorizations: EmergencyAuthorization[];
+  updatedAt: string;
+} | null> {
+  try {
+    if (Platform.OS === "web") return null;
+    const updatedAt = await AsyncStorage.getItem(CACHE_KEYS.EMERGENCY_VERSION);
+    if (!updatedAt) return null;
+    const authorizations = await readLocalFile(FILE_PATHS.EMERGENCY_AUTHORIZATIONS);
+    if (!Array.isArray(authorizations)) return null;
+    return { authorizations: authorizations as EmergencyAuthorization[], updatedAt };
+  } catch (error) {
+    console.log("[DataUpdate] Error loading Article 53 cache:", error);
+    return null;
+  }
+}
+
+/** Lance la vérification et la mise à jour réglementaire en arrière-plan. */
 export function checkAndUpdateInBackground(
   onUpdate?: (manifest: DataManifest) => void,
-  bundleDate?: string
+  bundleDate?: string,
+  bundleEmergencyDate?: string,
 ): void {
-  (async () => {
-    try {
-      console.log("[DataUpdate] Starting background check...");
-      const manifest = await checkForUpdate(bundleDate);
-      if (!manifest) {
-        console.log("[DataUpdate] No update available");
-        return;
-      }
-
-      const success = await downloadAndCache(manifest);
-      if (success && onUpdate) {
-        console.log("[DataUpdate] Update applied, notifying UI");
-        onUpdate(manifest);
-      }
-    } catch (error) {
-      console.log("[DataUpdate] Background check error:", error);
-    }
+  void (async () => {
+    const plan = await checkForUpdate(bundleDate, bundleEmergencyDate);
+    if (!plan) return;
+    const success = await downloadAndCache(plan);
+    if (success && onUpdate) onUpdate(plan.manifest);
   })();
 }
 
-/**
- * Retourne la date de dernière mise à jour des données en cache.
- */
-export async function getCachedUpdateDate(): Promise<string | null> {
-  return AsyncStorage.getItem(CACHE_KEYS.REMOTE_VERSION);
-}
-
-/**
- * Vide le cache des données distantes (pour forcer un re-téléchargement).
- */
 export async function clearDataCache(): Promise<void> {
   await Promise.allSettled([
     AsyncStorage.removeItem(CACHE_KEYS.LAST_UPDATE),
     AsyncStorage.removeItem(CACHE_KEYS.REMOTE_VERSION),
+    AsyncStorage.removeItem(CACHE_KEYS.EMERGENCY_VERSION),
     FileSystem.deleteAsync(FILE_PATHS.PRODUCTS, { idempotent: true }),
     FileSystem.deleteAsync(FILE_PATHS.RISK_PHRASES, { idempotent: true }),
     FileSystem.deleteAsync(FILE_PATHS.USAGES, { idempotent: true }),
+    FileSystem.deleteAsync(FILE_PATHS.EMERGENCY_AUTHORIZATIONS, { idempotent: true }),
   ]);
-  console.log("[DataUpdate] Cache cleared (FileSystem + AsyncStorage)");
+  console.log("[DataUpdate] Regulatory cache cleared");
 }

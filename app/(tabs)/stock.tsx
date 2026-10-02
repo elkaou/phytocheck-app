@@ -21,6 +21,10 @@ import { QuantityModal } from "@/components/quantity-modal";
 import { useApp } from "@/lib/app-context";
 import { useData } from "@/lib/data-context";
 import { StockRegulatoryChange } from "@/lib/stock-regulatory-check";
+import { StockEmergencyAuthorizationChange } from "@/lib/emergency-stock-check";
+import {
+  formatEmergencyAuthorizationDate,
+} from "@/lib/emergency-authorizations";
 import { formatStockQuantity } from "@/lib/quantity";
 import { createStockWorkbook, createStockWorkbookBase64 } from "@/lib/stock-export";
 import {
@@ -44,9 +48,16 @@ export default function StockScreen() {
     updateProductQuantity,
     refreshStock,
     checkStockRegulatoryStatus,
+    checkStockEmergencyAuthorizations,
     stockLimit,
   } = useApp();
-  const { products, riskPhrases, updateDate } = useData();
+  const {
+    products,
+    riskPhrases,
+    updateDate,
+    emergencyAuthorizations,
+    emergencyAuthorizationsUpdateDate,
+  } = useData();
 
   const [filter, setFilter] = useState<FilterType>("all");
   const [itemBeingEdited, setItemBeingEdited] = useState<StockItem | null>(null);
@@ -58,7 +69,7 @@ export default function StockScreen() {
     refreshStock();
   }, [refreshStock]);
 
-  const showRegulatoryAlert = useCallback((changes: StockRegulatoryChange[]) => {
+  const showRegulatoryAlert = useCallback((changes: StockRegulatoryChange[], emergencyChanges: StockEmergencyAuthorizationChange[]) => {
     const details = changes
       .slice(0, 5)
       .map((change) => {
@@ -67,10 +78,32 @@ export default function StockScreen() {
       })
       .join("\n");
     const remaining = changes.length > 5 ? `\n• … et ${changes.length - 5} autre${changes.length > 6 ? "s" : ""}` : "";
+    const ephySection = changes.length > 0
+      ? `Base E‑Phy du ${updateDate}\n${changes.length} produit${changes.length > 1 ? "s ont" : " a"} changé de statut.\n\n${details}${remaining}`
+      : "";
+
+    const article53Labels: Record<StockEmergencyAuthorizationChange["type"], string> = {
+      new: "Nouvelle autorisation temporaire",
+      expiring: "Échéance proche",
+      expired: "Autorisation expirée",
+    };
+    const article53Details = emergencyChanges
+      .slice(0, 5)
+      .map((change) => {
+        const date = formatEmergencyAuthorizationDate(change.authorization.expiresAt);
+        return `• ${article53Labels[change.type]} : ${change.authorization.productName} — ${change.authorization.cultures} (jusqu’au ${date})`;
+      })
+      .join("\n");
+    const article53Remaining = emergencyChanges.length > 5
+      ? `\n• … et ${emergencyChanges.length - 5} autre${emergencyChanges.length > 6 ? "s" : ""}`
+      : "";
+    const article53Section = emergencyChanges.length > 0
+      ? `Autorisations d’urgence Article 53\n${article53Details}${article53Remaining}\n\nCes décisions temporaires ne modifient pas le statut E‑Phy du produit.`
+      : "";
 
     Alert.alert(
       "Mise à jour réglementaire",
-      `${changes.length} produit${changes.length > 1 ? "s ont" : " a"} changé de statut selon la base E‑Phy du ${updateDate}.\n\n${details}${remaining}`,
+      [ephySection, article53Section].filter(Boolean).join("\n\n"),
       [{ text: "Compris" }],
     );
   }, [updateDate]);
@@ -81,9 +114,14 @@ export default function StockScreen() {
       if (isCheckingRegulatoryStatus.current) return () => { isActive = false; };
 
       isCheckingRegulatoryStatus.current = true;
-      void checkStockRegulatoryStatus(products, riskPhrases)
-        .then((changes: StockRegulatoryChange[]) => {
-          if (isActive && changes.length > 0) showRegulatoryAlert(changes);
+      void Promise.all([
+        checkStockRegulatoryStatus(products, riskPhrases),
+        checkStockEmergencyAuthorizations(emergencyAuthorizations),
+      ])
+        .then(([changes, emergencyChanges]: [StockRegulatoryChange[], StockEmergencyAuthorizationChange[]]) => {
+          if (isActive && (changes.length > 0 || emergencyChanges.length > 0)) {
+            showRegulatoryAlert(changes, emergencyChanges);
+          }
         })
         .catch((error: unknown) => console.warn("Vérification réglementaire du stock impossible:", error))
         .finally(() => {
@@ -91,7 +129,15 @@ export default function StockScreen() {
         });
 
       return () => { isActive = false; };
-    }, [checkStockRegulatoryStatus, products, riskPhrases, showRegulatoryAlert]),
+    }, [
+      checkStockRegulatoryStatus,
+      checkStockEmergencyAuthorizations,
+      products,
+      riskPhrases,
+      emergencyAuthorizations,
+      emergencyAuthorizationsUpdateDate,
+      showRegulatoryAlert,
+    ]),
   );
 
   const handleRemove = useCallback(
