@@ -72,25 +72,9 @@ echo.
 :: ── Extraction des CSV depuis le ZIP ─────────────────────────
 echo [2/6] Extraction des fichiers CSV...
 
-python -c "
-import zipfile, sys
-zip_path = '%ZIP_FILE%'
-files_needed = ['produits_utf8.csv', 'produits_phrases_de_risque_utf8.csv']
-try:
-    with zipfile.ZipFile(zip_path, 'r') as z:
-        available = z.namelist()
-        for f in files_needed:
-            if f in available:
-                z.extract(f, '.')
-                print(f'  Extrait : {f}')
-            else:
-                print(f'  MANQUANT dans le ZIP : {f}')
-                sys.exit(1)
-    print('OK')
-except Exception as e:
-    print(f'ERREUR : {e}')
-    sys.exit(1)
-"
+:: CMD ne prend pas en charge une commande Python multi-ligne entre guillemets.
+:: Une instruction unique reste compatible avec Python installé depuis python.org.
+python -c "import zipfile; z=zipfile.ZipFile(r'%ZIP_FILE%'); z.extract('produits_utf8.csv', '.'); z.extract('produits_phrases_de_risque_utf8.csv', '.'); z.close()"
 
 if errorlevel 1 (
     echo [ERREUR] Extraction echouee.

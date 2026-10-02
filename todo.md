@@ -853,3 +853,7 @@
 - [x] Corriger le script afin de publier produits, risques, usages et manifest tout en préservant les métadonnées Article 53
 - [ ] Régénérer les JSON, métadonnées et CGU de secours à partir de cette source plus récente
 - [x] Ajouter un test de non-régression du manifest Article 53, puis valider Android et publier le correctif de script avant l’AAB
+
+## Correctif Windows — extraction E‑Phy
+- [x] Remplacer le bloc Python multi-ligne incompatible CMD par une commande d’extraction compatible Windows
+- [x] Ajouter un test de non-régression du script batch et republier avant de relancer la mise à jour E‑Phy

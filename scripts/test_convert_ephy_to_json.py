@@ -80,5 +80,17 @@ class UpdateManifestTests(unittest.TestCase):
                 self.assertEqual(manifest["emergency_authorizations"], emergency)
 
 
+class UpdateDataBatchTests(unittest.TestCase):
+    def test_uses_a_single_line_python_zip_extraction_command_for_cmd(self):
+        batch_file = converter.PROJECT_ROOT / "update_data.bat"
+        content = batch_file.read_text(encoding="utf-8")
+
+        self.assertIn(
+            "python -c \"import zipfile; z=zipfile.ZipFile(r'%ZIP_FILE%'); z.extract('produits_utf8.csv', '.'); z.extract('produits_phrases_de_risque_utf8.csv', '.'); z.close()\"",
+            content,
+        )
+        self.assertNotIn("import zipfile, sys\n", content)
+
+
 if __name__ == "__main__":
     unittest.main()
