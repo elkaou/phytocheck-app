@@ -91,6 +91,15 @@ class UpdateDataBatchTests(unittest.TestCase):
         )
         self.assertNotIn("import zipfile, sys\n", content)
 
+    def test_uses_github_remote_only_when_it_targets_the_official_repository(self):
+        batch_file = converter.PROJECT_ROOT / "update_data.bat"
+        content = batch_file.read_text(encoding="utf-8")
+
+        self.assertIn("set APP_REMOTE=origin", content)
+        self.assertIn("git remote get-url github", content)
+        self.assertIn("github.com/elkaou/phytocheck-app", content)
+        self.assertIn("if not errorlevel 1 set APP_REMOTE=github", content)
+
 
 if __name__ == "__main__":
     unittest.main()

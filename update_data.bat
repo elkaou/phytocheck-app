@@ -137,11 +137,14 @@ if errorlevel 1 (
     goto :push_github_pages
 )
 
-git remote get-url github >nul 2>&1
-if errorlevel 1 (
-    set APP_REMOTE=origin
-) else (
-    set APP_REMOTE=github
+:: Préférer origin. Utiliser github uniquement s'il pointe bien vers le dépôt
+:: officiel, afin d'ignorer un ancien remote de démonstration mal configuré.
+set APP_REMOTE=origin
+set GITHUB_URL=
+for /f "delims=" %%R in ('git remote get-url github 2^>nul') do set "GITHUB_URL=%%R"
+if defined GITHUB_URL (
+    echo !GITHUB_URL! | findstr /I /C:"github.com/elkaou/phytocheck-app" >nul
+    if not errorlevel 1 set APP_REMOTE=github
 )
 
 git add assets\data\products.json assets\data\risk-phrases.json assets\data\usages.json assets\data\manifest.json lib\data-context.tsx lib\product-service.ts TERMS_OF_SERVICE.md docs\terms-of-service.html
