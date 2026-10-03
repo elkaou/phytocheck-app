@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import manifest from "../assets/data/manifest.json";
 import {
   searchProducts,
   getProductByAMM,
@@ -18,8 +19,8 @@ describe("product-service", () => {
   });
 
   describe("DB_UPDATE_DATE", () => {
-    it("should return the correct date", () => {
-      expect(DB_UPDATE_DATE).toBe("08/04/2026");
+    it("correspond à la date du manifest E‑Phy embarqué", () => {
+      expect(DB_UPDATE_DATE).toBe(manifest.updated_at);
     });
   });
 
