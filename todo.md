@@ -857,3 +857,9 @@
 ## Correctif Windows — extraction E‑Phy
 - [x] Remplacer le bloc Python multi-ligne incompatible CMD par une commande d’extraction compatible Windows
 - [x] Ajouter un test de non-régression du script batch et republier avant de relancer la mise à jour E‑Phy
+
+## Version 1.2.1 — Recherche par culture Android
+- [x] Remplacer les balayages répétés des usages par un index de cultures mémorisé
+- [x] Limiter le rendu initial des résultats et proposer l’affichage progressif des produits supplémentaires
+- [x] Lancer le filtre Herbicide/Fongicide/Insecticide au premier appui, avec un seul décompte Freemium pour la recherche initiale
+- [x] Vérifier les recherches Orge et Haricots, les filtres de cible et les bundles Android/iOS avant publication

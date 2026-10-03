@@ -15,7 +15,6 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import {
   searchProducts,
   searchBySubstance,
-  classifyProduct,
   ClassifiedProduct,
   getClassificationLabel,
   getClassificationColor,
@@ -24,10 +23,10 @@ import {
 import { useApp } from "@/lib/app-context";
 import { useData } from "@/lib/data-context";
 import {
-  cultureMatchesSearch,
   getCultureSuggestions,
   type CultureSuggestion,
 } from "@/lib/culture-aliases";
+import { createCultureSearchIndex } from "@/lib/culture-search";
 import {
   formatEmergencyAuthorizationDate,
   getEmergencyAuthorizationsForCulture,
@@ -37,6 +36,7 @@ import {
 // Filtres de type disponibles pour la recherche par culture
 const TYPE_FILTERS = ["Tous", "Herbicide", "Fongicide", "Insecticide", "Acaricide"] as const;
 type TypeFilter = (typeof TYPE_FILTERS)[number];
+const CULTURE_RESULT_PAGE_SIZE = 50;
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -65,38 +65,45 @@ export default function SearchScreen() {
   const [showCultureSuggestions, setShowCultureSuggestions] = useState(false);
   // Filtre par cible/maladie dans les résultats culture
   const [selectedCible, setSelectedCible] = useState<string | null>(null);
+  const [cultureCiblesByAmm, setCultureCiblesByAmm] = useState<ReadonlyMap<string, readonly string[]>>(
+    new Map(),
+  );
+  const [visibleCultureResultCount, setVisibleCultureResultCount] = useState(CULTURE_RESULT_PAGE_SIZE);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const resultsRef = useRef<View>(null);
   const filtersRef = useRef<View>(null);
   const isNavigatingToProduct = useRef(false);
   const savedScrollY = useRef(0);
+  const cultureSearchRequestId = useRef(0);
+
+  // Index culture → AMM créé une seule fois à chaque changement réel des données.
+  // Sur Android, cela évite de parcourir l'ensemble des usages à chaque filtre.
+  const cultureSearchIndex = useMemo(
+    () => createCultureSearchIndex(dynamicProducts, dynamicRiskPhrases, usages),
+    [dynamicProducts, dynamicRiskPhrases, usages],
+  );
 
   // --- Cibles disponibles pour les résultats culture actuels ---
   const availableCibles = useMemo(() => {
     if (searchType !== "culture" || results.length === 0) return [];
     const cibles = new Set<string>();
     results.forEach((product) => {
-      const productUsages = usages[product.amm] || [];
-      productUsages.forEach((u) => {
-        if (cultureMatchesSearch(u.culture, cultureQuery) && u.cible) {
-          cibles.add(u.cible);
-        }
-      });
+      cultureCiblesByAmm.get(product.amm)?.forEach((cible) => cibles.add(cible));
     });
     return Array.from(cibles).sort((a, b) => a.localeCompare(b, "fr"));
-  }, [searchType, results, cultureQuery, usages]);
+  }, [searchType, results, cultureCiblesByAmm]);
 
   // Produits filtrés par cible sélectionnée
   const cibleFilteredResults = useMemo(() => {
     if (!selectedCible || searchType !== "culture") return results;
-    return results.filter((product) => {
-      const productUsages = usages[product.amm] || [];
-      return productUsages.some(
-        (u) => cultureMatchesSearch(u.culture, cultureQuery) && u.cible === selectedCible
-      );
-    });
-  }, [selectedCible, results, searchType, cultureQuery, usages]);
+    return results.filter((product) => cultureCiblesByAmm.get(product.amm)?.includes(selectedCible));
+  }, [selectedCible, results, searchType, cultureCiblesByAmm]);
+
+  const visibleCultureResults = useMemo(
+    () => cibleFilteredResults.slice(0, visibleCultureResultCount),
+    [cibleFilteredResults, visibleCultureResultCount],
+  );
 
   // --- Liste des cultures disponibles (triées alphabétiquement) ---
   const allCultures = useMemo(() => {
@@ -141,41 +148,15 @@ export default function SearchScreen() {
       setIsSearching(true);
       setSearchType("culture");
       setSelectedCible(null); // Réinitialiser le filtre cible à chaque nouvelle recherche
+      setVisibleCultureResultCount(CULTURE_RESULT_PAGE_SIZE);
+      const requestId = ++cultureSearchRequestId.current;
+
       setTimeout(() => {
-        // Trouver les AMM dont l'usage correspond à la culture demandée ou à un alias.
-        // La comparaison reste robuste à « Pois/pois » et aux accents E‑Phy.
-        const ammList: string[] = [];
-        Object.entries(usages).forEach(([amm, ammUsages]) => {
-          const hasMatch = ammUsages.some((u) =>
-            cultureMatchesSearch(u.culture, cultureName)
-          );
-          if (hasMatch) ammList.push(amm);
-        });
+        if (requestId !== cultureSearchRequestId.current) return;
+        const found = cultureSearchIndex.search(cultureName, typeFilter);
 
-        // Récupérer les produits correspondants
-        const found: ClassifiedProduct[] = [];
-        dynamicProducts.forEach((p) => {
-          if (!ammList.includes(p.amm)) return;
-          if (p.etat !== "AUTORISE") return; // Uniquement les produits autorisés
-
-          // Filtrer par type si nécessaire
-          if (typeFilter !== "Tous") {
-            const fonctions = p.fonctions || "";
-            const matchesType = fonctions
-              .split("|")
-              .map((f: string) => f.trim().toLowerCase())
-              .some((f: string) => f.includes(typeFilter.toLowerCase()));
-            if (!matchesType) return;
-          }
-
-          const classified = classifyProduct(p);
-          found.push(classified);
-        });
-
-        // Trier alphabétiquement
-        found.sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
-
-        setResults(found);
+        setResults(found.products);
+        setCultureCiblesByAmm(found.ciblesByAmm);
         setHasSearched(true);
         setIsSearching(false);
 
@@ -185,11 +166,11 @@ export default function SearchScreen() {
         }, 150);
       }, 100);
     },
-    [usages, dynamicProducts]
+    [cultureSearchIndex]
   );
 
   const handleCultureSearch = useCallback(
-    async (cultureName?: string) => {
+    async (cultureName?: string, typeFilter: TypeFilter = selectedTypeFilter) => {
       const name = cultureName || cultureQuery.trim();
       if (!name) return;
 
@@ -207,8 +188,9 @@ export default function SearchScreen() {
       }
 
       setCultureQuery(name);
+      setSelectedTypeFilter(typeFilter);
       setShowCultureSuggestions(false);
-      searchByCulture(name, selectedTypeFilter);
+      searchByCulture(name, typeFilter);
     },
     [cultureQuery, selectedTypeFilter, performSearch, router, searchByCulture]
   );
@@ -217,14 +199,18 @@ export default function SearchScreen() {
   const handleTypeFilterChange = useCallback(
     (filter: TypeFilter) => {
       setSelectedTypeFilter(filter);
-      if (searchType === "culture" && hasSearched && cultureQuery.trim()) {
-        setIsSearching(true);
-        setTimeout(() => {
-          searchByCulture(cultureQuery.trim(), filter);
-        }, 50);
+      const cultureName = cultureQuery.trim();
+      if (!cultureName) return;
+
+      if (searchType === "culture" && hasSearched) {
+        searchByCulture(cultureName, filter);
+      } else {
+        // Un premier appui sur Herbicide/Fongicide/Insecticide lance directement
+        // la recherche sans obliger l'utilisateur à appuyer aussi sur le bouton vert.
+        void handleCultureSearch(cultureName, filter);
       }
     },
-    [searchType, hasSearched, cultureQuery, searchByCulture]
+    [searchType, hasSearched, cultureQuery, searchByCulture, handleCultureSearch]
   );
 
   const handleOpenEmergencyProduct = useCallback(
@@ -553,14 +539,7 @@ export default function SearchScreen() {
                       pressed && { opacity: 0.8 },
                     ]}
                     onPress={() => {
-                      setSelectedTypeFilter(filter);
-                      // Si une culture est déjà saisie, lancer directement la recherche
-                      if (cultureQuery.trim()) {
-                        setIsSearching(true);
-                        setTimeout(() => {
-                          searchByCulture(cultureQuery.trim(), filter);
-                        }, 50);
-                      }
+                      handleTypeFilterChange(filter);
                     }}
                   >
                     <Text
@@ -786,13 +765,23 @@ export default function SearchScreen() {
               {(searchType !== "culture" && filterHomologues
                 ? results.filter((r) => r.classification !== "retire")
                 : searchType === "culture"
-                ? cibleFilteredResults
+                ? visibleCultureResults
                 : results
               ).map((item, index) => (
                 <View key={`${item.amm}-${item.nom}-${index}`}>
                   {renderProduct({ item })}
                 </View>
               ))}
+              {searchType === "culture" && cibleFilteredResults.length > visibleCultureResults.length && (
+                <Pressable
+                  style={({ pressed }) => [styles.showMoreButton, pressed && { opacity: 0.8 }]}
+                  onPress={() => setVisibleCultureResultCount((count) => count + CULTURE_RESULT_PAGE_SIZE)}
+                >
+                  <Text style={styles.showMoreButtonText}>
+                    Afficher les {Math.min(CULTURE_RESULT_PAGE_SIZE, cibleFilteredResults.length - visibleCultureResults.length)} produits suivants
+                  </Text>
+                </Pressable>
+              )}
             </View>
           )}
 
@@ -1009,6 +998,22 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     flex: 1,
     flexWrap: "wrap",
+  },
+  showMoreButton: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#2E7D32",
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 10,
+    alignItems: "center",
+  },
+  showMoreButtonText: {
+    color: "#2E7D32",
+    fontSize: 14,
+    fontWeight: "700",
   },
   resultCard: {
     backgroundColor: "#FFFFFF",
