@@ -863,3 +863,8 @@
 - [x] Limiter le rendu initial des résultats et proposer l’affichage progressif des produits supplémentaires
 - [x] Lancer le filtre Herbicide/Fongicide/Insecticide au premier appui, avec un seul décompte Freemium pour la recherche initiale
 - [x] Vérifier les recherches Orge et Haricots, les filtres de cible et les bundles Android/iOS avant publication
+
+## Version 1.2.2 — Ouverture instantanée de la recherche manuelle
+- [x] Différer la construction de l’index culture jusqu’à la première recherche par culture
+- [x] Ne charger les suggestions de culture qu’à la saisie, sans bloquer l’ouverture de l’onglet Recherche
+- [x] Ajouter les régressions de recherche différée et valider Android/iOS avant publication

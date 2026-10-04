@@ -27,6 +27,7 @@ import {
   type CultureSuggestion,
 } from "@/lib/culture-aliases";
 import { createCultureSearchIndex } from "@/lib/culture-search";
+import { createDeferredCultureSearchIndex } from "@/lib/deferred-culture-search";
 import {
   formatEmergencyAuthorizationDate,
   getEmergencyAuthorizationsForCulture,
@@ -77,12 +78,21 @@ export default function SearchScreen() {
   const savedScrollY = useRef(0);
   const cultureSearchRequestId = useRef(0);
 
-  // Index culture → AMM créé une seule fois à chaque changement réel des données.
-  // Sur Android, cela évite de parcourir l'ensemble des usages à chaque filtre.
-  const cultureSearchIndex = useMemo(
-    () => createCultureSearchIndex(dynamicProducts, dynamicRiskPhrases, usages),
+  // La recherche manuelle n'a pas besoin des usages E‑Phy. L'index coûteux
+  // est donc construit seulement au premier besoin de la recherche par culture.
+  const deferredCultureSearchIndex = useMemo(
+    () =>
+      createDeferredCultureSearchIndex(() =>
+        createCultureSearchIndex(dynamicProducts, dynamicRiskPhrases, usages),
+      ),
     [dynamicProducts, dynamicRiskPhrases, usages],
   );
+
+  const prepareCultureSearch = useCallback(async () => {
+    const index = await deferredCultureSearchIndex.prepare();
+    setAllCultures(Array.from(index.cultures));
+    return index;
+  }, [deferredCultureSearchIndex]);
 
   // --- Cibles disponibles pour les résultats culture actuels ---
   const availableCibles = useMemo(() => {
@@ -105,16 +115,12 @@ export default function SearchScreen() {
     [cibleFilteredResults, visibleCultureResultCount],
   );
 
-  // --- Liste des cultures disponibles (triées alphabétiquement) ---
-  const allCultures = useMemo(() => {
-    const cultures = new Set<string>();
-    Object.values(usages).forEach((ammUsages) => {
-      ammUsages.forEach((u) => {
-        if (u.culture) cultures.add(u.culture);
-      });
-    });
-    return Array.from(cultures).sort((a, b) => a.localeCompare(b, "fr"));
-  }, [usages]);
+  // Les suggestions restent vides jusqu'à l'activation volontaire de la recherche culture.
+  const [allCultures, setAllCultures] = useState<string[]>([]);
+
+  useEffect(() => {
+    setAllCultures([]);
+  }, [deferredCultureSearchIndex]);
 
   // --- Suggestions de cultures filtrées par la saisie ---
   const cultureSuggestions = useMemo<CultureSuggestion[]>(() => {
@@ -151,7 +157,9 @@ export default function SearchScreen() {
       setVisibleCultureResultCount(CULTURE_RESULT_PAGE_SIZE);
       const requestId = ++cultureSearchRequestId.current;
 
-      setTimeout(() => {
+      setTimeout(async () => {
+        if (requestId !== cultureSearchRequestId.current) return;
+        const cultureSearchIndex = await prepareCultureSearch();
         if (requestId !== cultureSearchRequestId.current) return;
         const found = cultureSearchIndex.search(cultureName, typeFilter);
 
@@ -166,7 +174,7 @@ export default function SearchScreen() {
         }, 150);
       }, 100);
     },
-    [cultureSearchIndex]
+    [prepareCultureSearch]
   );
 
   const handleCultureSearch = useCallback(
@@ -495,7 +503,9 @@ export default function SearchScreen() {
                   onChangeText={(text) => {
                     setCultureQuery(text);
                     setShowCultureSuggestions(true);
+                    void prepareCultureSearch();
                   }}
+                  onFocus={() => void prepareCultureSearch()}
                   returnKeyType="search"
                   onSubmitEditing={() => handleCultureSearch()}
                   autoCorrect={false}

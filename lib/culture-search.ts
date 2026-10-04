@@ -16,6 +16,8 @@ export interface CultureSearchResult {
 }
 
 export interface CultureSearchIndex {
+  /** Cultures E‑Phy disponibles, conservées pour l'autocomplétion. */
+  cultures: readonly string[];
   search: (cultureName: string, typeFilter: CultureProductType) => CultureSearchResult;
 }
 
@@ -38,6 +40,7 @@ export function createCultureSearchIndex(
 ): CultureSearchIndex {
   const ammsByCulture = new Map<string, Set<string>>();
   const productsByAmm = new Map<string, Product[]>();
+  const cultureLabels = new Map<string, string>();
 
   for (const product of products) {
     const entries = productsByAmm.get(product.amm) ?? [];
@@ -52,10 +55,12 @@ export function createCultureSearchIndex(
       const amms = ammsByCulture.get(cultureKey) ?? new Set<string>();
       amms.add(amm);
       ammsByCulture.set(cultureKey, amms);
+      if (!cultureLabels.has(cultureKey)) cultureLabels.set(cultureKey, usage.culture);
     }
   }
 
   return {
+    cultures: Array.from(cultureLabels.values()).sort((a, b) => a.localeCompare(b, "fr")),
     search(cultureName, typeFilter) {
       const normalizedCultureNames = new Set(
         Array.from(getCultureSearchSet(cultureName), normalizeCultureName),
