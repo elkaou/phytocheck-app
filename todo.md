@@ -873,3 +873,8 @@
 - [x] Fermer le clavier après le choix d’une culture suggérée
 - [x] Préserver le premier toucher dans les listes horizontales de filtres (type et cible)
 - [x] Ajouter les tests de régression, valider Android/iOS et publier le correctif
+
+## Version 1.2.4 — Visibilité de la recherche par culture
+- [x] Afficher immédiatement un écran de recherche plein format après le choix du filtre/culture
+- [x] Indiquer la culture et le type recherchés, avec une animation visible
+- [x] Couvrir les états de chargement et valider Android/iOS avant publication

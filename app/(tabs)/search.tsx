@@ -30,6 +30,7 @@ import {
 import { createCultureSearchIndex } from "@/lib/culture-search";
 import { createDeferredCultureSearchIndex } from "@/lib/deferred-culture-search";
 import { prepareCultureFilterInteraction } from "@/lib/culture-filter-interaction";
+import { getCultureSearchLoadingDescription } from "@/lib/culture-search-loading";
 import {
   formatEmergencyAuthorizationDate,
   getEmergencyAuthorizationsForCulture,
@@ -185,9 +186,13 @@ export default function SearchScreen() {
       if (!name) return;
 
       prepareCultureFilterInteraction(Keyboard.dismiss);
+      // Afficher l'écran de travail sans attendre la lecture asynchrone du quota.
+      setSearchType("culture");
+      setIsSearching(true);
 
       const canDo = await performSearch();
       if (!canDo) {
+        setIsSearching(false);
         Alert.alert(
           "Limite atteinte",
           "Vous avez atteint la limite de 20 recherches gratuites. Passez à Premium pour des recherches illimitées.",
@@ -396,6 +401,12 @@ export default function SearchScreen() {
     return `${count} résultat${count > 1 ? "s" : ""}${filterHomologues ? " (homologués)" : ""}`;
   }, [searchType, results, cultureQuery, selectedTypeFilter, filterHomologues]);
 
+  const isCultureSearchLoading = isSearching && searchType === "culture";
+  const cultureSearchLoadingDescription = getCultureSearchLoadingDescription(
+    cultureQuery,
+    selectedTypeFilter,
+  );
+
   return (
     <ScreenContainer containerClassName="bg-primary">
       {/* Header */}
@@ -412,8 +423,27 @@ export default function SearchScreen() {
       </View>
 
       <View style={styles.content}>
-        {/* Bouton Nouvelle recherche */}
-        {hasSearched && (
+        {isCultureSearchLoading ? (
+          <View
+            style={styles.cultureLoadingScreen}
+            accessibilityRole="progressbar"
+            accessibilityLabel="Recherche par culture en cours"
+            accessibilityState={{ busy: true }}
+          >
+            <View style={styles.cultureLoadingIcon}>
+              <IconSymbol name="leaf.fill" size={36} color="#2E7D32" />
+            </View>
+            <ActivityIndicator size="large" color="#2E7D32" />
+            <Text style={styles.cultureLoadingTitle}>Recherche en cours…</Text>
+            <Text style={styles.cultureLoadingDescription}>{cultureSearchLoadingDescription}</Text>
+            <Text style={styles.cultureLoadingHint}>
+              Nous vérifions les produits autorisés et leurs usages E‑Phy.
+            </Text>
+          </View>
+        ) : (
+          <>
+          {/* Bouton Nouvelle recherche */}
+          {hasSearched && (
           <Pressable
             style={({ pressed }) => [
               styles.newSearchButton,
@@ -433,9 +463,9 @@ export default function SearchScreen() {
             <IconSymbol name="plus.circle.fill" size={20} color="#FFFFFF" />
             <Text style={styles.newSearchButtonText}>Nouvelle recherche</Text>
           </Pressable>
-        )}
+          )}
 
-        <ScrollView
+          <ScrollView
           ref={scrollViewRef}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
@@ -813,7 +843,9 @@ export default function SearchScreen() {
               </Text>
             </View>
           )}
-        </ScrollView>
+          </ScrollView>
+          </>
+        )}
       </View>
     </ScreenContainer>
   );
@@ -996,6 +1028,41 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: "#687076",
+  },
+  cultureLoadingScreen: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  cultureLoadingIcon: {
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    backgroundColor: "#E8F5E9",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 2,
+  },
+  cultureLoadingTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    textAlign: "center",
+  },
+  cultureLoadingDescription: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2E7D32",
+    textAlign: "center",
+    lineHeight: 24,
+  },
+  cultureLoadingHint: {
+    fontSize: 14,
+    color: "#687076",
+    textAlign: "center",
+    lineHeight: 21,
   },
   emptyContainer: {
     marginTop: 40,
