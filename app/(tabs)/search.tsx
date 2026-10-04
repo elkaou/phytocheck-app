@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Keyboard,
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -28,6 +29,7 @@ import {
 } from "@/lib/culture-aliases";
 import { createCultureSearchIndex } from "@/lib/culture-search";
 import { createDeferredCultureSearchIndex } from "@/lib/deferred-culture-search";
+import { prepareCultureFilterInteraction } from "@/lib/culture-filter-interaction";
 import {
   formatEmergencyAuthorizationDate,
   getEmergencyAuthorizationsForCulture,
@@ -182,6 +184,8 @@ export default function SearchScreen() {
       const name = cultureName || cultureQuery.trim();
       if (!name) return;
 
+      prepareCultureFilterInteraction(Keyboard.dismiss);
+
       const canDo = await performSearch();
       if (!canDo) {
         Alert.alert(
@@ -206,6 +210,9 @@ export default function SearchScreen() {
   // Relancer la recherche par culture quand le filtre de type change
   const handleTypeFilterChange = useCallback(
     (filter: TypeFilter) => {
+      // Sur Android, conserver le premier appui du filtre et fermer le clavier
+      // dans la même action, au lieu de le laisser consommer le toucher.
+      prepareCultureFilterInteraction(Keyboard.dismiss);
       setSelectedTypeFilter(filter);
       const cultureName = cultureQuery.trim();
       if (!cultureName) return;
@@ -522,6 +529,7 @@ export default function SearchScreen() {
                           pressed && { backgroundColor: "#F0F9FF" },
                         ]}
                         onPress={() => {
+                          prepareCultureFilterInteraction(Keyboard.dismiss);
                           setCultureQuery(suggestion.value);
                           setShowCultureSuggestions(false);
                         }}
@@ -537,6 +545,7 @@ export default function SearchScreen() {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
                 style={{ marginBottom: 12 }}
                 contentContainerStyle={{ gap: 8, paddingRight: 4 }}
               >
@@ -605,6 +614,7 @@ export default function SearchScreen() {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
                 style={{ marginTop: 8 }}
                 contentContainerStyle={{ gap: 8, paddingRight: 4 }}
               >
@@ -634,6 +644,7 @@ export default function SearchScreen() {
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
                   style={{ marginTop: 8 }}
                   contentContainerStyle={{ gap: 8, paddingRight: 4 }}
                 >

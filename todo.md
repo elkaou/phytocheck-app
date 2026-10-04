@@ -868,3 +868,8 @@
 - [x] Différer la construction de l’index culture jusqu’à la première recherche par culture
 - [x] Ne charger les suggestions de culture qu’à la saisie, sans bloquer l’ouverture de l’onglet Recherche
 - [x] Ajouter les régressions de recherche différée et valider Android/iOS avant publication
+
+## Version 1.2.3 — Filtres culture Android en un appui
+- [x] Fermer le clavier après le choix d’une culture suggérée
+- [x] Préserver le premier toucher dans les listes horizontales de filtres (type et cible)
+- [x] Ajouter les tests de régression, valider Android/iOS et publier le correctif
