@@ -134,8 +134,18 @@ export default function SearchScreen() {
   // sont limitées dans le temps et dans le périmètre de chaque décision.
   const emergencyCultureResults = useMemo(() => {
     if (searchType !== "culture" || !hasSearched || !cultureQuery.trim()) return [];
-    return getEmergencyAuthorizationsForCulture(emergencyAuthorizations, cultureQuery.trim());
-  }, [searchType, hasSearched, cultureQuery, emergencyAuthorizations]);
+    return getEmergencyAuthorizationsForCulture(
+      emergencyAuthorizations,
+      cultureQuery.trim(),
+      selectedTypeFilter,
+    );
+  }, [
+    searchType,
+    hasSearched,
+    cultureQuery,
+    selectedTypeFilter,
+    emergencyAuthorizations,
+  ]);
 
   // Une recherche manuelle doit couvrir à la fois E‑Phy et les décisions
   // Article 53 actives : certaines AMM temporaires, comme AVADEX FACTOR,
@@ -737,7 +747,7 @@ export default function SearchScreen() {
                 </Text>
               </View>
               <Text style={styles.emergencyResultsHint}>
-                Dérogations temporaires Article 53, présentées séparément des homologations E‑Phy.
+                Dérogations temporaires Article 53 correspondant à la culture et à l’opération sélectionnées.
               </Text>
               {emergencyResults.map((authorization) => (
                 <Pressable

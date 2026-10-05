@@ -25,6 +25,20 @@ const authorization: EmergencyAuthorization = {
   sourceRetrievedAt: "2026-10-02T10:00:00Z",
 };
 
+const altacorAuthorization: EmergencyAuthorization = {
+  id: "article53-test-altacor",
+  amm: "2100122",
+  productName: "ALTACOR",
+  cultures: "haricot vert, flageolet",
+  purpose: "chenilles phytophages",
+  activeSubstances: "Chlorantraniliprole",
+  issuedAt: "2026-07-13",
+  expiresAt: "2026-11-10",
+  decisionPdfUrl: "https://agriculture.gouv.fr/telecharger/155294",
+  sourcePageUrl: "https://agriculture.gouv.fr/exemple",
+  sourceRetrievedAt: "2026-10-02T10:00:00Z",
+};
+
 describe("emergency authorizations", () => {
   it("considère la délivrance et l'échéance comme des jours inclusifs", () => {
     expect(isEmergencyAuthorizationActive(authorization, new Date(2026, 8, 22))).toBe(false);
@@ -66,6 +80,27 @@ describe("emergency authorizations", () => {
       authorization,
     ]);
     expect(getEmergencyAuthorizationsForCulture([authorization], "Vigne", new Date(2026, 9, 2))).toEqual([]);
+  });
+
+  it("applique le filtre d’opération aux décisions Article 53", () => {
+    const now = new Date(2026, 9, 2);
+
+    expect(getEmergencyAuthorizationsForCulture([authorization], "Orge", "Herbicide", now)).toEqual([
+      authorization,
+    ]);
+    expect(getEmergencyAuthorizationsForCulture([authorization], "Orge", "Fongicide", now)).toEqual([]);
+    expect(getEmergencyAuthorizationsForCulture([authorization], "Orge", "Insecticide", now)).toEqual([]);
+  });
+
+  it("reconnaît ALTACOR pour Haricots puis Insecticide", () => {
+    const now = new Date(2026, 9, 2);
+
+    expect(
+      getEmergencyAuthorizationsForCulture([altacorAuthorization], "Haricots", "Insecticide", now),
+    ).toEqual([altacorAuthorization]);
+    expect(
+      getEmergencyAuthorizationsForCulture([altacorAuthorization], "Haricots", "Fongicide", now),
+    ).toEqual([]);
   });
 
   it("fournit un rappel permanent avec l’échéance la plus proche", () => {

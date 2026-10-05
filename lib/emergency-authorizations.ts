@@ -22,6 +22,54 @@ export interface EmergencyAuthorization {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Les filtres proposés dans la recherche par culture. */
+export type EmergencyAuthorizationOperation =
+  | "Tous"
+  | "Herbicide"
+  | "Fongicide"
+  | "Insecticide"
+  | "Acaricide";
+
+/**
+ * Les décisions ministérielles Article 53 décrivent une finalité (ex. « Mildiou »)
+ * et non une famille d'opération normalisée. Les mots-clés restent volontairement
+ * prudents : une finalité non classable reste visible uniquement avec « Tous ».
+ */
+const PURPOSE_KEYWORDS_BY_OPERATION: Record<
+  Exclude<EmergencyAuthorizationOperation, "Tous">,
+  readonly string[]
+> = {
+  Herbicide: ["desherbage", "devitalisation"],
+  Fongicide: [
+    "mildiou",
+    "oidium",
+    "rouille",
+    "tavelure",
+    "cercosporio",
+    "moniliose",
+    "fusariose",
+    "alternariose",
+    "pourriture",
+    "champignon",
+    "maladie fong",
+  ],
+  Insecticide: [
+    "chenille",
+    "puceron",
+    "mouche",
+    "coleoptere",
+    "cochenille",
+    "cicadelle",
+    "thrips",
+    "balanin",
+    "punaise",
+    "longicorne",
+    "phytophage",
+    "insecte",
+  ],
+  Acaricide: ["acarien", "tetranyque", "eriophyide"],
+};
+
 function parseIsoDay(value: string): Date | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return null;
@@ -55,6 +103,18 @@ function phraseMatches(source: string, candidate: string): boolean {
   // qu'une comparaison exacte pour « Pêcher - Abricotier » ou « Céréales à paille ».
   const significantTokens = candidateNormalized.split(" ").filter((token) => token.length >= 4);
   return significantTokens.length > 0 && significantTokens.every((token) => sourceNormalized.includes(token));
+}
+
+/** Vérifie que la finalité libre d'une décision correspond au filtre demandé. */
+export function emergencyAuthorizationMatchesOperation(
+  authorization: EmergencyAuthorization,
+  operation: EmergencyAuthorizationOperation = "Tous",
+): boolean {
+  if (operation === "Tous") return true;
+  const normalizedPurpose = normalize(authorization.purpose);
+  return PURPOSE_KEYWORDS_BY_OPERATION[operation].some((keyword) =>
+    normalizedPurpose.includes(keyword),
+  );
 }
 
 /** Retourne vrai entre la délivrance et l'échéance incluses, selon le fuseau local. */
@@ -158,13 +218,19 @@ export function formatEmergencyAuthorizationRemainingDays(daysRemaining: number)
 export function getEmergencyAuthorizationsForCulture(
   authorizations: EmergencyAuthorization[],
   culture: string,
+  operationOrNow: EmergencyAuthorizationOperation | Date = "Tous",
   now: Date = new Date(),
 ): EmergencyAuthorization[] {
+  // Compatibilité avec la signature historique :
+  // getEmergencyAuthorizationsForCulture(authorizations, culture, now).
+  const operation = operationOrNow instanceof Date ? "Tous" : operationOrNow;
+  const referenceDate = operationOrNow instanceof Date ? operationOrNow : now;
   const candidates = Array.from(getCultureSearchSet(culture));
   return authorizations
     .filter(
       (authorization) =>
-        isEmergencyAuthorizationActive(authorization, now) &&
+        isEmergencyAuthorizationActive(authorization, referenceDate) &&
+        emergencyAuthorizationMatchesOperation(authorization, operation) &&
         candidates.some((candidate) => phraseMatches(authorization.cultures, candidate)),
     )
     .sort((left, right) => left.expiresAt.localeCompare(right.expiresAt));

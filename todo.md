@@ -878,3 +878,8 @@
 - [x] Afficher immédiatement un écran de recherche plein format après le choix du filtre/culture
 - [x] Indiquer la culture et le type recherchés, avec une animation visible
 - [x] Couvrir les états de chargement et valider Android/iOS avant publication
+
+## Version 1.2.5 — Filtres Article 53 par opération
+- [x] Classer les finalités Article 53 en herbicide, fongicide, insecticide ou acaricide
+- [x] Appliquer le filtre d’opération au cadre bleu et compléter les alias Haricots avec haricot vert, flageolet et haricot sec
+- [x] Tester AVADEX FACTOR et ALTACOR, valider Android/iOS puis publier la version prête à construire

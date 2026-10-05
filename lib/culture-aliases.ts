@@ -24,7 +24,14 @@ export const CULTURE_ALIASES: Record<string, string[]> = {
   "Soja":       ["Graines protéagineuses", "Grandes cultures"],
   // Légumineuses
   "Pois":       ["Graines protéagineuses", "Légumineuses potagères (sèches)"],
-  "Haricots":   ["Haricots et Pois non écossés frais", "Haricots et Pois écossés frais"],
+  "Haricots":   [
+    "Haricots et Pois non écossés frais",
+    "Haricots et Pois écossés frais",
+    // Libellés usuels des décisions Article 53, distincts des libellés E-Phy.
+    "Haricot vert",
+    "Flageolet",
+    "Haricot sec",
+  ],
   // Fruits à pépins
   "Pommier":    ["Fruits à pépins", "Cultures fruitières"],
   "Poirier":    ["Fruits à pépins", "Cultures fruitières"],
