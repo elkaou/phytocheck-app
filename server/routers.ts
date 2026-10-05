@@ -27,12 +27,15 @@ export const appRouter = router({
     .input(
       z.object({
         imageUrl: z.string().url(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       try {
-        console.log("[analyzeLabel] Starting OCR analysis, imageUrl length:", input.imageUrl.length);
-        
+        console.log(
+          "[analyzeLabel] Starting OCR analysis, imageUrl length:",
+          input.imageUrl.length,
+        );
+
         // If the imageUrl is a Data URL (base64), upload it to S3 first to get a public URL.
         // The LLM proxy does not support large base64 Data URLs — it returns empty content.
         let imageUrl = input.imageUrl;
@@ -47,7 +50,10 @@ export const appRouter = router({
             const key = `ocr-temp/${Date.now()}.${ext}`;
             const uploaded = await storagePut(key, buffer, mimeType);
             imageUrl = uploaded.url;
-            console.log("[analyzeLabel] Uploaded to S3, URL:", imageUrl.substring(0, 80) + "...");
+            console.log(
+              "[analyzeLabel] Uploaded to S3, URL:",
+              imageUrl.substring(0, 80) + "...",
+            );
           }
         }
 
@@ -113,9 +119,8 @@ ATTENTION :
             },
           ],
           response_format: { type: "json_object" },
-          // IMPORTANT: disable thinking mode for vision tasks — thinking with budget_tokens:128
-          // causes the model to return only 3 chars (empty JSON) when processing large images.
-          // @ts-ignore — extra payload field passed through to the API
+
+          // L’OCR doit extraire trois champs courts, sans raisonnement long.
           thinking: { budget_tokens: 0 },
           maxTokens: 1024,
         });
@@ -123,15 +128,19 @@ ATTENTION :
         console.log("[analyzeLabel] LLM response received:", {
           choices_length: response.choices?.length,
           content_type: typeof response.choices?.[0]?.message?.content,
-          content_length: (response.choices?.[0]?.message?.content as string)?.length || 0,
+          content_length:
+            (response.choices?.[0]?.message?.content as string)?.length || 0,
           finish_reason: response.choices?.[0]?.finish_reason,
         });
 
         const messageContent = response.choices?.[0]?.message?.content;
         let content = typeof messageContent === "string" ? messageContent : "";
-        
+
         if (!content) {
-          console.error("[analyzeLabel] LLM returned empty content. Full response:", JSON.stringify(response).substring(0, 500));
+          console.error(
+            "[analyzeLabel] LLM returned empty content. Full response:",
+            JSON.stringify(response).substring(0, 500),
+          );
           return {
             success: false,
             data: { productName: "", amm: "", function: "" },
@@ -141,7 +150,10 @@ ATTENTION :
         }
 
         // Clean content: remove markdown code blocks and trim
-        content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+        content = content
+          .replace(/```json\s*/g, "")
+          .replace(/```\s*/g, "")
+          .trim();
 
         // CRITICAL: Clean JSON content BEFORE parsing to avoid parse errors
         // Remove problematic characters that break JSON.parse
@@ -171,7 +183,10 @@ ATTENTION :
           };
         } catch (parseError: any) {
           console.error("[analyzeLabel] JSON parse error:", parseError.message);
-          console.error("[analyzeLabel] Failed content (500 chars):", content.substring(0, 500));
+          console.error(
+            "[analyzeLabel] Failed content (500 chars):",
+            content.substring(0, 500),
+          );
           // Try to extract JSON from the response
           const jsonMatch = content.match(/\{[^}]+\}/);
           if (jsonMatch) {
@@ -202,7 +217,10 @@ ATTENTION :
           };
         }
       } catch (error: any) {
-        console.error("[analyzeLabel] Error analyzing label:", error?.message || error);
+        console.error(
+          "[analyzeLabel] Error analyzing label:",
+          error?.message || error,
+        );
         console.error("[analyzeLabel] Stack:", error?.stack || "No stack");
         return {
           success: false,
@@ -212,7 +230,6 @@ ATTENTION :
         };
       }
     }),
-
 
   // ─── Device tracking endpoints ─────────────────────────────────────────────
   device: router({
@@ -229,10 +246,14 @@ ATTENTION :
           // allowDowngrade: si false, ne rétrograde pas isPremium true→false en base.
           // Mettre false au démarrage de l'app, true quand IAPProvider confirme l'expiration.
           allowDowngrade: z.boolean().default(true),
-        })
+        }),
       )
       .mutation(async ({ input }) => {
-        const device = await syncDevice(input.deviceId, input.isPremium, input.allowDowngrade);
+        const device = await syncDevice(
+          input.deviceId,
+          input.isPremium,
+          input.allowDowngrade,
+        );
         if (!device) {
           return { searchCount: 0, isPremium: input.isPremium, offline: true };
         }
@@ -253,13 +274,16 @@ ATTENTION :
         z.object({
           deviceId: z.string().min(1).max(255),
           isPremium: z.boolean(),
-        })
+        }),
       )
       .mutation(async ({ input }) => {
         if (input.isPremium) {
           return { allowed: true, searchCount: -1 };
         }
-        const result = await incrementDeviceSearch(input.deviceId, FREE_SEARCH_LIMIT);
+        const result = await incrementDeviceSearch(
+          input.deviceId,
+          FREE_SEARCH_LIMIT,
+        );
         return result;
       }),
   }),
