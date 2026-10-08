@@ -30,6 +30,24 @@ echo.
 :: Aller dans le dossier du script (racine du projet phytocheck-app)
 cd /d "%~dp0"
 
+:: Dépôt GitHub Pages, également utilisé par le convertisseur pour conserver
+:: les métadonnées Article 53 du manifest commun.
+set DATA_REPO=C:\phytocheck-data
+
+:: Toujours récupérer le manifest le plus récent AVANT la conversion E-Phy.
+:: Ainsi, les métadonnées Article 53 ne sont jamais écrasées et le push final
+:: ne rencontre pas de divergence évitable.
+if exist "%DATA_REPO%\.git" (
+    echo [Preparation] Synchronisation de phytocheck-data...
+    git -C "%DATA_REPO%" pull --ff-only origin main
+    if errorlevel 1 (
+        echo [ERREUR] Impossible de synchroniser %DATA_REPO%.
+        echo Verifiez que ce depot n'a pas de modifications locales, puis relancez le script.
+        pause
+        exit /b 1
+    )
+)
+
 :: ── Vérification Python ──────────────────────────────────────
 python --version >nul 2>&1
 if errorlevel 1 (
@@ -165,9 +183,6 @@ if errorlevel 1 (
 :push_github_pages
 echo.
 echo [6/6] Mise a jour GitHub Pages (phytocheck-data)...
-
-:: Chemin du dépôt phytocheck-data (modifiable si besoin)
-set DATA_REPO=C:\phytocheck-data
 
 if not exist "%DATA_REPO%" (
     echo [AVERTISSEMENT] Dossier %DATA_REPO% introuvable.

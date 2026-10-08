@@ -883,3 +883,9 @@
 - [x] Classer les finalités Article 53 en herbicide, fongicide, insecticide ou acaricide
 - [x] Appliquer le filtre d’opération au cadre bleu et compléter les alias Haricots avec haricot vert, flageolet et haricot sec
 - [x] Tester AVADEX FACTOR et ALTACOR, valider Android/iOS puis publier la version prête à construire
+
+
+## Correctif données E‑Phy — 08/10/2026
+- [x] Conserver les métadonnées Article 53 lorsqu’un manifest UTF‑8 avec BOM est régénéré par le script E‑Phy
+- [x] Restaurer et publier le manifest GitHub Pages avec les données E‑Phy du 08/10/2026 et l’instantané Article 53 courant
+- [x] Ajouter un test de régression BOM, puis valider le script et la synchronisation distante

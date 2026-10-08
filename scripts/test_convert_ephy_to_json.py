@@ -52,13 +52,14 @@ class UpdateManifestTests(unittest.TestCase):
                 "count": 60,
                 "active_source_count": 60,
             }
-            local_manifest.write_text(
-                json.dumps({"version": "1.0", "emergency_authorizations": emergency}),
-                encoding="utf-8",
-            )
+            # Le manifest local ne contient pas encore Article 53 : le script
+            # doit donc préserver la métadonnée depuis le dépôt de données.
+            local_manifest.write_text(json.dumps({"version": "1.0"}), encoding="utf-8")
             remote_manifest.write_text(
                 json.dumps({"version": "1.0", "emergency_authorizations": emergency}),
-                encoding="utf-8",
+                # GitHub Actions peut ajouter ce BOM ; il ne doit pas faire
+                # ignorer la métadonnée Article 53.
+                encoding="utf-8-sig",
             )
 
             original_root = converter.PROJECT_ROOT
@@ -80,6 +81,34 @@ class UpdateManifestTests(unittest.TestCase):
                 self.assertEqual(manifest["emergency_authorizations"], emergency)
 
 
+class UpdateBundleManifestTests(unittest.TestCase):
+    def test_updates_only_ephy_bundle_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            data_context = Path(temporary_directory) / "data-context.tsx"
+            data_context.write_text(
+                '''const BUNDLE_MANIFEST = {
+  version: "1.0",
+  updated_at: "02/10/2026",
+  products_count: 17221,
+  risks_count: 2541,
+};
+
+const BUNDLE_EMERGENCY_MANIFEST = {
+  updated_at: "2026-10-02T11:49:03Z",
+};
+''',
+                encoding="utf-8",
+            )
+
+            converter.update_bundle_manifest(data_context, "08/10/2026", 17223, 2542, 18538)
+
+            content = data_context.read_text(encoding="utf-8")
+            self.assertIn('updated_at: "08/10/2026"', content)
+            self.assertIn("products_count: 17223", content)
+            self.assertIn("risks_count: 2542", content)
+            self.assertIn('updated_at: "2026-10-02T11:49:03Z"', content)
+
+
 class UpdateDataBatchTests(unittest.TestCase):
     def test_uses_a_single_line_python_zip_extraction_command_for_cmd(self):
         batch_file = converter.PROJECT_ROOT / "update_data.bat"
@@ -99,6 +128,16 @@ class UpdateDataBatchTests(unittest.TestCase):
         self.assertIn("git remote get-url github", content)
         self.assertIn("github.com/elkaou/phytocheck-app", content)
         self.assertIn("if not errorlevel 1 set APP_REMOTE=github", content)
+
+    def test_synchronizes_data_repository_before_manifest_generation(self):
+        batch_file = converter.PROJECT_ROOT / "update_data.bat"
+        content = batch_file.read_text(encoding="utf-8")
+
+        sync_command = 'git -C "%DATA_REPO%" pull --ff-only origin main'
+        conversion_command = "python scripts\\convert_ephy_to_json.py"
+        self.assertIn(sync_command, content)
+        self.assertIn(conversion_command, content)
+        self.assertLess(content.index(sync_command), content.index(conversion_command))
 
 
 if __name__ == "__main__":

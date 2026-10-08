@@ -429,7 +429,10 @@ def update_manifest(update_date_str, products_count, risks_count, usages_count=N
         if not candidate.exists():
             continue
         try:
-            previous_manifest = json.loads(candidate.read_text(encoding="utf-8"))
+            # Le workflow Article 53 peut écrire un BOM UTF-8 au début de
+            # manifest.json. utf-8-sig le retire de façon transparente afin
+            # de ne jamais perdre ces métadonnées lors d'une mise à jour E-Phy.
+            previous_manifest = json.loads(candidate.read_text(encoding="utf-8-sig"))
             emergency = previous_manifest.get("emergency_authorizations")
             if isinstance(emergency, dict):
                 emergency_authorizations = emergency
@@ -492,30 +495,30 @@ def update_bundle_manifest(data_context_path, update_date_str, products_count, r
         return
 
     content = data_context_path.read_text(encoding="utf-8")
-    
-    # Remplacer les valeurs dans BUNDLE_MANIFEST
-    content = re.sub(
-        r'updated_at:\s*"[^"]*"',
-        f'updated_at: "{update_date_str}"',
-        content,
-    )
-    content = re.sub(
-        r'products_count:\s*\d+',
-        f'products_count: {products_count}',
-        content,
-    )
-    content = re.sub(
-        r'risks_count:\s*\d+',
-        f'risks_count: {risks_count}',
-        content,
-    )
-    if usages_count is not None:
-        content = re.sub(
-            r'usages_count:\s*\d+',
-            f'usages_count: {usages_count}',
-            content,
+
+    # Limiter les remplacements au seul bloc BUNDLE_MANIFEST. Le fichier
+    # contient aussi BUNDLE_EMERGENCY_MANIFEST, dont la date doit refléter
+    # exclusivement le dernier instantané Article 53 embarqué.
+    def replace_bundle_manifest_field(source, field, replacement):
+        pattern = rf'(const\s+BUNDLE_MANIFEST\s*=\s*\{{.*?\b{field}\s*:\s*)(?:"[^"]*"|\d+)'
+        updated, replacements = re.subn(
+            pattern,
+            rf'\g<1>{replacement}',
+            source,
+            count=1,
+            flags=re.DOTALL,
         )
-    
+        if replacements != 1:
+            raise ValueError(f"Champ {field} introuvable dans BUNDLE_MANIFEST")
+        return updated
+
+    content = replace_bundle_manifest_field(content, "updated_at", f'"{update_date_str}"')
+    content = replace_bundle_manifest_field(content, "products_count", str(products_count))
+    content = replace_bundle_manifest_field(content, "risks_count", str(risks_count))
+    if usages_count is not None:
+        usages_pattern = r'(const\s+BUNDLE_MANIFEST\s*=\s*\{.*?\busages_count\s*:\s*)\d+'
+        content = re.sub(usages_pattern, rf'\g<1>{usages_count}', content, count=1, flags=re.DOTALL)
+
     data_context_path.write_text(content, encoding="utf-8")
     print(f"  data-context.tsx mis à jour : date={update_date_str}, produits={products_count}, risques={risks_count}")
 
