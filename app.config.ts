@@ -41,7 +41,7 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.2.5",
+  version: "1.3.0",
   // Pas de restriction d'orientation pour compatibilité grand écran (Android 16+)
   orientation: "default",
   icon: "./assets/images/icon.png",
@@ -94,14 +94,14 @@ const config: ExpoConfig = {
     [
       "expo-camera",
       {
-        cameraPermission: "Autoriser PhytoCheck à accéder à votre appareil photo pour scanner les étiquettes.",
+        cameraPermission: "Autoriser PhytoCheck à accéder à votre appareil photo pour scanner les étiquettes et inventorier votre stock.",
       },
     ],
     [
       "expo-image-picker",
       {
-        photosPermission: "Autoriser PhytoCheck à accéder à vos photos pour identifier les produits.",
-        cameraPermission: "Autoriser PhytoCheck à prendre des photos pour scanner les étiquettes.",
+        photosPermission: "Autoriser PhytoCheck à accéder à vos photos pour identifier les produits et inventorier votre stock.",
+        cameraPermission: "Autoriser PhytoCheck à prendre des photos pour scanner les étiquettes et inventorier votre stock.",
       },
     ],
     // expo-audio et expo-video retirés : PhytoCheck n'utilise ni audio ni vidéo en arrière-plan

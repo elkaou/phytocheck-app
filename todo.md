@@ -894,3 +894,10 @@
 - [x] Mettre à jour l’onglet À propos avec les sources E‑Phy/ANSES et les autorisations d’urgence du ministère de l’Agriculture
 - [x] Harmoniser les CGU et la politique de confidentialité en ligne et hors ligne, avec la date de mise à jour du 9 octobre 2026
 - [x] Réviser les clés de cache des documents légaux pour éviter l’affichage d’une copie locale obsolète
+
+## Version 1.3.0 — Ajout multiple au stock par photo
+- [x] Ajouter le bouton « Ajout multiple » sur l’accueil et l’écran de prise de photo d’une zone du local
+- [x] Créer une analyse IA multi-bidons qui renvoie au plus une détection par contenant visible
+- [x] Résoudre automatiquement une seule fiche E‑Phy par bidon : priorité AMM, puis nom exact ; aucune liste de variantes
+- [x] Afficher les produits reconnus, les échecs éventuels et un ajout au stock après confirmation
+- [x] Ajouter les tests de rapprochement, valider Android/iOS et préparer la publication

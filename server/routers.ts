@@ -6,6 +6,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { storagePut } from "./storage";
 import { syncDevice, incrementDeviceSearch } from "./db";
+import { parseInventoryOcrResponse } from "./inventory-ocr";
 
 const FREE_SEARCH_LIMIT = 20;
 
@@ -231,6 +232,104 @@ ATTENTION :
       }
     }),
 
+  /**
+   * Analyse une photographie d'étagère ou de local. Chaque élément retourné
+   * représente un seul bidon visible : l'API ne renvoie jamais de variantes
+   * possibles pour un même contenant.
+   */
+  analyzeInventoryPhoto: publicProcedure
+    .input(
+      z.object({
+        imageUrl: z.string().url(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        console.log(
+          "[analyzeInventoryPhoto] Starting multi-container analysis, imageUrl length:",
+          input.imageUrl.length,
+        );
+
+        let imageUrl = input.imageUrl;
+        if (imageUrl.startsWith("data:")) {
+          const matches = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+          if (!matches) {
+            return { success: false, data: { containers: [] }, error: "Invalid image data" };
+          }
+
+          const mimeType = matches[1];
+          const buffer = Buffer.from(matches[2], "base64");
+          const ext = mimeType.split("/")[1] || "jpg";
+          const uploaded = await storagePut(
+            `inventory-temp/${Date.now()}.${ext}`,
+            buffer,
+            mimeType,
+          );
+          imageUrl = uploaded.url;
+        }
+
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: [
+                "Tu analyses une photographie d'une zone de stockage de produits phytosanitaires français.",
+                "OBJECTIF : identifier les bidons et emballages dont l'étiquette est lisible.",
+                "RÈGLES IMPÉRATIVES :",
+                "- Chaque élément de la réponse correspond à UN seul bidon ou emballage physique visible.",
+                "- Ne retourne JAMAIS plusieurs propositions, variantes ou alternatives pour un même bidon.",
+                "- Ne duplique jamais un même bidon, même si son étiquette comporte plusieurs zones de texte.",
+                "- Retourne uniquement le nom commercial le plus lisible et le numéro AMM à 7 chiffres s'il est lisible.",
+                "- Si le nom ou l'AMM est incertain, laisse le champ concerné vide. N'invente jamais une valeur.",
+                "- Ignore les produits trop flous, cachés ou sans étiquette lisible.",
+                "- Le nom commercial doit être court et correspondre au nom affiché en grand sur l'étiquette.",
+                "RÉPONSE ATTENDUE : JSON strict, sans texte supplémentaire.",
+                '{ "containers": [{ "productName": "NOM COMMERCIAL", "amm": "1234567" }] }',
+              ].join("\n"),
+            },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "Identifie chaque bidon phytosanitaire lisible sur cette photo. Retourne au plus une identité par bidon.",
+                },
+                {
+                  type: "image_url",
+                  image_url: { url: imageUrl },
+                },
+              ],
+            },
+          ],
+          response_format: { type: "json_object" },
+          // @ts-ignore L'option est transmise au proxy de modèle de vision.
+          thinking: { budget_tokens: 0 },
+          maxTokens: 2048,
+        });
+
+        const content = response.choices?.[0]?.message?.content;
+        const containers = typeof content === "string" ? parseInventoryOcrResponse(content) : [];
+        if (containers.length === 0) {
+          return {
+            success: false,
+            data: { containers: [] },
+            error: "No readable containers detected",
+          };
+        }
+
+        return { success: true, data: { containers } };
+      } catch (error: any) {
+        console.error(
+          "[analyzeInventoryPhoto] Error analyzing inventory:",
+          error?.message || error,
+        );
+        return {
+          success: false,
+          data: { containers: [] },
+          error: error?.message || "Unknown error",
+        };
+      }
+    }),
   // ─── Device tracking endpoints ─────────────────────────────────────────────
   device: router({
     /**
