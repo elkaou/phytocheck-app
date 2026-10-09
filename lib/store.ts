@@ -36,7 +36,12 @@ export async function getStock(): Promise<StockItem[]> {
 }
 
 // Add to stock (or increment quantity if already present)
-export async function addToStock(product: ClassifiedProduct, quantity: number = 1, unite: "L" | "Kg" = "L", secondaryName?: string): Promise<"added" | "incremented" | "limit" | "error"> {
+export async function addToStock(
+  product: ClassifiedProduct,
+  quantity: number = 1,
+  unite: "L" | "Kg" = "L",
+  secondaryName?: string,
+): Promise<"added" | "incremented" | "unit_mismatch" | "limit" | "error"> {
   try {
     const stock = await getStock();
     const isPremium = await getIsPremium();
@@ -44,6 +49,11 @@ export async function addToStock(product: ClassifiedProduct, quantity: number = 
     // Check if already in stock
     const existingIndex = stock.findIndex((item) => item.amm === product.amm);
     if (existingIndex >= 0) {
+      // Un cumul L + Kg donnerait une quantité trompeuse. Il doit être corrigé
+      // par l'utilisateur avant toute écriture, quelle que soit la source d'ajout.
+      if (stock[existingIndex].unite !== unite) {
+        return "unit_mismatch";
+      }
       // Increment quantity
       stock[existingIndex].quantite = (stock[existingIndex].quantite || 1) + quantity;
       await AsyncStorage.setItem(STORAGE_KEYS.STOCK, JSON.stringify(stock));

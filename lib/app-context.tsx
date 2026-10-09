@@ -38,7 +38,7 @@ interface AppContextType {
   remainingSearches: number;
   stockLimit: number;
   deviceId: string | null;
-  addProductToStock: (product: ClassifiedProduct, quantity?: number, unite?: "L" | "Kg", secondaryName?: string) => Promise<"added" | "incremented" | "limit" | "error">;
+  addProductToStock: (product: ClassifiedProduct, quantity?: number, unite?: "L" | "Kg", secondaryName?: string) => Promise<"added" | "incremented" | "unit_mismatch" | "limit" | "error">;
   removeProductFromStock: (amm: string) => Promise<boolean>;
   updateProductQuantity: (amm: string, quantity: number) => Promise<boolean>;
   isProductInStock: (amm: string) => boolean;
@@ -161,7 +161,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addProductToStock = useCallback(
-    async (product: ClassifiedProduct, quantity: number = 1, unite: "L" | "Kg" = "L", secondaryName?: string): Promise<"added" | "incremented" | "limit" | "error"> => {
+    async (product: ClassifiedProduct, quantity: number = 1, unite: "L" | "Kg" = "L", secondaryName?: string): Promise<"added" | "incremented" | "unit_mismatch" | "limit" | "error"> => {
       const result = await addToStock(product, quantity, unite, secondaryName);
       if (result === "added" || result === "incremented") {
         await refreshStock();

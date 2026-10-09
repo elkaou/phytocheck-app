@@ -100,6 +100,18 @@ describe("store", () => {
       expect(stock[0].quantite).toBe(2);
     });
 
+    it("should not add quantities when the duplicate product uses another unit", async () => {
+      const product = makeProduct("1234567");
+      await addToStock(product, 2, "L");
+
+      const result = await addToStock(product, 3, "Kg");
+      expect(result).toBe("unit_mismatch");
+
+      const stock = await getStock();
+      expect(stock).toHaveLength(1);
+      expect(stock[0]).toMatchObject({ quantite: 2, unite: "L" });
+    });
+
     it("should persist an Article 53-only product as a temporary authorization", async () => {
       const product = makeProduct("2260551", "autorisation_urgence");
       product.nom = "AVADEX FACTOR";

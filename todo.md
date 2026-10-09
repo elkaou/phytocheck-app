@@ -884,16 +884,10 @@
 - [x] Appliquer le filtre d’opération au cadre bleu et compléter les alias Haricots avec haricot vert, flageolet et haricot sec
 - [x] Tester AVADEX FACTOR et ALTACOR, valider Android/iOS puis publier la version prête à construire
 
-
-## Correctif données E‑Phy — 08/10/2026
-- [x] Conserver les métadonnées Article 53 lorsqu’un manifest UTF‑8 avec BOM est régénéré par le script E‑Phy
-- [x] Restaurer et publier le manifest GitHub Pages avec les données E‑Phy du 08/10/2026 et l’instantané Article 53 courant
-- [x] Ajouter un test de régression BOM, puis valider le script et la synchronisation distante
-
 ## Documents légaux — Sources de données et date du 9 octobre 2026
 - [x] Mettre à jour l’onglet À propos avec les sources E‑Phy/ANSES et les autorisations d’urgence du ministère de l’Agriculture
 - [x] Harmoniser les CGU et la politique de confidentialité en ligne et hors ligne, avec la date de mise à jour du 9 octobre 2026
-- [x] Réviser les clés de cache des documents légaux pour éviter l’affichage d’une copie locale obsolète
+- [x] Ajouter un contrôle de cohérence des sources et des dates, puis valider et publier
 
 ## Version 1.3.0 — Ajout multiple au stock par photo
 - [x] Ajouter le bouton « Ajout multiple » sur l’accueil et l’écran de prise de photo d’une zone du local
@@ -901,3 +895,9 @@
 - [x] Résoudre automatiquement une seule fiche E‑Phy par bidon : priorité AMM, puis nom exact ; aucune liste de variantes
 - [x] Afficher les produits reconnus, les échecs éventuels et un ajout au stock après confirmation
 - [x] Ajouter les tests de rapprochement, valider Android/iOS et préparer la publication
+
+## Version 1.3.1 — Sécurisation de l’ajout multiple au stock
+- [x] Détecter, dès l’affichage des résultats, les produits déjà présents dans le stock
+- [x] Avertir avant cumul avec la quantité existante et le nouveau total calculé
+- [x] Bloquer un cumul lorsque l’unité saisie diffère de celle déjà stockée
+- [x] Ajouter les tests de cumul et de compatibilité d’unité, puis valider Android/iOS

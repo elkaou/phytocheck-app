@@ -114,6 +114,11 @@ export default function ProductDetailScreen() {
         "Limite atteinte",
         "Vous avez atteint la limite de 20 produits en stock. Passez à Premium pour un stock illimité."
       );
+    } else if (result === "unit_mismatch") {
+      Alert.alert(
+        "Unités incompatibles",
+        `« ${displayName} » est déjà enregistré dans votre stock avec une autre unité. Modifiez d’abord la quantité existante dans l’onglet Stock, puis recommencez l’ajout.`,
+      );
     }
   }, [product, emergencyStockProduct, name, addProductToStock, router]);
 

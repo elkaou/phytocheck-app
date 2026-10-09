@@ -23,11 +23,13 @@ import {
   resolveInventoryDetections,
   ResolvedInventoryDetection,
 } from "@/lib/inventory-stock-resolution";
+import { previewInventoryStockAddition } from "@/lib/inventory-stock-addition";
+import { formatStockQuantity } from "@/lib/quantity";
 import { trpc } from "@/lib/trpc";
 
 export default function InventoryScanScreen() {
   const router = useRouter();
-  const { performSearch, addProductToStock } = useApp();
+  const { performSearch, addProductToStock, stock } = useApp();
   const {
     products,
     riskPhrases,
@@ -142,15 +144,19 @@ export default function InventoryScanScreen() {
     }
   }, [processImage]);
 
-  const addSelectedProduct = useCallback(
-    async (quantity: number, unit: "L" | "Kg") => {
-      if (!selectedDetection?.product) return;
+  const completeAddition = useCallback(
+    async (
+      detection: ResolvedInventoryDetection,
+      quantity: number,
+      unit: "L" | "Kg",
+    ) => {
+      if (!detection.product) return;
 
       const result = await addProductToStock(
-        selectedDetection.product,
+        detection.product,
         quantity,
         unit,
-        selectedDetection.stockDisplayName,
+        detection.stockDisplayName,
       );
 
       if (result === "limit") {
@@ -169,10 +175,56 @@ export default function InventoryScanScreen() {
         return;
       }
 
-      setAddedContainers((current) => [...current, selectedDetection.containerIndex]);
-      setSelectedDetection(null);
+      if (result === "unit_mismatch") {
+        Alert.alert(
+          "Unités incompatibles",
+          "Ce produit est déjà enregistré avec une autre unité. Modifiez d’abord la quantité existante dans l’onglet Stock, puis recommencez l’ajout.",
+        );
+        return;
+      }
+
+      setAddedContainers((current) => [...current, detection.containerIndex]);
     },
-    [addProductToStock, router, selectedDetection],
+    [addProductToStock, router],
+  );
+
+  const addSelectedProduct = useCallback(
+    (quantity: number, unit: "L" | "Kg") => {
+      const detection = selectedDetection;
+      if (!detection?.product) return;
+
+      // Ferme d'abord la saisie : l'utilisateur voit ensuite clairement l'avertissement.
+      setSelectedDetection(null);
+      const preview = previewInventoryStockAddition(stock, detection.product.amm, quantity, unit);
+
+      if (preview.kind === "unit_mismatch") {
+        Alert.alert(
+          "Unités incompatibles",
+          `« ${detection.stockDisplayName || detection.product.nom} » est déjà enregistré avec ${formatStockQuantity(preview.existingQuantity)} ${preview.existingUnit}. Vous avez saisi ${formatStockQuantity(preview.incomingQuantity)} ${preview.incomingUnit}. Les quantités ne peuvent pas être additionnées.`,
+        );
+        return;
+      }
+
+      if (preview.kind === "merge") {
+        Alert.alert(
+          "Produit déjà en stock",
+          `« ${detection.stockDisplayName || detection.product.nom} » est déjà présent : ${formatStockQuantity(preview.existingQuantity)} ${preview.unit}. L’ajout de ${formatStockQuantity(preview.incomingQuantity)} ${preview.unit} portera le stock à ${formatStockQuantity(preview.newQuantity)} ${preview.unit}.`,
+          [
+            { text: "Annuler", style: "cancel" },
+            {
+              text: "Ajouter et cumuler",
+              onPress: () => {
+                void completeAddition(detection, quantity, unit);
+              },
+            },
+          ],
+        );
+        return;
+      }
+
+      void completeAddition(detection, quantity, unit);
+    },
+    [completeAddition, selectedDetection, stock],
   );
 
   const renderDetection = useCallback(
@@ -196,6 +248,7 @@ export default function InventoryScanScreen() {
       }
 
       const displayedName = item.stockDisplayName || item.product.nom;
+      const existingStockItem = stock.find((stockItem) => stockItem.amm === item.product?.amm);
       return (
         <View style={styles.card}>
           <View style={styles.cardHeading}>
@@ -210,6 +263,14 @@ export default function InventoryScanScreen() {
           <Text style={styles.cardHint}>
             Une seule fiche réglementaire a été retenue automatiquement pour ce bidon.
           </Text>
+          {existingStockItem ? (
+            <View style={styles.duplicateNotice}>
+              <IconSymbol name="exclamationmark.triangle.fill" size={18} color="#B45309" />
+              <Text style={styles.duplicateNoticeText}>
+                Déjà en stock : {formatStockQuantity(existingStockItem.quantite)} {existingStockItem.unite}. La quantité saisie sera proposée au cumul.
+              </Text>
+            </View>
+          ) : null}
           <Pressable
             disabled={isAdded}
             onPress={() => setSelectedDetection(item)}
@@ -229,7 +290,7 @@ export default function InventoryScanScreen() {
         </View>
       );
     },
-    [addedContainers],
+    [addedContainers, stock],
   );
 
   const hasResults = detections.length > 0;
@@ -381,6 +442,17 @@ const styles = StyleSheet.create({
   productName: { color: "#1A1A1A", fontSize: 19, fontWeight: "700", marginTop: 2 },
   productMeta: { color: "#0A7EA5", fontSize: 14, fontWeight: "600" },
   cardHint: { color: "#687076", fontSize: 13, lineHeight: 18 },
+  duplicateNotice: {
+    backgroundColor: "#FFFBEB",
+    borderColor: "#FDE68A",
+    borderWidth: 1,
+    borderRadius: 9,
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  duplicateNoticeText: { color: "#92400E", fontSize: 13, lineHeight: 18, flex: 1, fontWeight: "600" },
   unresolvedText: { color: "#92400E", fontSize: 17, fontWeight: "700" },
   addButton: { marginTop: 4, backgroundColor: "#15803D", borderRadius: 10, minHeight: 46, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   addButtonDone: { backgroundColor: "#64748B" },
