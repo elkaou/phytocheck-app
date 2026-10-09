@@ -527,6 +527,15 @@ export default function StockScreen() {
             </Text>
           </View>
           <Pressable
+            style={({ pressed }) => [styles.inventoryScanButton, pressed && { opacity: 0.72 }]}
+            onPress={() => router.push("/inventory-scan" as any)}
+            accessibilityRole="button"
+            accessibilityLabel="Ajout multiple au stock"
+            accessibilityHint="Photographie plusieurs bidons pour les ajouter au stock"
+          >
+            <MaterialIcons name="add-a-photo" size={22} color="#1D4ED8" />
+          </Pressable>
+          <Pressable
             style={({ pressed }) => [styles.stockSearchButton, pressed && { opacity: 0.72 }]}
             onPress={handleStockSearchToggle}
             accessibilityRole="button"
@@ -820,6 +829,14 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 12,
     backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  inventoryScanButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: "#DBEAFE",
     alignItems: "center",
     justifyContent: "center",
   },

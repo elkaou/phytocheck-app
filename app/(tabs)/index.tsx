@@ -42,19 +42,6 @@ export default function HomeScreen() {
             <Text style={styles.actionButtonText}>Scanner un produit</Text>
           </Pressable>
 
-          {/* Multi-product stock scan button */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.actionButton,
-              { backgroundColor: "#2563EB" },
-              pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-            ]}
-            onPress={() => router.push("/inventory-scan" as any)}
-          >
-            <IconSymbol name="plus.circle.fill" size={24} color="#FFFFFF" />
-            <Text style={styles.actionButtonText}>Ajout multiple</Text>
-          </Pressable>
-
           {/* Manual search button */}
           <Pressable
             style={({ pressed }) => [
@@ -66,6 +53,22 @@ export default function HomeScreen() {
           >
             <IconSymbol name="magnifyingglass" size={24} color="#FFFFFF" />
             <Text style={styles.actionButtonText}>Recherche manuelle</Text>
+          </Pressable>
+
+          {/* Multi-product stock scan button */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              { backgroundColor: "#2563EB" },
+              pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+            ]}
+            onPress={() => router.push("/inventory-scan" as any)}
+            accessibilityRole="button"
+            accessibilityLabel="Ajout multiple au stock"
+            accessibilityHint="Photographie plusieurs bidons et prépare leur ajout au stock"
+          >
+            <IconSymbol name="plus.circle.fill" size={24} color="#FFFFFF" />
+            <Text style={styles.actionButtonText}>Ajout multiple</Text>
           </Pressable>
 
           {/* Stock button */}

@@ -488,159 +488,205 @@ export default function SearchScreen() {
           {/* Formulaires de recherche — masqués quand résultats affichés */}
           {!hasSearched && (
             <>
-              {/* Recherche par nom ou AMM */}
-              <Text style={styles.sectionTitle}>Recherche par nom ou AMM</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Rechercher par nom ou AMM"
-                placeholderTextColor="#9BA1A6"
-                value={query}
-                onChangeText={setQuery}
-                returnKeyType="search"
-                onSubmitEditing={handleSearch}
-                autoCorrect={false}
-              />
-              <Pressable
-                style={({ pressed }) => [
-                  styles.searchButton,
-                  pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                ]}
-                onPress={handleSearch}
-              >
-                <IconSymbol name="magnifyingglass" size={22} color="#FFFFFF" />
-                <Text style={styles.searchButtonText}>Rechercher</Text>
-              </Pressable>
-
-              {/* Recherche par matière active */}
-              <Text style={[styles.sectionTitle, { marginTop: 28 }]}>
-                Recherche par matière active
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: glyphosate, fluroxypyr..."
-                placeholderTextColor="#9BA1A6"
-                value={substanceQuery}
-                onChangeText={setSubstanceQuery}
-                returnKeyType="search"
-                onSubmitEditing={handleSubstanceSearch}
-                autoCorrect={false}
-                autoCapitalize="none"
-              />
-              <Pressable
-                style={({ pressed }) => [
-                  styles.searchButton,
-                  pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                ]}
-                onPress={handleSubstanceSearch}
-              >
-                <IconSymbol name="leaf.fill" size={22} color="#FFFFFF" />
-                <Text style={styles.searchButtonText}>Rechercher</Text>
-              </Pressable>
-
-              {/* Recherche par culture */}
-              <Text style={[styles.sectionTitle, { marginTop: 28 }]}>
-                Recherche par culture
-              </Text>
-              <View style={{ position: "relative" }}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex: blé, vigne, maïs, tomate..."
-                  placeholderTextColor="#9BA1A6"
-                  value={cultureQuery}
-                  onChangeText={(text) => {
-                    setCultureQuery(text);
-                    setShowCultureSuggestions(true);
-                    void prepareCultureSearch();
-                  }}
-                  onFocus={() => void prepareCultureSearch()}
-                  returnKeyType="search"
-                  onSubmitEditing={() => handleCultureSearch()}
-                  autoCorrect={false}
-                  autoCapitalize="words"
-                />
-                {/* Suggestions d'autocomplétion */}
-                {showCultureSuggestions && cultureSuggestions.length > 0 && (
-                  <View style={styles.suggestionsContainer}>
-                    {cultureSuggestions.map((suggestion) => (
-                      <Pressable
-                        key={suggestion.value}
-                        style={({ pressed }) => [
-                          styles.suggestionItem,
-                          pressed && { backgroundColor: "#F0F9FF" },
-                        ]}
-                        onPress={() => {
-                          prepareCultureFilterInteraction(Keyboard.dismiss);
-                          setCultureQuery(suggestion.value);
-                          setShowCultureSuggestions(false);
-                        }}
-                      >
-                        <Text style={styles.suggestionText}>{suggestion.label}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
+              <View style={styles.searchIntro}>
+                <Text style={styles.searchIntroTitle}>Comment souhaitez-vous rechercher ?</Text>
+                <Text style={styles.searchIntroText}>
+                  Choisissez la méthode la plus adaptée à l’information dont vous disposez.
+                </Text>
               </View>
 
-              {/* Boutons filtres par type */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                style={{ marginBottom: 12 }}
-                contentContainerStyle={{ gap: 8, paddingRight: 4 }}
-              >
-                {TYPE_FILTERS.map((filter) => (
-                  <Pressable
-                    key={filter}
-                    style={({ pressed }) => [
-                      styles.typeFilterButton,
-                      selectedTypeFilter === filter && styles.typeFilterButtonActive,
-                      pressed && { opacity: 0.8 },
-                    ]}
-                    onPress={() => {
-                      handleTypeFilterChange(filter);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.typeFilterText,
-                        selectedTypeFilter === filter && styles.typeFilterTextActive,
-                      ]}
-                    >
-                      {filter}
+              {/* Recherche par produit */}
+              <View style={styles.searchMethodCard}>
+                <View style={styles.searchMethodHeader}>
+                  <View style={[styles.searchMethodIcon, styles.searchMethodIconBlue]}>
+                    <IconSymbol name="magnifyingglass" size={22} color="#0A7EA5" />
+                  </View>
+                  <View style={styles.searchMethodHeaderText}>
+                    <Text style={styles.searchMethodTitle}>Par produit ou n° AMM</Text>
+                    <Text style={styles.searchMethodDescription}>
+                      Retrouvez un produit à partir de son nom commercial ou de son numéro d’autorisation.
                     </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
+                  </View>
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Nom du produit ou n° AMM"
+                  placeholderTextColor="#9BA1A6"
+                  value={query}
+                  onChangeText={setQuery}
+                  returnKeyType="search"
+                  onSubmitEditing={handleSearch}
+                  autoCorrect={false}
+                  accessibilityLabel="Rechercher un produit par nom ou numéro AMM"
+                />
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.searchButton,
+                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                  ]}
+                  onPress={handleSearch}
+                >
+                  <IconSymbol name="magnifyingglass" size={22} color="#FFFFFF" />
+                  <Text style={styles.searchButtonText}>Rechercher un produit</Text>
+                </Pressable>
+              </View>
 
-              <Pressable
-                style={({ pressed }) => [
-                  styles.cultureSearchButton,
-                  pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                ]}
-                onPress={() => handleCultureSearch()}
-              >
-                <IconSymbol name="leaf.fill" size={22} color="#FFFFFF" />
-                <Text style={styles.searchButtonText}>Rechercher par culture</Text>
-              </Pressable>
+              {/* Recherche par matière active */}
+              <View style={styles.searchMethodCard}>
+                <View style={styles.searchMethodHeader}>
+                  <View style={[styles.searchMethodIcon, styles.searchMethodIconTeal]}>
+                    <IconSymbol name="leaf.fill" size={22} color="#0F766E" />
+                  </View>
+                  <View style={styles.searchMethodHeaderText}>
+                    <Text style={styles.searchMethodTitle}>Par matière active</Text>
+                    <Text style={styles.searchMethodDescription}>
+                      Identifiez tous les produits contenant une substance active donnée.
+                    </Text>
+                  </View>
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex. glyphosate, fluroxypyr…"
+                  placeholderTextColor="#9BA1A6"
+                  value={substanceQuery}
+                  onChangeText={setSubstanceQuery}
+                  returnKeyType="search"
+                  onSubmitEditing={handleSubstanceSearch}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  accessibilityLabel="Rechercher par matière active"
+                />
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.searchButton,
+                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                  ]}
+                  onPress={handleSubstanceSearch}
+                >
+                  <IconSymbol name="leaf.fill" size={22} color="#FFFFFF" />
+                  <Text style={styles.searchButtonText}>Rechercher une matière active</Text>
+                </Pressable>
+              </View>
+
+              {/* Recherche par culture */}
+              <View style={styles.searchMethodCard}>
+                <View style={styles.searchMethodHeader}>
+                  <View style={[styles.searchMethodIcon, styles.searchMethodIconGreen]}>
+                    <IconSymbol name="leaf.fill" size={22} color="#2E7D32" />
+                  </View>
+                  <View style={styles.searchMethodHeaderText}>
+                    <Text style={styles.searchMethodTitle}>Par culture</Text>
+                    <Text style={styles.searchMethodDescription}>
+                      Consultez les produits autorisés pour une culture et filtrez par opération.
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ position: "relative" }}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex. blé, vigne, maïs, tomate…"
+                    placeholderTextColor="#9BA1A6"
+                    value={cultureQuery}
+                    onChangeText={(text) => {
+                      setCultureQuery(text);
+                      setShowCultureSuggestions(true);
+                      void prepareCultureSearch();
+                    }}
+                    onFocus={() => void prepareCultureSearch()}
+                    returnKeyType="search"
+                    onSubmitEditing={() => handleCultureSearch()}
+                    autoCorrect={false}
+                    autoCapitalize="words"
+                    accessibilityLabel="Rechercher par culture"
+                  />
+                  {showCultureSuggestions && cultureSuggestions.length > 0 && (
+                    <View style={styles.suggestionsContainer}>
+                      {cultureSuggestions.map((suggestion) => (
+                        <Pressable
+                          key={suggestion.value}
+                          style={({ pressed }) => [
+                            styles.suggestionItem,
+                            pressed && { backgroundColor: "#F0F9FF" },
+                          ]}
+                          onPress={() => {
+                            prepareCultureFilterInteraction(Keyboard.dismiss);
+                            setCultureQuery(suggestion.value);
+                            setShowCultureSuggestions(false);
+                          }}
+                        >
+                          <Text style={styles.suggestionText}>{suggestion.label}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.filterLabel}>Opération recherchée</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  style={{ marginBottom: 12 }}
+                  contentContainerStyle={{ gap: 8, paddingRight: 4 }}
+                >
+                  {TYPE_FILTERS.map((filter) => (
+                    <Pressable
+                      key={filter}
+                      style={({ pressed }) => [
+                        styles.typeFilterButton,
+                        selectedTypeFilter === filter && styles.typeFilterButtonActive,
+                        pressed && { opacity: 0.8 },
+                      ]}
+                      onPress={() => handleTypeFilterChange(filter)}
+                    >
+                      <Text
+                        style={[
+                          styles.typeFilterText,
+                          selectedTypeFilter === filter && styles.typeFilterTextActive,
+                        ]}
+                      >
+                        {filter}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.cultureSearchButton,
+                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                  ]}
+                  onPress={() => handleCultureSearch()}
+                >
+                  <IconSymbol name="leaf.fill" size={22} color="#FFFFFF" />
+                  <Text style={styles.searchButtonText}>Rechercher par culture</Text>
+                </Pressable>
+              </View>
 
               {/* Recherche par photo */}
-              <Text style={[styles.sectionTitle, { marginTop: 28 }]}>
-                Recherche par photo d'étiquette
-              </Text>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.scanButton,
-                  pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                ]}
-                onPress={handleScan}
-              >
-                <IconSymbol name="camera.fill" size={22} color="#FFFFFF" />
-                <Text style={styles.searchButtonText}>Scanner une étiquette</Text>
-              </Pressable>
-              <Text style={styles.scanHint}>
-                Prenez une photo de l'étiquette pour identifier le produit automatiquement
-              </Text>
+              <View style={styles.searchMethodCard}>
+                <View style={styles.searchMethodHeader}>
+                  <View style={[styles.searchMethodIcon, styles.searchMethodIconOrange]}>
+                    <IconSymbol name="camera.fill" size={22} color="#C2410C" />
+                  </View>
+                  <View style={styles.searchMethodHeaderText}>
+                    <Text style={styles.searchMethodTitle}>Par photo d’étiquette</Text>
+                    <Text style={styles.searchMethodDescription}>
+                      Photographiez l’étiquette d’un bidon pour identifier automatiquement le produit.
+                    </Text>
+                  </View>
+                </View>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.scanButton,
+                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                  ]}
+                  onPress={handleScan}
+                  accessibilityRole="button"
+                  accessibilityLabel="Scanner une étiquette"
+                >
+                  <IconSymbol name="camera.fill" size={22} color="#FFFFFF" />
+                  <Text style={styles.searchButtonText}>Scanner une étiquette</Text>
+                </Pressable>
+              </View>
             </>
           )}
 
@@ -884,6 +930,74 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
     paddingHorizontal: 20,
     paddingTop: 20,
+  },
+  searchIntro: {
+    marginBottom: 16,
+  },
+  searchIntroTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1A1A1A",
+  },
+  searchIntroText: {
+    marginTop: 5,
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#687076",
+  },
+  searchMethodCard: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  searchMethodHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 14,
+  },
+  searchMethodIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchMethodIconBlue: {
+    backgroundColor: "#E6F4FA",
+  },
+  searchMethodIconTeal: {
+    backgroundColor: "#CCFBF1",
+  },
+  searchMethodIconGreen: {
+    backgroundColor: "#DCFCE7",
+  },
+  searchMethodIconOrange: {
+    backgroundColor: "#FFEDD5",
+  },
+  searchMethodHeaderText: {
+    flex: 1,
+  },
+  searchMethodTitle: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "700",
+    color: "#1A1A1A",
+  },
+  searchMethodDescription: {
+    marginTop: 3,
+    fontSize: 13,
+    lineHeight: 18,
+    color: "#687076",
+  },
+  filterLabel: {
+    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#475569",
   },
   sectionTitle: {
     fontSize: 22,

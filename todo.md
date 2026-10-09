@@ -906,3 +906,10 @@
 - [x] Conserver la version visible Android à 1.3.0 pendant les tests internes du correctif de cumul
 - [x] Laisser EAS incrémenter le code Android distant au-delà de 111
 - [x] Valider la cohérence des fichiers de version avant publication
+
+## Version 1.3.0 — Clarification des parcours de recherche
+- [x] Structurer l’onglet Recherche en quatre cartes distinctes : produit, matière active, culture et photo
+- [x] Réinitialiser la recherche lorsque l’onglet est ouvert sans requête préremplie
+- [x] Placer « Ajout multiple » en avant-dernier sur l’Accueil, juste avant « Gestion du stock »
+- [x] Ajouter un accès compact « Ajout multiple » dans l’en-tête Stock, entre le compteur et la loupe
+- [x] Ajouter les tests de parcours et valider Android/iOS sans modifier la version visible 1.3.0
