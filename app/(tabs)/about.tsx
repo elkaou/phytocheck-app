@@ -99,16 +99,21 @@ export default function AboutScreen() {
             </Text>
           </Pressable>
 
-          {/* Database info */}
+          {/* Regulatory data sources */}
           <View style={[styles.card, { marginTop: 24 }]}>
-            <Text style={styles.dbTitle}>Base de données</Text>
+            <Text style={styles.dbTitle}>Sources de données réglementaires</Text>
             <Text style={styles.dbText}>
-              Les données de produits proviennent de la base E-Phy-Anses officielle,
-              mise à jour le {updateDate}.
+              Les données sur les produits, leurs autorisations, usages et phrases de risque proviennent du catalogue public E‑Phy de l&apos;Anses, mis à jour le {updateDate}.
             </Text>
             <Text style={styles.dbText}>
               {products.length.toLocaleString("fr-FR")} produits phytosanitaires
               référencés.
+            </Text>
+            <Text style={[styles.dbText, { marginTop: 12 }]}>
+              Les autorisations d&apos;urgence d&apos;une durée maximale de 120 jours (article 53) proviennent de la page officielle du ministère de l&apos;Agriculture et de la Souveraineté alimentaire. Elles sont affichées séparément des autorisations E‑Phy.
+            </Text>
+            <Text style={[styles.sourceText, { marginTop: 12 }]}>
+              Sources : ephy.anses.fr · agriculture.gouv.fr
             </Text>
 
             {/* Bouton vérification mise à jour */}
@@ -151,9 +156,7 @@ export default function AboutScreen() {
               d'homologation de leurs produits phytosanitaires.
             </Text>
             <Text style={[styles.dbText, { marginTop: 8 }]}>
-              Les données sont issues du catalogue E-Phy de l'ANSES (Agence
-              nationale de sécurité sanitaire de l'alimentation, de
-              l'environnement et du travail).
+              Sources réglementaires : catalogue E‑Phy de l&apos;Anses et page des autorisations d&apos;urgence du ministère de l&apos;Agriculture et de la Souveraineté alimentaire.
             </Text>
           </View>
         </ScrollView>
@@ -236,6 +239,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#687076",
     lineHeight: 22,
+  },
+  sourceText: {
+    fontSize: 13,
+    color: "#475569",
+    fontWeight: "600",
+    lineHeight: 20,
   },
   updateButton: {
     marginTop: 16,

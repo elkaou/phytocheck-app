@@ -889,3 +889,8 @@
 - [x] Conserver les métadonnées Article 53 lorsqu’un manifest UTF‑8 avec BOM est régénéré par le script E‑Phy
 - [x] Restaurer et publier le manifest GitHub Pages avec les données E‑Phy du 08/10/2026 et l’instantané Article 53 courant
 - [x] Ajouter un test de régression BOM, puis valider le script et la synchronisation distante
+
+## Documents légaux — Sources de données et date du 9 octobre 2026
+- [x] Mettre à jour l’onglet À propos avec les sources E‑Phy/ANSES et les autorisations d’urgence du ministère de l’Agriculture
+- [x] Harmoniser les CGU et la politique de confidentialité en ligne et hors ligne, avec la date de mise à jour du 9 octobre 2026
+- [x] Réviser les clés de cache des documents légaux pour éviter l’affichage d’une copie locale obsolète

@@ -1,6 +1,6 @@
 # Politique de Confidentialité de PhytoCheck
 
-**Dernière mise à jour : 20 février 2026**
+**Dernière mise à jour : 9 octobre 2026**
 
 ## Introduction
 
@@ -48,7 +48,7 @@ Cette permission permet de sélectionner une photo depuis votre galerie pour sca
 ## Utilisation des données
 
 Les données sont utilisées exclusivement pour :
-1. **Vérifier l'homologation des produits** : Recherche dans la base de données E-Phy (publique, fournie par le Ministère de l'Agriculture français)
+1. **Vérifier l'homologation des produits** : Recherche dans la base publique E‑Phy de l'Anses et consultation des autorisations d'urgence de 120 jours publiées par le Ministère de l'Agriculture
 2. **Gérer votre stock personnel** : Stockage local des produits que vous ajoutez
 3. **Gérer les abonnements Premium** : Vérification du statut d'abonnement via Google Play Billing
 
@@ -64,16 +64,20 @@ PhytoCheck **ne partage aucune donnée avec des tiers**. Les seules interactions
 - Les communications avec les serveurs externes (OCR) utilisent le protocole HTTPS
 - Aucune donnée n'est stockée sur des serveurs externes
 
-## Base de données E-Phy
+## Sources de données réglementaires
 
-L'application utilise la base de données publique **E-Phy** fournie par le Ministère de l'Agriculture et de la Souveraineté alimentaire français. Cette base contient :
+L'application utilise la base de données publique **E‑Phy** de l'Anses. Cette base contient :
 - Les produits phytosanitaires autorisés en France
 - Les produits retirés du marché (PPNU - Produits Phytosanitaires Non Utilisables)
 - Les phrases de risque associées (CMR, toxicité)
 
 **Source** : https://ephy.anses.fr/
 
-La base de données est mise à jour régulièrement et intégrée dans l'application. Aucune connexion internet n'est requise pour consulter les produits (sauf pour la fonctionnalité de scan photo).
+L'application consulte également la page officielle du Ministère de l'Agriculture et de la Souveraineté alimentaire pour les autorisations d'urgence d'une durée maximale de 120 jours, prévues par l'article 53 du règlement (CE) n°1107/2009. Ces autorisations sont affichées distinctement des données E‑Phy.
+
+**Source des autorisations d'urgence** : https://agriculture.gouv.fr/produits-phytopharmaceutiques-autorisations-de-mise-sur-le-marche-dune-duree-maximale-de-120-jours
+
+Ces sources publiques sont mises à jour régulièrement et intégrées dans l'application. Aucune connexion internet n'est requise pour consulter les données déjà téléchargées (sauf pour la fonctionnalité de scan photo).
 
 ## Abonnements et paiements
 
@@ -107,4 +111,4 @@ Cette application est conforme au :
 
 ---
 
-*Cette politique de confidentialité a été générée pour PhytoCheck v1.0.0*
+*Dernière révision : 9 octobre 2026*

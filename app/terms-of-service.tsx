@@ -7,7 +7,7 @@ export default function TermsOfServiceScreen() {
   return (
     <LegalDocumentScreen document={LEGAL_DOCUMENTS.terms}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator>
-        <Text style={styles.updateDate}>Version intégrée — dernière mise à jour : 20 février 2026</Text>
+        <Text style={styles.updateDate}>Version intégrée — dernière mise à jour : 9 octobre 2026</Text>
 
         <Text style={styles.sectionTitle}>1. Acceptation des conditions</Text>
         <Text style={styles.paragraph}>
@@ -16,23 +16,23 @@ export default function TermsOfServiceScreen() {
 
         <Text style={styles.sectionTitle}>2. Description du service</Text>
         <Text style={styles.paragraph}>
-          PhytoCheck est une application mobile gratuite, avec option d&apos;abonnement Premium, qui permet de vérifier l&apos;homologation des produits phytosanitaires en France, de consulter les informations issues de la base E-Phy, de scanner les étiquettes de produits et de gérer un stock personnel.
+          PhytoCheck est une application mobile gratuite, avec option d&apos;abonnement Premium, qui permet de vérifier l&apos;homologation des produits phytosanitaires en France, de consulter les informations issues d&apos;E‑Phy et les autorisations d&apos;urgence de 120 jours, de scanner les étiquettes de produits et de gérer un stock personnel.
         </Text>
 
         <Text style={styles.sectionTitle}>3. Source des données</Text>
         <Text style={styles.paragraph}>
-          Les informations proviennent de la <Text style={styles.bold}>base de données publique E-Phy</Text>, gérée par l&apos;ANSES et le Ministère de l&apos;Agriculture français. La base est mise à jour périodiquement. La date de mise à jour est affichée sur l&apos;écran d&apos;accueil.
+          Les informations relatives aux produits, à leurs usages et à leur statut proviennent de la <Text style={styles.bold}>base publique E‑Phy de l&apos;Anses</Text>. Les autorisations d&apos;urgence d&apos;une durée maximale de 120 jours, prises au titre de l&apos;article 53 du règlement (CE) n°1107/2009, proviennent de la page officielle du ministère de l&apos;Agriculture et de la Souveraineté alimentaire. Ces deux sources sont mises à jour périodiquement et les autorisations d&apos;urgence sont affichées séparément.
         </Text>
 
         <View style={styles.warningBox}>
           <Text style={styles.warningTitle}>4. DÉCHARGE DE RESPONSABILITÉ</Text>
           <Text style={styles.warningSubtitle}>4.1 Outil d&apos;information uniquement</Text>
           <Text style={styles.warningText}>
-            <Text style={styles.bold}>PhytoCheck est un outil d&apos;information et d&apos;aide à la décision. Il ne remplace en aucun cas la consultation de la base E-Phy officielle ni l&apos;avis d&apos;un professionnel qualifié.</Text>
+            <Text style={styles.bold}>PhytoCheck est un outil d&apos;information et d&apos;aide à la décision. Il ne remplace en aucun cas la consultation des sources officielles E‑Phy ou du ministère de l&apos;Agriculture, ni l&apos;avis d&apos;un professionnel qualifié.</Text>
           </Text>
           <Text style={styles.warningSubtitle}>4.2 Vérification obligatoire</Text>
           <Text style={styles.warningText}>
-            <Text style={styles.bold}>VOUS ÊTES TENU DE VÉRIFIER TOUTES LES INFORMATIONS DANS LA BASE E-PHY OFFICIELLE AVANT TOUTE UTILISATION, ACHAT, VENTE OU ÉLIMINATION DE PRODUITS PHYTOSANITAIRES.</Text>
+            <Text style={styles.bold}>VOUS ÊTES TENU DE VÉRIFIER TOUTE INFORMATION DANS LA SOURCE OFFICIELLE PERTINENTE — E‑PHY OU MINISTÈRE DE L&apos;AGRICULTURE POUR LES AUTORISATIONS D&apos;URGENCE — AVANT TOUTE UTILISATION, ACHAT, VENTE OU ÉLIMINATION DE PRODUITS PHYTOSANITAIRES.</Text>
           </Text>
           <Text style={styles.warningSubtitle}>4.3 Limitation de responsabilité</Text>
           <Text style={styles.warningText}>
@@ -40,13 +40,13 @@ export default function TermsOfServiceScreen() {
           </Text>
           <Text style={styles.warningSubtitle}>4.4 Utilisation à vos risques</Text>
           <Text style={styles.warningText}>
-            <Text style={styles.bold}>VOUS UTILISEZ CETTE APPLICATION À VOS PROPRES RISQUES.</Text> En cas de doute, consultez impérativement la base E-Phy officielle, un conseiller agricole agréé, les services de la DRAAF ou un distributeur agréé.
+            <Text style={styles.bold}>VOUS UTILISEZ CETTE APPLICATION À VOS PROPRES RISQUES.</Text> En cas de doute, consultez impérativement E‑Phy, la page des autorisations d&apos;urgence du ministère de l&apos;Agriculture, un conseiller agricole agréé, les services de la DRAAF ou un distributeur agréé.
           </Text>
         </View>
 
         <Text style={styles.sectionTitle}>5. Obligations de l&apos;utilisateur</Text>
         <Text style={styles.paragraph}>
-          Vous vous engagez à utiliser l&apos;application conformément à la législation, à ne pas l&apos;utiliser comme unique source d&apos;information, à vérifier systématiquement les informations dans E-Phy officiel et à respecter la réglementation française sur les produits phytosanitaires.
+          Vous vous engagez à utiliser l&apos;application conformément à la législation, à ne pas l&apos;utiliser comme unique source d&apos;information, à vérifier systématiquement les informations dans la source officielle pertinente et à respecter la réglementation française sur les produits phytosanitaires.
         </Text>
 
         <Text style={styles.sectionTitle}>6. Abonnement Premium</Text>
@@ -72,7 +72,7 @@ export default function TermsOfServiceScreen() {
         <View style={styles.reminderBox}>
           <Text style={styles.reminderTitle}>RAPPEL IMPORTANT</Text>
           <Text style={styles.reminderText}>
-            PHYTOCHECK EST UN OUTIL D&apos;AIDE À LA DÉCISION. VOUS DEVEZ IMPÉRATIVEMENT VÉRIFIER TOUTES LES INFORMATIONS DANS LA BASE E-PHY OFFICIELLE AVANT TOUTE UTILISATION DE PRODUITS PHYTOSANITAIRES.
+            PHYTOCHECK EST UN OUTIL D&apos;AIDE À LA DÉCISION. VOUS DEVEZ IMPÉRATIVEMENT VÉRIFIER TOUTE INFORMATION DANS E‑PHY OU, POUR UNE AUTORISATION D&apos;URGENCE, SUR LE SITE DU MINISTÈRE DE L&apos;AGRICULTURE AVANT TOUTE UTILISATION DE PRODUITS PHYTOSANITAIRES.
           </Text>
           <Text style={styles.reminderText}>
             LE DÉVELOPPEUR NE PEUT ÊTRE TENU RESPONSABLE DE TOUTE CONSÉQUENCE RÉSULTANT DE L&apos;UTILISATION DE CETTE APPLICATION.

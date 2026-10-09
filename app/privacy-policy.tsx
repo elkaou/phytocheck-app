@@ -7,7 +7,7 @@ export default function PrivacyPolicyScreen() {
   return (
     <LegalDocumentScreen document={LEGAL_DOCUMENTS.privacy}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator>
-        <Text style={styles.updateDate}>Version intégrée — dernière mise à jour : 20 février 2026</Text>
+        <Text style={styles.updateDate}>Version intégrée — dernière mise à jour : 9 octobre 2026</Text>
 
         <Text style={styles.sectionTitle}>Introduction</Text>
         <Text style={styles.paragraph}>
@@ -35,9 +35,9 @@ export default function PrivacyPolicyScreen() {
           Les données servent exclusivement à vérifier l&apos;homologation des produits, gérer votre stock personnel et administrer les abonnements Premium. Les photos utilisées pour la reconnaissance d&apos;étiquette sont traitées temporairement pour cette analyse.
         </Text>
 
-        <Text style={styles.sectionTitle}>Base de données E-Phy</Text>
+        <Text style={styles.sectionTitle}>Sources de données réglementaires</Text>
         <Text style={styles.paragraph}>
-          L&apos;application utilise la base publique E-Phy. Les informations sont mises à jour régulièrement et restent consultables hors ligne après téléchargement des données de l&apos;application.
+          L&apos;application utilise la base publique E‑Phy de l&apos;Anses pour les produits, leurs usages et leur statut. Elle consulte également la page officielle du ministère de l&apos;Agriculture et de la Souveraineté alimentaire pour les autorisations d&apos;urgence de 120 jours prévues par l&apos;article 53 du règlement (CE) n°1107/2009. Ces informations publiques sont mises à jour régulièrement et restent consultables hors ligne après leur téléchargement dans l&apos;application.
         </Text>
 
         <Text style={styles.sectionTitle}>Droits des utilisateurs</Text>

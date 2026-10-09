@@ -1,6 +1,6 @@
 # Conditions Générales d'Utilisation de PhytoCheck
 
-**Dernière mise à jour : 31 Août 2026**
+**Dernière mise à jour : 9 octobre 2026**
 
 ## 1. Acceptation des conditions
 
@@ -10,33 +10,39 @@ En téléchargeant, installant ou utilisant l'application PhytoCheck, vous accep
 
 PhytoCheck est une application mobile gratuite (avec option d'abonnement Premium) qui permet de :
 - Vérifier l'homologation des produits phytosanitaires en France
-- Consulter les informations issues de la base de données publique E-Phy
+- Consulter les informations issues de la base de données publique E‑Phy et les autorisations d'urgence temporaires
 - Scanner les étiquettes de produits pour une identification rapide
 - Gérer un stock personnel de produits phytosanitaires
 
 ## 3. Source des données
 
-### 3.1 Base de données E-Phy
+### 3.1 Base de données E‑Phy
 
-Les informations sur les produits phytosanitaires proviennent de la **base de données publique E-Phy**, gérée par l'ANSES (Agence nationale de sécurité sanitaire de l'alimentation, de l'environnement et du travail) et le Ministère de l'Agriculture et de la Souveraineté alimentaire français.
+Les informations sur les produits phytosanitaires, leur statut d'autorisation, leurs usages et les phrases de risque proviennent de la **base de données publique E‑Phy**, publiée par l'Anses (Agence nationale de sécurité sanitaire de l'alimentation, de l'environnement et du travail).
 
 **Source officielle** : https://ephy.anses.fr/
 
-### 3.2 Date de mise à jour
+### 3.2 Autorisations d'urgence Article 53
+
+Les informations relatives aux autorisations d'urgence d'une durée maximale de 120 jours, prises au titre de l'article 53 du règlement (CE) n°1107/2009, proviennent de la page officielle du Ministère de l'Agriculture et de la Souveraineté alimentaire. Elles sont affichées distinctement dans l'application et ne constituent pas une autorisation E‑Phy pérenne.
+
+**Source officielle** : https://agriculture.gouv.fr/produits-phytopharmaceutiques-autorisations-de-mise-sur-le-marche-dune-duree-maximale-de-120-jours
+
+### 3.3 Date de mise à jour
 
 La base de données intégrée dans l'application est mise à jour périodiquement. La date de la dernière mise à jour est affichée sur l'écran d'accueil de l'application.
 
-**Date actuelle de la base** : 08/10/2026
+**Date actuelle de la base E‑Phy** : 08/10/2026
 
 ## 4. DÉCHARGE DE RESPONSABILITÉ
 
 ### 4.1 Outil d'information uniquement
 
-**PhytoCheck est un outil d'information et d'aide à la décision. Il ne remplace en aucun cas la consultation de la base de données officielle E-Phy ni l'avis d'un professionnel qualifié.**
+**PhytoCheck est un outil d'information et d'aide à la décision. Il ne remplace en aucun cas la consultation de la source officielle pertinente — E‑Phy ou la page ministérielle des autorisations d'urgence — ni l'avis d'un professionnel qualifié.**
 
 ### 4.2 Vérification obligatoire
 
-**VOUS ÊTES TENU DE VÉRIFIER TOUTES LES INFORMATIONS DANS LA BASE DE DONNÉES OFFICIELLE E-Phy (https://ephy.anses.fr/) AVANT TOUTE UTILISATION, ACHAT, VENTE OU ÉLIMINATION DE PRODUITS PHYTOSANITAIRES.**
+**VOUS ÊTES TENU DE VÉRIFIER TOUTE INFORMATION DANS LA SOURCE OFFICIELLE PERTINENTE — E‑PHY (https://ephy.anses.fr/) OU, POUR UNE AUTORISATION D'URGENCE, LE MINISTÈRE DE L'AGRICULTURE (https://agriculture.gouv.fr/) — AVANT TOUTE UTILISATION, ACHAT, VENTE OU ÉLIMINATION DE PRODUITS PHYTOSANITAIRES.**
 
 L'application PhytoCheck ne peut être tenue pour seule source d'information pour des décisions ayant des conséquences légales, sanitaires, environnementales ou financières.
 
@@ -45,7 +51,7 @@ L'application PhytoCheck ne peut être tenue pour seule source d'information pou
 Bien que nous nous efforcions de maintenir les données à jour et exactes, **nous ne garantissons pas** :
 - L'exactitude complète des informations affichées
 - L'absence d'erreurs ou d'omissions
-- La mise à jour en temps réel des données par rapport à la base E-Phy officielle
+- La mise à jour en temps réel des données par rapport aux sources officielles E‑Phy et ministérielle
 - La disponibilité continue du service
 
 ### 4.4 Limitation de responsabilité
@@ -66,7 +72,8 @@ Bien que nous nous efforcions de maintenir les données à jour et exactes, **no
 ### 4.5 Utilisation à vos risques
 
 **VOUS UTILISEZ CETTE APPLICATION À VOS PROPRES RISQUES.** En cas de doute sur un produit, consultez impérativement :
-- La base de données officielle E-Phy : https://ephy.anses.fr/
+- La base de données officielle E‑Phy : https://ephy.anses.fr/
+- La page des autorisations d'urgence du Ministère de l'Agriculture : https://agriculture.gouv.fr/produits-phytopharmaceutiques-autorisations-de-mise-sur-le-marche-dune-duree-maximale-de-120-jours
 - Un conseiller agricole agréé
 - Les services de la DRAAF (Direction Régionale de l'Alimentation, de l'Agriculture et de la Forêt)
 - Un distributeur agréé de produits phytosanitaires
@@ -78,7 +85,7 @@ Bien que nous nous efforcions de maintenir les données à jour et exactes, **no
 Vous vous engagez à :
 - Utiliser l'application conformément à la législation en vigueur
 - Ne pas utiliser l'application comme unique source d'information pour des décisions importantes
-- Vérifier systématiquement les informations dans la base E-Phy officielle
+- Vérifier systématiquement les informations dans la source officielle pertinente
 - Respecter la réglementation française sur l'utilisation des produits phytosanitaires
 
 ### 5.2 Réglementation applicable
@@ -102,11 +109,11 @@ Il est strictement interdit de :
 
 ### 6.1 Droits d'auteur
 
-L'application PhytoCheck, son code source, son design et son contenu (hors base de données E-Phy) sont la propriété exclusive de François Courouble et sont protégés par les lois françaises et internationales sur la propriété intellectuelle.
+L'application PhytoCheck, son code source, son design et son contenu (hors données publiques E‑Phy et ministérielles) sont la propriété exclusive de François Courouble et sont protégés par les lois françaises et internationales sur la propriété intellectuelle.
 
-### 6.2 Base de données E-Phy
+### 6.2 Données publiques réglementaires
 
-La base de données E-Phy est une œuvre publique appartenant à l'État français. Son utilisation dans PhytoCheck est conforme aux conditions de réutilisation des données publiques.
+Les données E‑Phy et les informations d'autorisations d'urgence publiées par le ministère sont des données publiques. Leur utilisation dans PhytoCheck est conforme aux conditions de réutilisation applicables.
 
 ### 6.3 Licence d'utilisation
 
@@ -196,7 +203,7 @@ Site web : https://phytocheck.com
 
 ## 13. RAPPEL IMPORTANT
 
-**⚠️ PHYTOCHECK EST UN OUTIL D'AIDE À LA DÉCISION. VOUS DEVEZ IMPÉRATIVEMENT VÉRIFIER TOUTES LES INFORMATIONS DANS LA BASE DE DONNÉES OFFICIELLE E-PHY (https://ephy.anses.fr/) AVANT TOUTE UTILISATION DE PRODUITS PHYTOSANITAIRES.**
+**⚠️ PHYTOCHECK EST UN OUTIL D'AIDE À LA DÉCISION. VOUS DEVEZ IMPÉRATIVEMENT VÉRIFIER TOUTE INFORMATION DANS E‑PHY (https://ephy.anses.fr/) OU, POUR UNE AUTORISATION D'URGENCE, SUR LE SITE DU MINISTÈRE DE L'AGRICULTURE AVANT TOUTE UTILISATION DE PRODUITS PHYTOSANITAIRES.**
 
 **⚠️ LE DÉVELOPPEUR NE PEUT ÊTRE TENU RESPONSABLE DE TOUTE CONSÉQUENCE RÉSULTANT DE L'UTILISATION DE CETTE APPLICATION.**
 
@@ -206,4 +213,4 @@ Site web : https://phytocheck.com
 
 *En utilisant PhytoCheck, vous reconnaissez avoir lu, compris et accepté ces Conditions Générales d'Utilisation.*
 
-*Version 1.1.6 - 30 Août 2026*
+*Dernière révision : 9 octobre 2026*

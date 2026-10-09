@@ -6,6 +6,8 @@ describe("legal documents", () => {
   it("uses the two GitHub Pages legal-document URLs", () => {
     expect(LEGAL_DOCUMENTS.terms.url).toBe("https://elkaou.github.io/phytocheck-app/terms-of-service.html");
     expect(LEGAL_DOCUMENTS.privacy.url).toBe("https://elkaou.github.io/phytocheck-app/privacy-policy.html");
+    expect(LEGAL_DOCUMENTS.terms.cacheKey).toBe("@phytocheck/legal-document/terms-v2");
+    expect(LEGAL_DOCUMENTS.privacy.cacheKey).toBe("@phytocheck/legal-document/privacy-v2");
   });
 
   it("accepts a complete HTML document and rejects invalid cached content", () => {

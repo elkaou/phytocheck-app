@@ -14,13 +14,17 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentId, LegalDocumentConfig> = {
     id: "terms",
     title: "Conditions d’Utilisation",
     url: `${GITHUB_PAGES_BASE_URL}/terms-of-service.html`,
-    cacheKey: "@phytocheck/legal-document/terms-v1",
+    // v2 force la lecture de la révision du 9 octobre 2026 plutôt qu'une
+    // ancienne copie locale des CGU lors d'une utilisation hors ligne.
+    cacheKey: "@phytocheck/legal-document/terms-v2",
   },
   privacy: {
     id: "privacy",
     title: "Politique de confidentialité",
     url: `${GITHUB_PAGES_BASE_URL}/privacy-policy.html`,
-    cacheKey: "@phytocheck/legal-document/privacy-v1",
+    // v2 force la lecture de la révision du 9 octobre 2026 plutôt qu'une
+    // ancienne copie locale de la politique lors d'une utilisation hors ligne.
+    cacheKey: "@phytocheck/legal-document/privacy-v2",
   },
 };
 
