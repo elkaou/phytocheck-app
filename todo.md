@@ -901,3 +901,8 @@
 - [x] Avertir avant cumul avec la quantité existante et le nouveau total calculé
 - [x] Bloquer un cumul lorsque l’unité saisie diffère de celle déjà stockée
 - [x] Ajouter les tests de cumul et de compatibilité d’unité, puis valider Android/iOS
+
+## Android — Tests internes sous la version visible 1.3.0
+- [x] Conserver la version visible Android à 1.3.0 pendant les tests internes du correctif de cumul
+- [x] Laisser EAS incrémenter le code Android distant au-delà de 111
+- [x] Valider la cohérence des fichiers de version avant publication
