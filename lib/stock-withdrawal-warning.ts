@@ -24,6 +24,13 @@ function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
+/** Compare des jours calendaires, sans dépendre des journées de 23 ou 25 heures. */
+function calendarDayNumber(date: Date): number {
+  return Math.floor(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / MILLISECONDS_PER_DAY,
+  );
+}
+
 function parseFrenchDate(value: string): Date | null {
   const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
   if (!match) return null;
@@ -76,6 +83,7 @@ export function getUpcomingStockWithdrawalWarnings(
 ): StockWithdrawalWarning[] {
   const today = startOfDay(now);
   const deadline = addMonths(today, WITHDRAWAL_WARNING_MONTHS);
+  const todayDayNumber = calendarDayNumber(today);
   const productsByAmm = new Map(products.map((product) => [product.amm, product]));
 
   const warnings = stock.flatMap((stockItem) => {
@@ -89,7 +97,7 @@ export function getUpcomingStockWithdrawalWarnings(
       amm: stockItem.amm,
       productName: stockItem.secondaryName || stockItem.nom || product.nom,
       withdrawalDate: product.dateRetrait,
-      daysRemaining: Math.ceil((withdrawalDate.getTime() - today.getTime()) / MILLISECONDS_PER_DAY),
+      daysRemaining: calendarDayNumber(withdrawalDate) - todayDayNumber,
     }];
   });
 

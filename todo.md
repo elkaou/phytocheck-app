@@ -952,3 +952,7 @@
 - [x] Informer du décompte avant l’ouverture de la caméra ou de la galerie et dans le récapitulatif des résultats
 - [x] Bloquer proprement l’affichage des résultats si le solde Freemium ne couvre pas tous les bidons identifiés
 - [x] Ajouter les tests de correction, de décompte multiple et valider Android/iOS sans changer la version 1.3.0
+
+## Version 1.3.0 — Fiabilité des alertes de retrait
+- [x] Calculer les jours restants par date calendaire, sans décalage lié aux changements d’heure Windows/iOS/Android
+- [x] Valider les tests de retrait sous un fuseau horaire européen avant le build Android
