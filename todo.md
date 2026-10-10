@@ -938,3 +938,9 @@
 - [x] Afficher sur chaque carte concernée la date de retrait et le nombre de jours restants
 - [x] Réutiliser la même fenêtre de trois mois que l’alerte d’ouverture du Stock
 - [x] Vérifier la présentation Android/iOS et les régressions sans changer la version 1.3.0
+
+## Version 1.3.0 — Priorité au nom reconnu dans l’ajout multiple
+- [x] Retenir le produit correspondant à un nom commercial principal reconnu avec certitude, même si l’AMM OCR est incohérent
+- [x] Conserver le refus automatique pour les noms ambigus ou trop approximatifs afin d’éviter les fiches erronées
+- [x] Améliorer la normalisation des noms lus et les consignes OCR pour éviter les associations entre bidons
+- [x] Ajouter les régressions POOL, SWITCH et NIMROD, puis valider Android/iOS sans changer la version 1.3.0

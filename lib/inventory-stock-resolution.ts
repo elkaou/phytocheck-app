@@ -25,6 +25,8 @@ export interface ResolvedInventoryDetection {
   product: ClassifiedProduct | null;
   /** Nom qui sera conservé dans le stock quand il s'agit d'un nom secondaire. */
   stockDisplayName?: string;
+  /** Le nom commercial certain a été privilégié face à une AMM OCR contradictoire. */
+  namePreferredOverAmm?: boolean;
   /** Une AMM lue contredisait le nom commercial et a donc été écartée. */
   reason?: "not_found" | "identity_conflict";
 }
@@ -124,6 +126,43 @@ function getSingleBestProduct(
 }
 
 /**
+ * Retient uniquement un nom commercial exact : nom principal, nom secondaire,
+ * ou premier terme du libellé OCR (« SWITCH 62,5 WG » → « SWITCH »). Cette
+ * règle est volontairement plus exigeante que le rapprochement ordinaire :
+ * elle sert uniquement à écarter une AMM manifestement lue sur un bidon voisin.
+ */
+function getSingleTrustedNameProduct(
+  detectedName: string,
+  products: Product[],
+  riskPhrases: Record<string, RiskPhrase[]>,
+): ClassifiedProduct | null {
+  const candidatesByAmm = new Map<string, { product: ClassifiedProduct; score: number }>();
+
+  for (const term of getSearchTerms(detectedName)) {
+    for (const candidate of searchProducts(term, 50, products, riskPhrases)) {
+      const score = getNameMatchScore(candidate, term);
+      if (score < 110) continue;
+
+      const current = candidatesByAmm.get(candidate.amm);
+      if (!current || score > current.score) {
+        candidatesByAmm.set(candidate.amm, { product: candidate, score });
+      }
+    }
+  }
+
+  const matches = Array.from(candidatesByAmm.values()).sort(
+    (left, right) => right.score - left.score || left.product.nom.localeCompare(right.product.nom, "fr"),
+  );
+  const bestMatch = matches[0];
+  if (!bestMatch) return null;
+
+  const isAmbiguous = matches
+    .slice(1)
+    .some((match) => match.score === bestMatch.score && match.product.amm !== bestMatch.product.amm);
+  return isAmbiguous ? null : bestMatch.product;
+}
+
+/**
  * Convertit chaque bidon détecté en une unique fiche réglementaire.
  * Règle volontairement stricte : AMM exact > meilleur nom commercial/secondaire.
  * En cas de doute, le bidon est signalé comme non identifié, sans proposer une
@@ -143,16 +182,36 @@ export function resolveInventoryDetections(
       : undefined;
 
     // Une AMM ne peut être utilisée que si elle est lue sur la même étiquette
-    // que le nom commercial. En cas de contradiction, l'ancienne logique
-    // sélectionnait une fiche erronée (par exemple OMITE pour SWITCH). Le nom
-    // et l'AMM peuvent tous deux avoir été lus sur des bidons voisins : aucun ne
-    // doit donc être retenu automatiquement dans ce cas.
+    // que le nom commercial. Si une AMM voisine est mélangée au bon nom, un nom
+    // commercial exact et non ambigu reste plus fiable que ce numéro isolé.
     const ammContradictsName = Boolean(
       exactAmmProduct &&
         detection.productName.trim() &&
         !hasSufficientNameMatch(exactAmmProduct, detection.productName),
     );
     if (ammContradictsName) {
+      const trustedNameProduct = getSingleTrustedNameProduct(
+        detection.productName,
+        products,
+        riskPhrases,
+      );
+      if (trustedNameProduct) {
+        const detectedName = normalize(detection.productName);
+        const secondaryName = trustedNameProduct.nomsSecondaires
+          .split("|")
+          .map((name) => name.trim())
+          .find((name) => normalize(name) === detectedName);
+
+        return {
+          containerIndex: detection.containerIndex,
+          detectedName: detection.productName,
+          detectedAmm: amm,
+          product: trustedNameProduct,
+          stockDisplayName: secondaryName,
+          namePreferredOverAmm: true,
+        };
+      }
+
       return {
         containerIndex: detection.containerIndex,
         detectedName: detection.productName,

@@ -277,6 +277,14 @@ export default function InventoryScanScreen() {
           {item.detectedName && item.detectedName !== displayedName ? (
             <Text style={styles.cardHint}>Étiquette lue : {item.detectedName}</Text>
           ) : null}
+          {item.namePreferredOverAmm ? (
+            <View style={styles.namePriorityNotice}>
+              <IconSymbol name="info.circle.fill" size={17} color="#0A7EA5" />
+              <Text style={styles.namePriorityNoticeText}>
+                Nom commercial confirmé ; n° AMM OCR écarté car incohérent.
+              </Text>
+            </View>
+          ) : null}
           <Text style={styles.cardHint}>
             Une seule fiche réglementaire a été retenue automatiquement pour ce bidon.
           </Text>
@@ -467,6 +475,18 @@ const styles = StyleSheet.create({
   },
   regulatoryBadgeText: { fontSize: 12, lineHeight: 16, fontWeight: "700" },
   cardHint: { color: "#687076", fontSize: 13, lineHeight: 18 },
+  namePriorityNotice: {
+    alignSelf: "stretch",
+    backgroundColor: "#E0F2FE",
+    borderColor: "#7DD3FC",
+    borderWidth: 1,
+    borderRadius: 9,
+    padding: 9,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  namePriorityNoticeText: { color: "#075985", fontSize: 12, lineHeight: 17, flex: 1, fontWeight: "600" },
   duplicateNotice: {
     backgroundColor: "#FFFBEB",
     borderColor: "#FDE68A",

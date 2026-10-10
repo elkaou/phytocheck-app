@@ -148,6 +148,19 @@ const products: Product[] = [
     dateRetrait: "",
     dateAutorisation: "01/01/2020",
   },
+  {
+    amm: "9200383",
+    nom: "KARATE XPRESS",
+    nomsSecondaires: "POOL",
+    titulaire: "Exemple",
+    gammeUsage: "PPP",
+    substancesActives: "Substance K",
+    fonctions: "Insecticide",
+    formulation: "CS",
+    etat: "RETIRE",
+    dateRetrait: "01/01/2020",
+    dateAutorisation: "01/01/2010",
+  },
 ];
 
 const riskPhrases: Record<string, RiskPhrase[]> = {};
@@ -212,16 +225,24 @@ describe("resolveInventoryDetections", () => {
     expect(resolved.reason).toBe("not_found");
   });
 
-  it("n’associe pas SWITCH à une AMM contradictoire lue sur un autre bidon", () => {
-    const [resolved] = resolveInventoryDetections(
-      [{ containerIndex: 1, productName: "SWITCH", amm: "9600095" }],
-      products,
-      riskPhrases,
-    );
+  it.each([
+    ["SWITCH", "9600095", "9500568", "SWITCH"],
+    ["NIMROD", "7500585", "7600008", "NIMROD"],
+    ["POOL", "9600095", "9200383", "KARATE XPRESS"],
+  ])(
+    "privilégie le nom commercial certain %s face à l’AMM OCR contradictoire",
+    (detectedName, contradictoryAmm, expectedAmm, expectedName) => {
+      const [resolved] = resolveInventoryDetections(
+        [{ containerIndex: 1, productName: detectedName, amm: contradictoryAmm }],
+        products,
+        riskPhrases,
+      );
 
-    expect(resolved.product).toBeNull();
-    expect(resolved.reason).toBe("identity_conflict");
-  });
+      expect(resolved.product?.amm).toBe(expectedAmm);
+      expect(resolved.product?.nom).toBe(expectedName);
+      expect(resolved.namePreferredOverAmm).toBe(true);
+    },
+  );
 
   it("privilégie SWITCH comme nom commercial principal devant un nom secondaire homonyme", () => {
     const [resolved] = resolveInventoryDetections(
@@ -232,17 +253,6 @@ describe("resolveInventoryDetections", () => {
 
     expect(resolved.product?.amm).toBe("9500568");
     expect(resolved.product?.nom).toBe("SWITCH");
-  });
-
-  it("n’associe pas NIMROD à une AMM contradictoire lue sur un autre bidon", () => {
-    const [resolved] = resolveInventoryDetections(
-      [{ containerIndex: 1, productName: "NIMROD", amm: "7500585" }],
-      products,
-      riskPhrases,
-    );
-
-    expect(resolved.product).toBeNull();
-    expect(resolved.reason).toBe("identity_conflict");
   });
 
   it.each([
