@@ -18,6 +18,7 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { ScreenContainer } from "@/components/screen-container";
 import { QuantityModal } from "@/components/quantity-modal";
+import { StockWithdrawalWarningModal } from "@/components/stock-withdrawal-warning-modal";
 import { useApp } from "@/lib/app-context";
 import { useData } from "@/lib/data-context";
 import { StockRegulatoryChange } from "@/lib/stock-regulatory-check";
@@ -35,8 +36,15 @@ import {
   getClassificationBgColor,
   ProductClassification,
 } from "@/lib/product-service";
-import { StockItem, FREE_STOCK_LIMIT } from "@/lib/store";
+import { getStock, StockItem, FREE_STOCK_LIMIT } from "@/lib/store";
 import { stockItemMatchesSearch } from "@/lib/stock-search";
+import {
+  acknowledgeStockWithdrawalWarnings,
+  filterUnacknowledgedStockWithdrawalWarnings,
+  getStockWithdrawalWarningState,
+  getUpcomingStockWithdrawalWarnings,
+  StockWithdrawalWarning,
+} from "@/lib/stock-withdrawal-warning";
 
 type FilterType = "all" | "homologue" | "retire" | "homologue_cmr" | "homologue_toxique";
 
@@ -65,13 +73,18 @@ export default function StockScreen() {
   const [itemBeingEdited, setItemBeingEdited] = useState<StockItem | null>(null);
   const [isStockSearchOpen, setIsStockSearchOpen] = useState(false);
   const [stockSearchQuery, setStockSearchQuery] = useState("");
+  const [withdrawalWarnings, setWithdrawalWarnings] = useState<StockWithdrawalWarning[]>([]);
   const isCheckingRegulatoryStatus = useRef(false);
 
   useEffect(() => {
     refreshStock();
   }, [refreshStock]);
 
-  const showRegulatoryAlert = useCallback((changes: StockRegulatoryChange[], emergencyChanges: StockEmergencyAuthorizationChange[]) => {
+  const showRegulatoryAlert = useCallback((
+    changes: StockRegulatoryChange[],
+    emergencyChanges: StockEmergencyAuthorizationChange[],
+    onDismiss?: () => void,
+  ) => {
     const details = changes
       .slice(0, 5)
       .map((change) => {
@@ -106,7 +119,8 @@ export default function StockScreen() {
     Alert.alert(
       "Mise à jour réglementaire",
       [ephySection, article53Section].filter(Boolean).join("\n\n"),
-      [{ text: "Compris" }],
+      [{ text: "Compris", onPress: onDismiss }],
+      { cancelable: false },
     );
   }, [updateDate]);
 
@@ -119,10 +133,36 @@ export default function StockScreen() {
       void Promise.all([
         checkStockRegulatoryStatus(products, riskPhrases),
         checkStockEmergencyAuthorizations(emergencyAuthorizations),
+        getStockWithdrawalWarningState(),
+        getStock(),
       ])
-        .then(([changes, emergencyChanges]: [StockRegulatoryChange[], StockEmergencyAuthorizationChange[]]) => {
-          if (isActive && (changes.length > 0 || emergencyChanges.length > 0)) {
-            showRegulatoryAlert(changes, emergencyChanges);
+        .then(([
+          changes,
+          emergencyChanges,
+          withdrawalWarningState,
+          storedStock,
+        ]: [
+          StockRegulatoryChange[],
+          StockEmergencyAuthorizationChange[],
+          Awaited<ReturnType<typeof getStockWithdrawalWarningState>>,
+          StockItem[],
+        ]) => {
+          if (!isActive) return;
+
+          const upcomingWithdrawalWarnings = filterUnacknowledgedStockWithdrawalWarnings(
+            getUpcomingStockWithdrawalWarnings(storedStock, products),
+            withdrawalWarningState.acknowledgedWarningIds,
+          );
+          const showWithdrawalWarning = () => {
+            if (isActive && upcomingWithdrawalWarnings.length > 0) {
+              setWithdrawalWarnings(upcomingWithdrawalWarnings);
+            }
+          };
+
+          if (changes.length > 0 || emergencyChanges.length > 0) {
+            showRegulatoryAlert(changes, emergencyChanges, showWithdrawalWarning);
+          } else {
+            showWithdrawalWarning();
           }
         })
         .catch((error: unknown) => console.warn("Vérification réglementaire du stock impossible:", error))
@@ -141,6 +181,14 @@ export default function StockScreen() {
       showRegulatoryAlert,
     ]),
   );
+
+  const handleWithdrawalWarningClose = useCallback((acknowledge: boolean) => {
+    const warningsToHandle = withdrawalWarnings;
+    setWithdrawalWarnings([]);
+    if (acknowledge) {
+      void acknowledgeStockWithdrawalWarnings(warningsToHandle);
+    }
+  }, [withdrawalWarnings]);
 
   const handleRemove = useCallback(
     (item: StockItem) => {
@@ -789,6 +837,11 @@ export default function StockScreen() {
         initialUnit={itemBeingEdited?.unite ?? "L"}
         onCancel={() => setItemBeingEdited(null)}
         onConfirm={handleQuantityConfirm}
+      />
+      <StockWithdrawalWarningModal
+        visible={withdrawalWarnings.length > 0}
+        warnings={withdrawalWarnings}
+        onClose={handleWithdrawalWarningClose}
       />
     </ScreenContainer>
   );

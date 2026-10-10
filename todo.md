@@ -926,3 +926,10 @@
 - [x] Réutiliser les couleurs existantes : rouge PPNU, orange foncé toxique, orange clair CMR et vert homologué non CMR/non toxique
 - [x] Conserver le statut bleu pour une autorisation d’urgence Article 53 lorsqu’il existe
 - [x] Ajouter les tests de correspondance statut/couleur et valider les bundles Android/iOS sans changer la version 1.3.0
+
+## Version 1.3.0 — Alerte de retrait anticipée du stock
+- [x] Détecter à l’ouverture du Stock les produits E‑Phy dont la date de retrait intervient dans les trois prochains mois
+- [x] Afficher une fenêtre dédiée avec le produit, la date de retrait et le nombre de jours restant
+- [x] Enregistrer le choix « Je suis averti, ne plus afficher » par produit et date de retrait
+- [x] Réafficher l’alerte si une nouvelle date de retrait est publiée ou si l’utilisateur ne l’a pas acquittée
+- [x] Ajouter les tests de dates, d’acquittement et valider Android/iOS sans changer la version 1.3.0
