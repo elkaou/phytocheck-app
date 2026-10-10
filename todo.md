@@ -933,3 +933,8 @@
 - [x] Enregistrer le choix « Je suis averti, ne plus afficher » par produit et date de retrait
 - [x] Réafficher l’alerte si une nouvelle date de retrait est publiée ou si l’utilisateur ne l’a pas acquittée
 - [x] Ajouter les tests de dates, d’acquittement et valider Android/iOS sans changer la version 1.3.0
+
+## Version 1.3.0 — Rappel discret de retrait sur les cartes Stock
+- [x] Afficher sur chaque carte concernée la date de retrait et le nombre de jours restants
+- [x] Réutiliser la même fenêtre de trois mois que l’alerte d’ouverture du Stock
+- [x] Vérifier la présentation Android/iOS et les régressions sans changer la version 1.3.0

@@ -41,6 +41,8 @@ import { stockItemMatchesSearch } from "@/lib/stock-search";
 import {
   acknowledgeStockWithdrawalWarnings,
   filterUnacknowledgedStockWithdrawalWarnings,
+  formatStockWithdrawalDate,
+  formatStockWithdrawalRemainingDays,
   getStockWithdrawalWarningState,
   getUpcomingStockWithdrawalWarnings,
   StockWithdrawalWarning,
@@ -261,6 +263,12 @@ export default function StockScreen() {
     });
     return reminders;
   }, [stock, emergencyAuthorizations]);
+
+  const stockWithdrawalReminders = useMemo(() => {
+    return new Map(
+      getUpcomingStockWithdrawalWarnings(stock, products).map((warning) => [warning.amm, warning]),
+    );
+  }, [stock, products]);
 
   const handleStockSearchToggle = useCallback(() => {
     setIsStockSearchOpen((isOpen) => {
@@ -731,6 +739,7 @@ export default function StockScreen() {
           ) : (
             filteredStock.map((item) => {
               const emergencyReminder = stockEmergencyReminders.get(item.amm);
+              const withdrawalReminder = stockWithdrawalReminders.get(item.amm);
               return (
               <View key={item.amm} style={styles.stockCard}>
                 <View style={styles.stockCardContent}>
@@ -776,6 +785,14 @@ export default function StockScreen() {
                         )}
                       </Text>
                     </View>
+                    {withdrawalReminder ? (
+                      <View style={styles.stockWithdrawalReminder}>
+                        <MaterialIcons name="warning-amber" size={17} color="#B45309" />
+                        <Text style={styles.stockWithdrawalReminderText}>
+                          {formatStockWithdrawalRemainingDays(withdrawalReminder.daysRemaining)} · {formatStockWithdrawalDate(withdrawalReminder.withdrawalDate)}
+                        </Text>
+                      </View>
+                    ) : null}
                     {emergencyReminder ? (
                       <View style={styles.stockEmergencyReminder}>
                         <MaterialIcons name="schedule" size={18} color="#1D4ED8" />
@@ -1023,6 +1040,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "bold",
     flexShrink: 1,
+  },
+  stockWithdrawalReminder: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 8,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "#FEF3C7",
+  },
+  stockWithdrawalReminderText: {
+    color: "#92400E",
+    fontSize: 11,
+    fontWeight: "700",
   },
   stockEmergencyReminder: {
     alignSelf: "stretch",

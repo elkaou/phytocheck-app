@@ -21,6 +21,8 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
 import {
   acknowledgeStockWithdrawalWarnings,
   filterUnacknowledgedStockWithdrawalWarnings,
+  formatStockWithdrawalDate,
+  formatStockWithdrawalRemainingDays,
   getStockWithdrawalWarningState,
   getStockWithdrawalWarningId,
   getUpcomingStockWithdrawalWarnings,
@@ -121,5 +123,11 @@ describe("getUpcomingStockWithdrawalWarnings", () => {
     expect(filterUnacknowledgedStockWithdrawalWarnings([acknowledgedWarning, updatedWarning], state.acknowledgedWarningIds)).toEqual([
       updatedWarning,
     ]);
+  });
+
+  it("prépare un rappel court et lisible pour la carte Stock", () => {
+    expect(formatStockWithdrawalDate("10/01/2027")).toBe("10 janvier 2027");
+    expect(formatStockWithdrawalRemainingDays(1)).toBe("Retrait dans 1 jour");
+    expect(formatStockWithdrawalRemainingDays(25)).toBe("Retrait dans 25 jours");
   });
 });

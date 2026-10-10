@@ -39,6 +39,22 @@ function parseFrenchDate(value: string): Date | null {
     : null;
 }
 
+export function formatStockWithdrawalDate(value: string): string {
+  const parsed = parseFrenchDate(value);
+  if (!parsed) return value;
+
+  return parsed.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+export function formatStockWithdrawalRemainingDays(days: number): string {
+  if (days === 0) return "Retrait aujourd’hui";
+  return `Retrait dans ${days} jour${days > 1 ? "s" : ""}`;
+}
+
 function addMonths(date: Date, months: number): Date {
   const result = startOfDay(date);
   const initialDay = result.getDate();

@@ -2,27 +2,16 @@ import { useEffect, useState } from "react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import type { StockWithdrawalWarning } from "@/lib/stock-withdrawal-warning";
+import {
+  formatStockWithdrawalDate,
+  formatStockWithdrawalRemainingDays,
+  type StockWithdrawalWarning,
+} from "@/lib/stock-withdrawal-warning";
 
 interface StockWithdrawalWarningModalProps {
   visible: boolean;
   warnings: StockWithdrawalWarning[];
   onClose: (acknowledge: boolean) => void;
-}
-
-function formatWithdrawalDate(value: string): string {
-  const [day, month, year] = value.split("/");
-  if (!day || !month || !year) return value;
-  return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function formatRemainingDays(days: number): string {
-  if (days === 0) return "retrait aujourd’hui";
-  return `dans ${days} jour${days > 1 ? "s" : ""}`;
 }
 
 export function StockWithdrawalWarningModal({
@@ -64,11 +53,13 @@ export function StockWithdrawalWarningModal({
                 <Text style={styles.productName}>{warning.productName}</Text>
                 <Text style={styles.amm}>AMM {warning.amm}</Text>
                 <Text style={styles.withdrawalDate}>
-                  Retrait prévu le {formatWithdrawalDate(warning.withdrawalDate)}
+                  Retrait prévu le {formatStockWithdrawalDate(warning.withdrawalDate)}
                 </Text>
                 <View style={styles.remainingPill}>
                   <MaterialIcons name="schedule" size={16} color="#B45309" />
-                  <Text style={styles.remainingText}>{formatRemainingDays(warning.daysRemaining)}</Text>
+                  <Text style={styles.remainingText}>
+                    {formatStockWithdrawalRemainingDays(warning.daysRemaining)}
+                  </Text>
                 </View>
               </View>
             ))}
