@@ -24,7 +24,6 @@ import {
   resolveInventoryDetections,
   ResolvedInventoryDetection,
 } from "@/lib/inventory-stock-resolution";
-import { previewInventoryStockAddition } from "@/lib/inventory-stock-addition";
 import { getInventoryRegulatoryStatus } from "@/lib/inventory-regulatory-status";
 import { formatStockQuantity } from "@/lib/quantity";
 import type { ClassifiedProduct } from "@/lib/product-service";
@@ -37,7 +36,14 @@ import { trpc } from "@/lib/trpc";
 
 export default function InventoryScanScreen() {
   const router = useRouter();
-  const { performSearch, addProductToStock, stock, remainingSearches, isPremium } = useApp();
+  const {
+    performSearch,
+    addProductToStock,
+    updateProductQuantity,
+    stock,
+    remainingSearches,
+    isPremium,
+  } = useApp();
   const {
     products,
     riskPhrases,
@@ -223,6 +229,26 @@ export default function InventoryScanScreen() {
     ) => {
       if (!detection.product) return;
 
+      const existingStockItem = stock.find((stockItem) => stockItem.amm === detection.product?.amm);
+      if (existingStockItem) {
+        if (existingStockItem.unite !== unit) {
+          Alert.alert(
+            "Unités incompatibles",
+            `« ${detection.stockDisplayName || detection.product.nom} » est enregistré en ${existingStockItem.unite}. Saisissez la quantité totale avec cette unité.`,
+          );
+          return;
+        }
+
+        const updated = await updateProductQuantity(detection.product.amm, quantity);
+        if (!updated) {
+          Alert.alert("Erreur", "La quantité du produit n’a pas pu être enregistrée.");
+          return;
+        }
+
+        setAddedContainers((current) => [...current, detection.containerIndex]);
+        return;
+      }
+
       const result = await addProductToStock(
         detection.product,
         quantity,
@@ -256,7 +282,7 @@ export default function InventoryScanScreen() {
 
       setAddedContainers((current) => [...current, detection.containerIndex]);
     },
-    [addProductToStock, router],
+    [addProductToStock, router, stock, updateProductQuantity],
   );
 
   const addSelectedProduct = useCallback(
@@ -264,38 +290,11 @@ export default function InventoryScanScreen() {
       const detection = selectedDetection;
       if (!detection?.product) return;
 
-      // Ferme d'abord la saisie : l'utilisateur voit ensuite clairement l'avertissement.
+      // La quantité saisie représente toujours le total réellement présent dans le stock.
       setSelectedDetection(null);
-      const preview = previewInventoryStockAddition(stock, detection.product.amm, quantity, unit);
-
-      if (preview.kind === "unit_mismatch") {
-        Alert.alert(
-          "Unités incompatibles",
-          `« ${detection.stockDisplayName || detection.product.nom} » est déjà enregistré avec ${formatStockQuantity(preview.existingQuantity)} ${preview.existingUnit}. Vous avez saisi ${formatStockQuantity(preview.incomingQuantity)} ${preview.incomingUnit}. Les quantités ne peuvent pas être additionnées.`,
-        );
-        return;
-      }
-
-      if (preview.kind === "merge") {
-        Alert.alert(
-          "Produit déjà en stock",
-          `« ${detection.stockDisplayName || detection.product.nom} » est déjà présent : ${formatStockQuantity(preview.existingQuantity)} ${preview.unit}. L’ajout de ${formatStockQuantity(preview.incomingQuantity)} ${preview.unit} portera le stock à ${formatStockQuantity(preview.newQuantity)} ${preview.unit}.`,
-          [
-            { text: "Annuler", style: "cancel" },
-            {
-              text: "Ajouter et cumuler",
-              onPress: () => {
-                void completeAddition(detection, quantity, unit);
-              },
-            },
-          ],
-        );
-        return;
-      }
-
       void completeAddition(detection, quantity, unit);
     },
-    [completeAddition, selectedDetection, stock],
+    [completeAddition, selectedDetection],
   );
 
   const applyManualCorrection = useCallback(
@@ -390,7 +389,7 @@ export default function InventoryScanScreen() {
             <View style={styles.duplicateNotice}>
               <IconSymbol name="exclamationmark.triangle.fill" size={18} color="#B45309" />
               <Text style={styles.duplicateNoticeText}>
-                Déjà en stock : {formatStockQuantity(existingStockItem.quantite)} {existingStockItem.unite}. La quantité saisie sera proposée au cumul.
+                Déjà en stock : {formatStockQuantity(existingStockItem.quantite)} {existingStockItem.unite}. Saisissez la quantité totale réellement présente.
               </Text>
             </View>
           ) : null}
@@ -408,7 +407,7 @@ export default function InventoryScanScreen() {
               size={20}
               color="#FFFFFF"
             />
-            <Text style={styles.addButtonText}>{isAdded ? "Ajouté au stock" : "Saisir la quantité"}</Text>
+            <Text style={styles.addButtonText}>{isAdded ? "Quantité enregistrée" : "Saisir la quantité totale"}</Text>
           </Pressable>
         </View>
       );
@@ -506,6 +505,9 @@ export default function InventoryScanScreen() {
       <QuantityModal
         visible={Boolean(selectedDetection?.product)}
         productName={selectedDetection?.stockDisplayName || selectedDetection?.product?.nom || ""}
+        mode={stock.some((item) => item.amm === selectedDetection?.product?.amm) ? "edit" : "add"}
+        initialQuantity={stock.find((item) => item.amm === selectedDetection?.product?.amm)?.quantite}
+        initialUnit={stock.find((item) => item.amm === selectedDetection?.product?.amm)?.unite}
         onCancel={() => setSelectedDetection(null)}
         onConfirm={addSelectedProduct}
       />

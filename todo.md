@@ -961,3 +961,9 @@
 - [x] Adapter la fenêtre de correction manuelle au clavier Android afin que le champ de recherche reste toujours visible
 - [x] Masquer les avertissements et libellés de décompte de recherches dans l’ajout multiple pour les comptes Premium
 - [x] Conserver les explications de gratuité pour les comptes Freemium et valider Android/iOS sans modifier la version 1.3.0
+
+## Version 1.3.0 — Quantité totale depuis l’ajout multiple
+- [x] Préremplir la quantité enregistrée quand un produit détecté est déjà en stock
+- [x] Remplacer la quantité stockée par la quantité totale réellement constatée, sans cumul automatique
+- [x] Clarifier les libellés des cartes et de la fenêtre de saisie
+- [x] Ajouter la régression de remplacement de quantité et valider Android/iOS sans modifier la version 1.3.0

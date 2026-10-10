@@ -19,6 +19,7 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
 import {
   getStock,
   addToStock,
+  updateStockQuantity,
   removeFromStock,
   isInStock,
   getSearchCount,
@@ -110,6 +111,17 @@ describe("store", () => {
       const stock = await getStock();
       expect(stock).toHaveLength(1);
       expect(stock[0]).toMatchObject({ quantite: 2, unite: "L" });
+    });
+
+    it("should replace an existing quantity with the total actually present", async () => {
+      const product = makeProduct("1234567");
+      await addToStock(product, 10, "L");
+
+      expect(await updateStockQuantity("1234567", 8)).toBe(true);
+
+      const stock = await getStock();
+      expect(stock).toHaveLength(1);
+      expect(stock[0]).toMatchObject({ quantite: 8, unite: "L" });
     });
 
     it("should persist an Article 53-only product as a temporary authorization", async () => {
