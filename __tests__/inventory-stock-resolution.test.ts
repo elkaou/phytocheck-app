@@ -57,6 +57,97 @@ const products: Product[] = [
     dateRetrait: "",
     dateAutorisation: "01/01/2020",
   },
+  {
+    amm: "9500568",
+    nom: "SWITCH",
+    nomsSecondaires: "",
+    titulaire: "Exemple",
+    gammeUsage: "PPP",
+    substancesActives: "Substance E",
+    fonctions: "Fongicide",
+    formulation: "WG",
+    etat: "AUTORISE",
+    dateRetrait: "",
+    dateAutorisation: "01/01/2020",
+  },
+  {
+    amm: "2100169",
+    nom: "BARYTON",
+    nomsSecondaires: "SWITCH",
+    titulaire: "Exemple",
+    gammeUsage: "PPP",
+    substancesActives: "Substance E",
+    fonctions: "Fongicide",
+    formulation: "EC",
+    etat: "AUTORISE",
+    dateRetrait: "",
+    dateAutorisation: "01/01/2020",
+  },
+  {
+    amm: "9600095",
+    nom: "OMITE TD EW",
+    nomsSecondaires: "",
+    titulaire: "Exemple",
+    gammeUsage: "PPP",
+    substancesActives: "Substance F",
+    fonctions: "Acaricide",
+    formulation: "EW",
+    etat: "RETIRE",
+    dateRetrait: "01/01/2020",
+    dateAutorisation: "01/01/2010",
+  },
+  {
+    amm: "7600008",
+    nom: "NIMROD",
+    nomsSecondaires: "",
+    titulaire: "Exemple",
+    gammeUsage: "PPP",
+    substancesActives: "Substance G",
+    fonctions: "Fongicide",
+    formulation: "EC",
+    etat: "AUTORISE",
+    dateRetrait: "",
+    dateAutorisation: "01/01/2020",
+  },
+  {
+    amm: "7500585",
+    nom: "DOWPON 85 AQUATIQUE",
+    nomsSecondaires: "",
+    titulaire: "Exemple",
+    gammeUsage: "PPP",
+    substancesActives: "Substance H",
+    fonctions: "Herbicide",
+    formulation: "SL",
+    etat: "RETIRE",
+    dateRetrait: "01/01/2020",
+    dateAutorisation: "01/01/2010",
+  },
+  {
+    amm: "2140042",
+    nom: "CLOMATE",
+    nomsSecondaires: "",
+    titulaire: "Exemple",
+    gammeUsage: "PPP",
+    substancesActives: "Substance I",
+    fonctions: "Herbicide",
+    formulation: "CS",
+    etat: "AUTORISE",
+    dateRetrait: "",
+    dateAutorisation: "01/01/2020",
+  },
+  {
+    amm: "2000327",
+    nom: "SPOTLIGHT PLUS",
+    nomsSecondaires: "",
+    titulaire: "Exemple",
+    gammeUsage: "PPP",
+    substancesActives: "Substance J",
+    fonctions: "Herbicide",
+    formulation: "EC",
+    etat: "AUTORISE",
+    dateRetrait: "",
+    dateAutorisation: "01/01/2020",
+  },
 ];
 
 const riskPhrases: Record<string, RiskPhrase[]> = {};
@@ -119,5 +210,62 @@ describe("resolveInventoryDetections", () => {
 
     expect(resolved.product).toBeNull();
     expect(resolved.reason).toBe("not_found");
+  });
+
+  it("n’associe pas SWITCH à une AMM contradictoire lue sur un autre bidon", () => {
+    const [resolved] = resolveInventoryDetections(
+      [{ containerIndex: 1, productName: "SWITCH", amm: "9600095" }],
+      products,
+      riskPhrases,
+    );
+
+    expect(resolved.product).toBeNull();
+    expect(resolved.reason).toBe("identity_conflict");
+  });
+
+  it("privilégie SWITCH comme nom commercial principal devant un nom secondaire homonyme", () => {
+    const [resolved] = resolveInventoryDetections(
+      [{ containerIndex: 1, productName: "SWITCH", amm: "" }],
+      products,
+      riskPhrases,
+    );
+
+    expect(resolved.product?.amm).toBe("9500568");
+    expect(resolved.product?.nom).toBe("SWITCH");
+  });
+
+  it("n’associe pas NIMROD à une AMM contradictoire lue sur un autre bidon", () => {
+    const [resolved] = resolveInventoryDetections(
+      [{ containerIndex: 1, productName: "NIMROD", amm: "7500585" }],
+      products,
+      riskPhrases,
+    );
+
+    expect(resolved.product).toBeNull();
+    expect(resolved.reason).toBe("identity_conflict");
+  });
+
+  it.each([
+    ["CLOMATE", "2140042"],
+    ["SPOTLIGHT PLUS", "2000327"],
+  ])("retient %s quand son nom commercial est lisible sans AMM", (detectedName, amm) => {
+    const [resolved] = resolveInventoryDetections(
+      [{ containerIndex: 1, productName: detectedName, amm: "" }],
+      products,
+      riskPhrases,
+    );
+
+    expect(resolved.product?.amm).toBe(amm);
+  });
+
+  it("ne propose aucune fiche quand une AMM contredit une étiquette non exploitable", () => {
+    const [resolved] = resolveInventoryDetections(
+      [{ containerIndex: 1, productName: "TEXTE FLOU", amm: "9500568" }],
+      products,
+      riskPhrases,
+    );
+
+    expect(resolved.product).toBeNull();
+    expect(resolved.reason).toBe("identity_conflict");
   });
 });

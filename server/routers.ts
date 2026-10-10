@@ -279,8 +279,10 @@ ATTENTION :
                 "- Chaque élément de la réponse correspond à UN seul bidon ou emballage physique visible.",
                 "- Ne retourne JAMAIS plusieurs propositions, variantes ou alternatives pour un même bidon.",
                 "- Ne duplique jamais un même bidon, même si son étiquette comporte plusieurs zones de texte.",
-                "- Retourne uniquement le nom commercial le plus lisible et le numéro AMM à 7 chiffres s'il est lisible.",
-                "- Si le nom ou l'AMM est incertain, laisse le champ concerné vide. N'invente jamais une valeur.",
+                "- Retourne uniquement le nom commercial affiché en grand SUR CE MÊME bidon et le numéro AMM à 7 chiffres imprimé sur CE MÊME bidon, s'il est lisible.",
+                "- Ne rapproche jamais un nom lu sur un bidon avec le numéro AMM, un code ou le nom d'un autre bidon voisin.",
+                "- Si le nom est lisible mais que l'AMM ne l'est pas, retourne le nom et laisse amm vide. Si l'AMM est lisible mais que le nom ne l'est pas, retourne l'AMM et laisse productName vide.",
+                "- Si le nom ou l'AMM est incertain, laisse le champ concerné vide. N'invente jamais une valeur et ne déduis jamais un produit à partir de ta connaissance générale.",
                 "- Ignore les produits trop flous, cachés ou sans étiquette lisible.",
                 "- Le nom commercial doit être court et correspondre au nom affiché en grand sur l'étiquette.",
                 "RÉPONSE ATTENDUE : JSON strict, sans texte supplémentaire.",
@@ -292,7 +294,7 @@ ATTENTION :
               content: [
                 {
                   type: "text",
-                  text: "Identifie chaque bidon phytosanitaire lisible sur cette photo. Retourne au plus une identité par bidon.",
+                  text: "Identifie chaque bidon phytosanitaire lisible sur cette photo. Ne mélange jamais les informations de deux bidons : retourne au plus une identité strictement lue sur chaque bidon.",
                 },
                 {
                   type: "image_url",

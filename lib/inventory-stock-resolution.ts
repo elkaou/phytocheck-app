@@ -25,7 +25,8 @@ export interface ResolvedInventoryDetection {
   product: ClassifiedProduct | null;
   /** Nom qui sera conservé dans le stock quand il s'agit d'un nom secondaire. */
   stockDisplayName?: string;
-  reason?: "not_found";
+  /** Une AMM lue contredisait le nom commercial et a donc été écartée. */
+  reason?: "not_found" | "identity_conflict";
 }
 
 function normalize(value: string): string {
@@ -38,10 +39,22 @@ function normalize(value: string): string {
     .trim();
 }
 
-function getKnownNames(product: ClassifiedProduct): string[] {
-  return [product.nom, ...product.nomsSecondaires.split("|")]
-    .map((name) => normalize(name))
-    .filter(Boolean);
+/**
+ * Retourne les formulations utiles issues de l'étiquette lue. Le nom commercial
+ * est parfois suivi du dosage ou de la formulation (ex. « SWITCH 62,5 WG ») :
+ * tester ses premiers mots conserve la détection sans accepter un mot isolé
+ * interne à une description.
+ */
+function getSearchTerms(detectedName: string): string[] {
+  const normalized = normalize(detectedName);
+  if (!normalized) return [];
+
+  const terms = new Set<string>([normalized]);
+  const words = normalized.split(" ").filter(Boolean);
+  for (let length = 1; length <= Math.min(words.length, 4); length += 1) {
+    terms.add(words.slice(0, length).join(" "));
+  }
+  return Array.from(terms);
 }
 
 /**
@@ -49,17 +62,35 @@ function getKnownNames(product: ClassifiedProduct): string[] {
  * proposer des variantes : elle choisit une unique fiche quand elle est
  * suffisamment identifiable, ou retourne null quand l'image reste ambiguë.
  */
-function getNameMatchScore(product: ClassifiedProduct, detectedName: string): number {
+function getNameMatchScore(product: Product, detectedName: string): number {
   const detected = normalize(detectedName);
   if (!detected) return 0;
 
+  const primaryName = normalize(product.nom);
+  const secondaryNames = product.nomsSecondaires
+    .split("|")
+    .map((name) => normalize(name))
+    .filter(Boolean);
+
+  // Un nom commercial principal exact est plus fiable qu'un nom secondaire
+  // identique. Cela évite par exemple de confondre SWITCH avec les spécialités
+  // dont SWITCH est seulement un nom associé.
+  if (primaryName === detected) return 120;
+  if (secondaryNames.some((name) => name === detected)) return 110;
+
   let score = 0;
-  for (const name of getKnownNames(product)) {
-    if (name === detected) score = Math.max(score, 100);
-    else if (name.length >= 4 && detected.includes(name)) score = Math.max(score, 82);
-    else if (detected.length >= 4 && name.includes(detected)) score = Math.max(score, 76);
+  if (primaryName.length >= 4 && detected.includes(primaryName)) score = Math.max(score, 94);
+  else if (detected.length >= 4 && primaryName.includes(detected)) score = Math.max(score, 88);
+
+  for (const name of secondaryNames) {
+    if (name.length >= 4 && detected.includes(name)) score = Math.max(score, 84);
+    else if (detected.length >= 4 && name.includes(detected)) score = Math.max(score, 80);
   }
   return score;
+}
+
+function hasSufficientNameMatch(product: Product, detectedName: string): boolean {
+  return getNameMatchScore(product, detectedName) >= 80;
 }
 
 function getSingleBestProduct(
@@ -67,9 +98,18 @@ function getSingleBestProduct(
   products: Product[],
   riskPhrases: Record<string, RiskPhrase[]>,
 ): ClassifiedProduct | null {
-  const matches = searchProducts(detectedName, 50, products, riskPhrases)
+  const candidatesByAmm = new Map<string, ClassifiedProduct>();
+  for (const term of getSearchTerms(detectedName)) {
+    for (const candidate of searchProducts(term, 50, products, riskPhrases)) {
+      // searchProducts peut retourner une même AMM pour le nom principal et un
+      // nom secondaire. Une seule fiche réglementaire doit rester candidate.
+      candidatesByAmm.set(candidate.amm, candidate);
+    }
+  }
+
+  const matches = Array.from(candidatesByAmm.values())
     .map((product) => ({ product, score: getNameMatchScore(product, detectedName) }))
-    .filter(({ score }) => score >= 76)
+    .filter(({ score }) => score >= 80)
     .sort((left, right) => right.score - left.score || left.product.nom.localeCompare(right.product.nom, "fr"));
 
   const bestMatch = matches[0];
@@ -102,9 +142,31 @@ export function resolveInventoryDetections(
       ? products.find((product) => product.amm === amm)
       : undefined;
 
+    // Une AMM ne peut être utilisée que si elle est lue sur la même étiquette
+    // que le nom commercial. En cas de contradiction, l'ancienne logique
+    // sélectionnait une fiche erronée (par exemple OMITE pour SWITCH). Le nom
+    // et l'AMM peuvent tous deux avoir été lus sur des bidons voisins : aucun ne
+    // doit donc être retenu automatiquement dans ce cas.
+    const ammContradictsName = Boolean(
+      exactAmmProduct &&
+        detection.productName.trim() &&
+        !hasSufficientNameMatch(exactAmmProduct, detection.productName),
+    );
+    if (ammContradictsName) {
+      return {
+        containerIndex: detection.containerIndex,
+        detectedName: detection.productName,
+        detectedAmm: amm,
+        product: null,
+        reason: "identity_conflict" as const,
+      };
+    }
+
     const product = exactAmmProduct
       ? classifyProductWithData(exactAmmProduct, riskPhrases)
-      : getSingleBestProduct(detection.productName, products, riskPhrases);
+      : detection.productName.trim()
+        ? getSingleBestProduct(detection.productName, products, riskPhrases)
+        : null;
 
     if (product) {
       const detectedName = normalize(detection.productName);

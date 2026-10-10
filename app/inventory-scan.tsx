@@ -241,7 +241,9 @@ export default function InventoryScanScreen() {
               {item.detectedName || item.detectedAmm || "Étiquette insuffisamment lisible"}
             </Text>
             <Text style={styles.cardHint}>
-              Aucun produit n’est proposé automatiquement. Prenez une photo plus rapprochée ou utilisez la recherche manuelle.
+              {item.reason === "identity_conflict"
+                ? "Le nom commercial et le n° AMM lus ne correspondent pas au même bidon. Aucun produit n’est proposé automatiquement."
+                : "Aucun produit n’est proposé automatiquement. Prenez une photo plus rapprochée ou utilisez la recherche manuelle."}
             </Text>
           </View>
         );

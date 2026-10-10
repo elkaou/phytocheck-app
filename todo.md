@@ -913,3 +913,10 @@
 - [x] Placer « Ajout multiple » en avant-dernier sur l’Accueil, juste avant « Gestion du stock »
 - [x] Ajouter un accès compact « Ajout multiple » dans l’en-tête Stock, entre le compteur et la loupe
 - [x] Ajouter les tests de parcours et valider Android/iOS sans modifier la version visible 1.3.0
+
+## Version 1.3.0 — Fiabilité de l’ajout multiple par photo
+- [x] Ne plus accepter un n° AMM lu qui contredit le nom commercial détecté sur le même bidon
+- [x] Donner la priorité au nom commercial principal exact sur les noms secondaires homonymes
+- [x] Renforcer les consignes OCR : ne pas inventer ni associer le nom d’un bidon avec l’AMM d’un autre
+- [x] Afficher une alerte explicite en cas de lecture nom/AMM contradictoire au lieu de proposer une fiche erronée
+- [x] Ajouter les régressions SWITCH, NIMROD, CLOMATE et SPOTLIGHT PLUS, puis valider le flux Android/iOS
