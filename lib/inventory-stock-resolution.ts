@@ -27,6 +27,8 @@ export interface ResolvedInventoryDetection {
   stockDisplayName?: string;
   /** Le nom commercial certain a été privilégié face à une AMM OCR contradictoire. */
   namePreferredOverAmm?: boolean;
+  /** Produit choisi explicitement par l’utilisateur après une détection incertaine. */
+  manuallyCorrected?: boolean;
   /** Une AMM lue contredisait le nom commercial et a donc été écartée. */
   reason?: "not_found" | "identity_conflict";
 }

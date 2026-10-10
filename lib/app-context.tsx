@@ -43,7 +43,7 @@ interface AppContextType {
   updateProductQuantity: (amm: string, quantity: number) => Promise<boolean>;
   isProductInStock: (amm: string) => boolean;
   getProductQuantity: (amm: string) => number;
-  performSearch: () => Promise<boolean>;
+  performSearch: (amount?: number) => Promise<boolean>;
   setPremium: (value: boolean) => Promise<void>;
   refreshStock: () => Promise<void>;
   checkStockRegulatoryStatus: (
@@ -237,24 +237,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    * Côté serveur : si le serveur dit "non autorisé", bloque même si le local dit oui.
    * Mode dégradé (pas de réseau) : se rabat sur le compteur local.
    */
-  const performSearch = useCallback(async (): Promise<boolean> => {
+  const performSearch = useCallback(async (amount: number = 1): Promise<boolean> => {
+    const increment = Number.isFinite(amount) ? Math.max(1, Math.floor(amount)) : 1;
     // Premium : toujours autorisé
     if (isPremium) {
       // Incrémenter quand même côté local pour cohérence
-      const newCount = await incrementSearchCount();
+      const newCount = await incrementSearchCount(increment);
       setSearchCount(newCount);
       return true;
     }
 
     // Vérification locale d'abord (réponse instantanée)
-    if (searchCount >= FREE_SEARCH_LIMIT) {
+    if (searchCount + increment > FREE_SEARCH_LIMIT) {
       return false;
     }
 
     // Vérification côté serveur (source de vérité)
     if (deviceId) {
       try {
-        const result = await incrementSearchMutation.mutateAsync({ deviceId, isPremium });
+        const result = await incrementSearchMutation.mutateAsync({ deviceId, isPremium, amount: increment });
         if (!result.allowed) {
           // Le serveur dit non : bloquer même si le local dit oui
           setSearchCount(FREE_SEARCH_LIMIT); // Mettre à jour l'affichage local
@@ -263,19 +264,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Mettre à jour le compteur local avec la valeur serveur
         if (result.searchCount >= 0) {
           setSearchCount(result.searchCount);
-          await incrementSearchCount(); // Synchroniser local aussi
+          await incrementSearchCount(increment); // Synchroniser local aussi
         }
         return true;
       } catch {
         // Serveur inaccessible : utiliser la logique locale
-        const newCount = await incrementSearchCount();
+        const newCount = await incrementSearchCount(increment);
         setSearchCount(newCount);
         return true;
       }
     }
 
     // Pas de deviceId (web) : logique locale uniquement
-    const newCount = await incrementSearchCount();
+    const newCount = await incrementSearchCount(increment);
     setSearchCount(newCount);
     return true;
   }, [isPremium, searchCount, deviceId, incrementSearchMutation]);

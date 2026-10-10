@@ -155,18 +155,22 @@ export async function syncDevice(
  */
 export async function incrementDeviceSearch(
   deviceId: string,
-  limit: number
+  limit: number,
+  amount: number = 1,
 ): Promise<{ allowed: boolean; searchCount: number }> {
   const db = await getDb();
   if (!db) return { allowed: true, searchCount: 0 }; // mode offline : autorisé
+
+  const increment = Number.isFinite(amount) ? Math.max(1, Math.floor(amount)) : 1;
 
   try {
     const result = await db.select().from(devices).where(eq(devices.deviceId, deviceId)).limit(1);
 
     if (result.length === 0) {
       // Appareil inconnu : créer et autoriser
-      await db.insert(devices).values({ deviceId, searchCount: 1, isPremium: false });
-      return { allowed: true, searchCount: 1 };
+      if (increment > limit) return { allowed: false, searchCount: 0 };
+      await db.insert(devices).values({ deviceId, searchCount: increment, isPremium: false });
+      return { allowed: true, searchCount: increment };
     }
 
     const device = result[0];
@@ -175,17 +179,17 @@ export async function incrementDeviceSearch(
     if (device.isPremium) {
       await db
         .update(devices)
-        .set({ searchCount: device.searchCount + 1 })
+        .set({ searchCount: device.searchCount + increment })
         .where(eq(devices.deviceId, deviceId));
-      return { allowed: true, searchCount: device.searchCount + 1 };
+      return { allowed: true, searchCount: device.searchCount + increment };
     }
 
     // Vérifier la limite
-    if (device.searchCount >= limit) {
+    if (device.searchCount + increment > limit) {
       return { allowed: false, searchCount: device.searchCount };
     }
 
-    const newCount = device.searchCount + 1;
+    const newCount = device.searchCount + increment;
     await db
       .update(devices)
       .set({ searchCount: newCount })

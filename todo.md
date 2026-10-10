@@ -944,3 +944,11 @@
 - [x] Conserver le refus automatique pour les noms ambigus ou trop approximatifs afin d’éviter les fiches erronées
 - [x] Améliorer la normalisation des noms lus et les consignes OCR pour éviter les associations entre bidons
 - [x] Ajouter les régressions POOL, SWITCH et NIMROD, puis valider Android/iOS sans changer la version 1.3.0
+
+## Version 1.3.0 — Correction manuelle et décompte de l’ajout multiple
+- [x] Ajouter « Corriger manuellement » pour chaque bidon non identifié, avec recherche par nom ou AMM
+- [x] Ne pas décompter les produits sélectionnés manuellement ni les bidons restant ambigus
+- [x] Décompter une recherche par bidon identifié automatiquement, après l’analyse de la photo
+- [x] Informer du décompte avant l’ouverture de la caméra ou de la galerie et dans le récapitulatif des résultats
+- [x] Bloquer proprement l’affichage des résultats si le solde Freemium ne couvre pas tous les bidons identifiés
+- [x] Ajouter les tests de correction, de décompte multiple et valider Android/iOS sans changer la version 1.3.0

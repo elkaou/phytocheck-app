@@ -141,10 +141,11 @@ export async function getSearchCount(): Promise<number> {
   }
 }
 
-// Increment search count
-export async function incrementSearchCount(): Promise<number> {
+// Increment search count. Une recherche multiple peut compter plusieurs bidons identifiés.
+export async function incrementSearchCount(amount: number = 1): Promise<number> {
   const count = await getSearchCount();
-  const newCount = count + 1;
+  const increment = Number.isFinite(amount) ? Math.max(0, Math.floor(amount)) : 0;
+  const newCount = count + increment;
   await AsyncStorage.setItem(STORAGE_KEYS.SEARCH_COUNT, String(newCount));
   return newCount;
 }

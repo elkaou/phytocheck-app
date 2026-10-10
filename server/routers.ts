@@ -377,6 +377,7 @@ ATTENTION :
         z.object({
           deviceId: z.string().min(1).max(255),
           isPremium: z.boolean(),
+          amount: z.number().int().min(1).max(FREE_SEARCH_LIMIT).default(1),
         }),
       )
       .mutation(async ({ input }) => {
@@ -386,6 +387,7 @@ ATTENTION :
         const result = await incrementDeviceSearch(
           input.deviceId,
           FREE_SEARCH_LIMIT,
+          input.amount,
         );
         return result;
       }),

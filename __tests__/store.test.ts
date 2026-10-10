@@ -174,6 +174,13 @@ describe("store", () => {
       expect(await getSearchCount()).toBe(2);
     });
 
+    it("should increment by the number of automatically identified containers", async () => {
+      await incrementSearchCount(4);
+      expect(await getSearchCount()).toBe(4);
+      await incrementSearchCount(2);
+      expect(await getSearchCount()).toBe(6);
+    });
+
     it("should calculate remaining searches", async () => {
       expect(await getRemainingSearches()).toBe(FREE_SEARCH_LIMIT);
       await incrementSearchCount();

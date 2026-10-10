@@ -16,6 +16,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
 import { QuantityModal } from "@/components/quantity-modal";
+import { InventoryManualCorrectionModal } from "@/components/inventory-manual-correction-modal";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useApp } from "@/lib/app-context";
 import { useData } from "@/lib/data-context";
@@ -26,11 +27,17 @@ import {
 import { previewInventoryStockAddition } from "@/lib/inventory-stock-addition";
 import { getInventoryRegulatoryStatus } from "@/lib/inventory-regulatory-status";
 import { formatStockQuantity } from "@/lib/quantity";
+import type { ClassifiedProduct } from "@/lib/product-service";
+import {
+  applyManualInventoryCorrection,
+  countAutomaticInventorySearches,
+  getInventorySearchChargeNotice,
+} from "@/lib/inventory-scan-utils";
 import { trpc } from "@/lib/trpc";
 
 export default function InventoryScanScreen() {
   const router = useRouter();
-  const { performSearch, addProductToStock, stock } = useApp();
+  const { performSearch, addProductToStock, stock, remainingSearches, isPremium } = useApp();
   const {
     products,
     riskPhrases,
@@ -43,6 +50,7 @@ export default function InventoryScanScreen() {
   const [statusText, setStatusText] = useState("Préparation de la photo...");
   const [detections, setDetections] = useState<ResolvedInventoryDetection[]>([]);
   const [selectedDetection, setSelectedDetection] = useState<ResolvedInventoryDetection | null>(null);
+  const [manualCorrectionDetection, setManualCorrectionDetection] = useState<ResolvedInventoryDetection | null>(null);
   const [addedContainers, setAddedContainers] = useState<number[]>([]);
 
   const resolvedCount = useMemo(
@@ -50,13 +58,17 @@ export default function InventoryScanScreen() {
     [detections],
   );
 
+  const automaticSearchCount = useMemo(
+    () => countAutomaticInventorySearches(detections),
+    [detections],
+  );
+
   const processImage = useCallback(
     async (uri: string) => {
-      const canDo = await performSearch();
-      if (!canDo) {
+      if (!isPremium && remainingSearches === 0) {
         Alert.alert(
           "Limite atteinte",
-          "Cette analyse compte comme une recherche. Passez à Premium pour des recherches illimitées.",
+          "Vous n’avez plus de recherche disponible. Passez à Premium pour analyser plusieurs bidons sans limite.",
           [
             { text: "Annuler" },
             { text: "Voir Premium", onPress: () => router.replace("/premium" as never) },
@@ -99,6 +111,23 @@ export default function InventoryScanScreen() {
           riskPhrases,
           emergencyAuthorizations,
         );
+
+        const searchCharge = countAutomaticInventorySearches(resolved);
+        if (searchCharge > 0) {
+          const canCharge = await performSearch(searchCharge);
+          if (!canCharge) {
+            Alert.alert(
+              "Solde de recherches insuffisant",
+              `Cette photo a identifié ${searchCharge} bidon${searchCharge > 1 ? "s" : ""} de façon certaine. Votre solde ne permet pas de les décompter tous. Passez à Premium pour poursuivre sans limite.`,
+              [
+                { text: "Annuler", style: "cancel" },
+                { text: "Voir Premium", onPress: () => router.replace("/premium" as never) },
+              ],
+            );
+            return;
+          }
+        }
+
         setDetections(resolved);
         setAddedContainers([]);
       } catch (error: any) {
@@ -115,10 +144,10 @@ export default function InventoryScanScreen() {
         setIsProcessing(false);
       }
     },
-    [analyzeMutation, emergencyAuthorizations, performSearch, products, riskPhrases, router],
+    [analyzeMutation, emergencyAuthorizations, isPremium, performSearch, products, remainingSearches, riskPhrases, router],
   );
 
-  const takePicture = useCallback(async () => {
+  const captureWithCamera = useCallback(async () => {
     if (!permission?.granted) {
       const requested = await requestPermission();
       if (!requested.granted) return;
@@ -134,7 +163,7 @@ export default function InventoryScanScreen() {
     }
   }, [permission?.granted, processImage, requestPermission]);
 
-  const pickFromGallery = useCallback(async () => {
+  const captureFromGallery = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.9,
@@ -144,6 +173,42 @@ export default function InventoryScanScreen() {
       await processImage(result.assets[0].uri);
     }
   }, [processImage]);
+
+  const confirmInventoryCapture = useCallback(
+    (onConfirm: () => void) => {
+      if (!isPremium && remainingSearches === 0) {
+        Alert.alert(
+          "Limite atteinte",
+          "Vous n’avez plus de recherche disponible. Passez à Premium pour analyser plusieurs bidons sans limite.",
+          [
+            { text: "Annuler" },
+            { text: "Voir Premium", onPress: () => router.replace("/premium" as never) },
+          ],
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Décompte de l’ajout multiple",
+        getInventorySearchChargeNotice(remainingSearches, isPremium),
+        [
+          { text: "Annuler", style: "cancel" },
+          { text: "Continuer", onPress: onConfirm },
+        ],
+      );
+    },
+    [isPremium, remainingSearches, router],
+  );
+
+  const takePicture = useCallback(
+    () => confirmInventoryCapture(() => void captureWithCamera()),
+    [captureWithCamera, confirmInventoryCapture],
+  );
+
+  const pickFromGallery = useCallback(
+    () => confirmInventoryCapture(() => void captureFromGallery()),
+    [captureFromGallery, confirmInventoryCapture],
+  );
 
   const completeAddition = useCallback(
     async (
@@ -228,6 +293,19 @@ export default function InventoryScanScreen() {
     [completeAddition, selectedDetection, stock],
   );
 
+  const applyManualCorrection = useCallback(
+    (product: ClassifiedProduct) => {
+      const detection = manualCorrectionDetection;
+      if (!detection) return;
+
+      setDetections((current) =>
+        applyManualInventoryCorrection(current, detection.containerIndex, product),
+      );
+      setManualCorrectionDetection(null);
+    },
+    [manualCorrectionDetection],
+  );
+
   const renderDetection = useCallback(
     ({ item }: { item: ResolvedInventoryDetection }) => {
       const isAdded = addedContainers.includes(item.containerIndex);
@@ -246,6 +324,13 @@ export default function InventoryScanScreen() {
                 ? "Le nom commercial et le n° AMM lus ne correspondent pas au même bidon. Aucun produit n’est proposé automatiquement."
                 : "Aucun produit n’est proposé automatiquement. Prenez une photo plus rapprochée ou utilisez la recherche manuelle."}
             </Text>
+            <Pressable
+              onPress={() => setManualCorrectionDetection(item)}
+              style={({ pressed }) => [styles.manualCorrectionButton, pressed && { opacity: 0.75 }]}
+            >
+              <IconSymbol name="pencil" size={18} color="#92400E" />
+              <Text style={styles.manualCorrectionButtonText}>Corriger manuellement</Text>
+            </Pressable>
           </View>
         );
       }
@@ -282,6 +367,14 @@ export default function InventoryScanScreen() {
               <IconSymbol name="info.circle.fill" size={17} color="#0A7EA5" />
               <Text style={styles.namePriorityNoticeText}>
                 Nom commercial confirmé ; n° AMM OCR écarté car incohérent.
+              </Text>
+            </View>
+          ) : null}
+          {item.manuallyCorrected ? (
+            <View style={styles.manualCorrectionNotice}>
+              <IconSymbol name="checkmark.circle.fill" size={17} color="#15803D" />
+              <Text style={styles.manualCorrectionNoticeText}>
+                Produit sélectionné manuellement — non décompté.
               </Text>
             </View>
           ) : null}
@@ -356,6 +449,11 @@ export default function InventoryScanScreen() {
                 <Text style={styles.resultsSubtitle}>
                   {resolvedCount} fiche{resolvedCount > 1 ? "s" : ""} réglementaire{resolvedCount > 1 ? "s" : ""} retenue{resolvedCount > 1 ? "s" : ""} pour {detections.length} bidon{detections.length > 1 ? "s" : ""}.
                 </Text>
+                {!isPremium ? (
+                  <Text style={styles.resultsCharge}>
+                    {automaticSearchCount} recherche{automaticSearchCount > 1 ? "s" : ""} décomptée{automaticSearchCount > 1 ? "s" : ""} pour les bidons identifiés automatiquement.
+                  </Text>
+                ) : null}
               </View>
             }
             ListFooterComponent={
@@ -392,7 +490,7 @@ export default function InventoryScanScreen() {
               <Text style={styles.galleryButtonText}>Choisir depuis la galerie</Text>
             </Pressable>
             <Text style={styles.notice}>
-              Vérifiez les produits et saisissez les quantités avant leur ajout au stock. Une photo compte comme une recherche.
+              Avant de photographier : chaque bidon identifié automatiquement décompte une recherche. Les bidons non identifiés ou corrigés manuellement ne sont pas décomptés.
             </Text>
           </View>
         )}
@@ -403,6 +501,14 @@ export default function InventoryScanScreen() {
         productName={selectedDetection?.stockDisplayName || selectedDetection?.product?.nom || ""}
         onCancel={() => setSelectedDetection(null)}
         onConfirm={addSelectedProduct}
+      />
+      <InventoryManualCorrectionModal
+        visible={Boolean(manualCorrectionDetection)}
+        detection={manualCorrectionDetection}
+        products={products}
+        riskPhrases={riskPhrases}
+        onCancel={() => setManualCorrectionDetection(null)}
+        onSelect={applyManualCorrection}
       />
     </View>
   );
@@ -460,6 +566,7 @@ const styles = StyleSheet.create({
   resultsHeader: { gap: 6, marginBottom: 2 },
   resultsTitle: { color: "#1A1A1A", fontSize: 23, fontWeight: "700" },
   resultsSubtitle: { color: "#55616A", fontSize: 15, lineHeight: 21 },
+  resultsCharge: { color: "#0A7EA5", fontSize: 13, lineHeight: 18, fontWeight: "700" },
   card: { backgroundColor: "#FFFFFF", borderRadius: 14, padding: 16, gap: 8, borderWidth: 1, borderColor: "#E5E7EB" },
   unresolvedCard: { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" },
   cardHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -487,6 +594,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   namePriorityNoticeText: { color: "#075985", fontSize: 12, lineHeight: 17, flex: 1, fontWeight: "600" },
+  manualCorrectionNotice: {
+    alignSelf: "stretch",
+    backgroundColor: "#F0FDF4",
+    borderColor: "#86EFAC",
+    borderWidth: 1,
+    borderRadius: 9,
+    padding: 9,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  manualCorrectionNoticeText: { color: "#166534", fontSize: 12, lineHeight: 17, flex: 1, fontWeight: "600" },
   duplicateNotice: {
     backgroundColor: "#FFFBEB",
     borderColor: "#FDE68A",
@@ -499,6 +618,19 @@ const styles = StyleSheet.create({
   },
   duplicateNoticeText: { color: "#92400E", fontSize: 13, lineHeight: 18, flex: 1, fontWeight: "600" },
   unresolvedText: { color: "#92400E", fontSize: 17, fontWeight: "700" },
+  manualCorrectionButton: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    borderColor: "#D97706",
+    borderWidth: 1,
+    borderRadius: 9,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    marginTop: 2,
+  },
+  manualCorrectionButtonText: { color: "#92400E", fontSize: 13, fontWeight: "700" },
   addButton: { marginTop: 4, backgroundColor: "#15803D", borderRadius: 10, minHeight: 46, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   addButtonDone: { backgroundColor: "#64748B" },
   addButtonText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
