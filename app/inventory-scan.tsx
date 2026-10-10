@@ -24,6 +24,7 @@ import {
   ResolvedInventoryDetection,
 } from "@/lib/inventory-stock-resolution";
 import { previewInventoryStockAddition } from "@/lib/inventory-stock-addition";
+import { getInventoryRegulatoryStatus } from "@/lib/inventory-regulatory-status";
 import { formatStockQuantity } from "@/lib/quantity";
 import { trpc } from "@/lib/trpc";
 
@@ -250,6 +251,7 @@ export default function InventoryScanScreen() {
       }
 
       const displayedName = item.stockDisplayName || item.product.nom;
+      const regulatoryStatus = getInventoryRegulatoryStatus(item.product);
       const existingStockItem = stock.find((stockItem) => stockItem.amm === item.product?.amm);
       return (
         <View style={styles.card}>
@@ -259,6 +261,19 @@ export default function InventoryScanScreen() {
           </View>
           <Text style={styles.productName}>{displayedName}</Text>
           <Text style={styles.productMeta}>AMM {item.product.amm}</Text>
+          <View
+            style={[
+              styles.regulatoryBadge,
+              {
+                backgroundColor: regulatoryStatus.backgroundColor,
+                borderColor: regulatoryStatus.color,
+              },
+            ]}
+          >
+            <Text style={[styles.regulatoryBadgeText, { color: regulatoryStatus.color }]}>
+              {regulatoryStatus.label}
+            </Text>
+          </View>
           {item.detectedName && item.detectedName !== displayedName ? (
             <Text style={styles.cardHint}>Étiquette lue : {item.detectedName}</Text>
           ) : null}
@@ -443,6 +458,14 @@ const styles = StyleSheet.create({
   cardTitle: { color: "#374151", fontSize: 14, fontWeight: "700" },
   productName: { color: "#1A1A1A", fontSize: 19, fontWeight: "700", marginTop: 2 },
   productMeta: { color: "#0A7EA5", fontSize: 14, fontWeight: "600" },
+  regulatoryBadge: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  regulatoryBadgeText: { fontSize: 12, lineHeight: 16, fontWeight: "700" },
   cardHint: { color: "#687076", fontSize: 13, lineHeight: 18 },
   duplicateNotice: {
     backgroundColor: "#FFFBEB",

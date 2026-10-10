@@ -920,3 +920,9 @@
 - [x] Renforcer les consignes OCR : ne pas inventer ni associer le nom d’un bidon avec l’AMM d’un autre
 - [x] Afficher une alerte explicite en cas de lecture nom/AMM contradictoire au lieu de proposer une fiche erronée
 - [x] Ajouter les régressions SWITCH, NIMROD, CLOMATE et SPOTLIGHT PLUS, puis valider le flux Android/iOS
+
+## Version 1.3.0 — Statuts réglementaires dans l’ajout multiple
+- [x] Afficher un badge réglementaire pour chaque produit identifié avant son ajout au stock
+- [x] Réutiliser les couleurs existantes : rouge PPNU, orange foncé toxique, orange clair CMR et vert homologué non CMR/non toxique
+- [x] Conserver le statut bleu pour une autorisation d’urgence Article 53 lorsqu’il existe
+- [x] Ajouter les tests de correspondance statut/couleur et valider les bundles Android/iOS sans changer la version 1.3.0
