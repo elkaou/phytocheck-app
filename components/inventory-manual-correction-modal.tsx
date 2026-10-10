@@ -21,6 +21,7 @@ interface InventoryManualCorrectionModalProps {
   detection: ResolvedInventoryDetection | null;
   products: Product[];
   riskPhrases: Record<string, RiskPhrase[]>;
+  isPremium: boolean;
   onCancel: () => void;
   onSelect: (product: ClassifiedProduct) => void;
 }
@@ -30,6 +31,7 @@ export function InventoryManualCorrectionModal({
   detection,
   products,
   riskPhrases,
+  isPremium,
   onCancel,
   onSelect,
 }: InventoryManualCorrectionModalProps) {
@@ -50,7 +52,8 @@ export function InventoryManualCorrectionModal({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
       <KeyboardAvoidingView
         style={styles.overlay}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
       >
         <View style={styles.sheet}>
           <View style={styles.handle} />
@@ -61,7 +64,9 @@ export function InventoryManualCorrectionModal({
             <View style={styles.headerCopy}>
               <Text style={styles.title}>Corriger le produit</Text>
               <Text style={styles.subtitle}>
-                Bidon {detection?.containerIndex ?? ""} — ce choix est gratuit et ne décompte aucune recherche.
+                {isPremium
+                  ? `Bidon ${detection?.containerIndex ?? ""} — sélectionnez le produit correspondant.`
+                  : `Bidon ${detection?.containerIndex ?? ""} — ce choix est gratuit et ne décompte aucune recherche.`}
               </Text>
             </View>
           </View>
@@ -131,7 +136,7 @@ export function InventoryManualCorrectionModal({
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(15, 23, 42, 0.52)" },
-  sheet: { maxHeight: "88%", backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingBottom: 22 },
+  sheet: { maxHeight: "92%", flexShrink: 1, backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingBottom: 22 },
   handle: { width: 42, height: 4, borderRadius: 2, backgroundColor: "#CBD5E1", alignSelf: "center", marginTop: 10, marginBottom: 18 },
   header: { flexDirection: "row", alignItems: "flex-start", gap: 11 },
   headerIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#E0F2FE", alignItems: "center", justifyContent: "center" },
@@ -143,7 +148,7 @@ const styles = StyleSheet.create({
   detectedName: { color: "#78350F", fontSize: 16, fontWeight: "800" },
   searchBox: { marginTop: 16, flexDirection: "row", alignItems: "center", gap: 9, borderWidth: 1, borderColor: "#94A3B8", borderRadius: 12, paddingHorizontal: 12, minHeight: 50 },
   searchInput: { flex: 1, color: "#0F172A", fontSize: 16, paddingVertical: 11 },
-  results: { paddingTop: 12, paddingBottom: 8, gap: 8 },
+  results: { paddingTop: 12, paddingBottom: 8, gap: 8, flexGrow: 1 },
   emptyText: { color: "#64748B", textAlign: "center", fontSize: 14, lineHeight: 20, paddingVertical: 20 },
   candidate: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 11, paddingVertical: 11, paddingHorizontal: 12 },
   candidateCopy: { flex: 1, gap: 2 },

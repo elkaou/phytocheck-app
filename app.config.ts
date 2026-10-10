@@ -66,6 +66,8 @@ const config: ExpoConfig = {
     },
     // edgeToEdgeEnabled retiré (obsolète dans Android 15)
     // L'app utilise SafeAreaView pour gérer les zones sûres
+    // Les fenêtres de saisie restent visibles au-dessus du clavier Android.
+    softwareKeyboardLayoutMode: "resize",
     predictiveBackGestureEnabled: false,
     package: env.androidPackage,
     permissions: ["POST_NOTIFICATIONS"],

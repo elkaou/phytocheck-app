@@ -188,6 +188,11 @@ export default function InventoryScanScreen() {
         return;
       }
 
+      if (isPremium) {
+        onConfirm();
+        return;
+      }
+
       Alert.alert(
         "Décompte de l’ajout multiple",
         getInventorySearchChargeNotice(remainingSearches, isPremium),
@@ -489,9 +494,11 @@ export default function InventoryScanScreen() {
               <IconSymbol name="doc.text.fill" size={22} color="#0A7EA5" />
               <Text style={styles.galleryButtonText}>Choisir depuis la galerie</Text>
             </Pressable>
-            <Text style={styles.notice}>
-              Avant de photographier : chaque bidon identifié automatiquement décompte une recherche. Les bidons non identifiés ou corrigés manuellement ne sont pas décomptés.
-            </Text>
+            {!isPremium ? (
+              <Text style={styles.notice}>
+                Avant de photographier : chaque bidon identifié automatiquement décompte une recherche. Les bidons non identifiés ou corrigés manuellement ne sont pas décomptés.
+              </Text>
+            ) : null}
           </View>
         )}
       </SafeAreaView>
@@ -507,6 +514,7 @@ export default function InventoryScanScreen() {
         detection={manualCorrectionDetection}
         products={products}
         riskPhrases={riskPhrases}
+        isPremium={isPremium}
         onCancel={() => setManualCorrectionDetection(null)}
         onSelect={applyManualCorrection}
       />

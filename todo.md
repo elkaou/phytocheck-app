@@ -956,3 +956,8 @@
 ## Version 1.3.0 — Fiabilité des alertes de retrait
 - [x] Calculer les jours restants par date calendaire, sans décalage lié aux changements d’heure Windows/iOS/Android
 - [x] Valider les tests de retrait sous un fuseau horaire européen avant le build Android
+
+## Version 1.3.0 — Correction saisie manuelle et Premium
+- [x] Adapter la fenêtre de correction manuelle au clavier Android afin que le champ de recherche reste toujours visible
+- [x] Masquer les avertissements et libellés de décompte de recherches dans l’ajout multiple pour les comptes Premium
+- [x] Conserver les explications de gratuité pour les comptes Freemium et valider Android/iOS sans modifier la version 1.3.0
