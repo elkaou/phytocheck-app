@@ -16,7 +16,10 @@ import {
 } from "react-native-safe-area-context";
 import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 import { trpc, createTRPCClient } from "@/lib/trpc";
-import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
+import {
+  initManusRuntime,
+  subscribeSafeAreaInsets,
+} from "@/lib/_core/manus-runtime";
 import { AppProvider, useApp } from "@/lib/app-context";
 import { IAPProvider } from "@/lib/iap-context";
 import { DataProvider } from "@/lib/data-context";
@@ -36,11 +39,7 @@ export const unstable_settings = {
  */
 function IAPBridge({ children }: { children: React.ReactNode }) {
   const { setPremium } = useApp();
-  return (
-    <IAPProvider onPremiumChange={setPremium}>
-      {children}
-    </IAPProvider>
-  );
+  return <IAPProvider onPremiumChange={setPremium}>{children}</IAPProvider>;
 }
 
 export default function RootLayout() {
@@ -79,7 +78,10 @@ export default function RootLayout() {
   const [trpcClient] = useState(() => createTRPCClient());
 
   const providerInitialMetrics = useMemo(() => {
-    const metrics = initialWindowMetrics ?? { insets: initialInsets, frame: initialFrame };
+    const metrics = initialWindowMetrics ?? {
+      insets: initialInsets,
+      frame: initialFrame,
+    };
     return {
       ...metrics,
       insets: {
@@ -96,15 +98,25 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AppProvider>
             <DataProvider>
-            <IAPBridge>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="product/[amm]" options={{ presentation: "card" }} />
-                <Stack.Screen name="scan" options={{ presentation: "modal" }} />
-                <Stack.Screen name="oauth/callback" />
-              </Stack>
-              <StatusBar style="auto" />
-            </IAPBridge>
+              <IAPBridge>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen
+                    name="product/[amm]"
+                    options={{ presentation: "card" }}
+                  />
+                  <Stack.Screen
+                    name="active-substances"
+                    options={{ presentation: "card" }}
+                  />
+                  <Stack.Screen
+                    name="scan"
+                    options={{ presentation: "modal" }}
+                  />
+                  <Stack.Screen name="oauth/callback" />
+                </Stack>
+                <StatusBar style="auto" />
+              </IAPBridge>
             </DataProvider>
           </AppProvider>
         </QueryClientProvider>
@@ -130,7 +142,9 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <SafeAreaProvider initialMetrics={providerInitialMetrics}>{content}</SafeAreaProvider>
+      <SafeAreaProvider initialMetrics={providerInitialMetrics}>
+        {content}
+      </SafeAreaProvider>
     </ThemeProvider>
   );
 }

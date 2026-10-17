@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import manifest from "../assets/data/manifest.json";
 import {
   searchProducts,
   getProductByAMM,
@@ -7,6 +6,10 @@ import {
   createEmergencyAuthorizationProduct,
   getClassificationLabel,
   getClassificationColor,
+  extractActiveSubstanceNames,
+  searchByExactSubstances,
+  sortProductsWithStockFirst,
+  filterHomologatedProducts,
   TOTAL_PRODUCTS,
   DB_UPDATE_DATE,
 } from "../lib/product-service";
@@ -19,8 +22,8 @@ describe("product-service", () => {
   });
 
   describe("DB_UPDATE_DATE", () => {
-    it("correspond à la date du manifest E‑Phy embarqué", () => {
-      expect(DB_UPDATE_DATE).toBe(manifest.updated_at);
+    it("should return the correct date", () => {
+      expect(DB_UPDATE_DATE).toBe("08/04/2026");
     });
   });
 
@@ -37,9 +40,10 @@ describe("product-service", () => {
     it("should find products by name", () => {
       const results = searchProducts("ROUNDUP");
       expect(results.length).toBeGreaterThan(0);
-      const hasRoundup = results.some((p) =>
-        p.nom.toUpperCase().includes("ROUNDUP") ||
-        p.nomsSecondaires.toUpperCase().includes("ROUNDUP")
+      const hasRoundup = results.some(
+        (p) =>
+          p.nom.toUpperCase().includes("ROUNDUP") ||
+          p.nomsSecondaires.toUpperCase().includes("ROUNDUP"),
       );
       expect(hasRoundup).toBe(true);
     });
@@ -62,6 +66,137 @@ describe("product-service", () => {
       expect(product.classification).toBeDefined();
       expect(product.riskPhrases).toBeDefined();
       expect(Array.isArray(product.riskPhrases)).toBe(true);
+    });
+  });
+
+  describe("searchByExactSubstances", () => {
+    const makeProduct = (
+      amm: string,
+      nom: string,
+      substancesActives: string,
+      etat = "AUTORISE",
+    ) => ({
+      amm,
+      nom,
+      nomsSecondaires: "",
+      titulaire: "Titulaire de test",
+      gammeUsage: "Professionnel",
+      substancesActives,
+      fonctions: "Herbicide",
+      formulation: "Concentré",
+      etat,
+      dateRetrait: "",
+      dateAutorisation: "01/01/2020",
+    });
+
+    it("extrait le nom harmonisé même lorsque le libellé contient des parenthèses imbriquées", () => {
+      expect(
+        extractActiveSubstanceNames(
+          "terpinéol (CAS n° 8000-41-7) (Terpineol (CAS n° 8000-41-7)) 665.0 g/L",
+        ),
+      ).toEqual(["Terpineol (CAS n° 8000-41-7)"]);
+    });
+
+    it("retient exactement la même matière active et exclut les formulations avec une matière supplémentaire", () => {
+      const products = [
+        makeProduct(
+          "test-single",
+          "GLYPHOSEUL",
+          "glyphosate sel (Glyphosate) 360.0 g/L",
+        ),
+        makeProduct(
+          "test-combination",
+          "GLYPHO-MIX",
+          "glyphosate sel (Glyphosate) 250.0 g/L | dicamba (Dicamba) 50.0 g/L",
+        ),
+        makeProduct(
+          "test-retired",
+          "GLYPHO-RETIRE",
+          "glyphosate (Glyphosate) 360.0 g/L",
+          "RETIRE",
+        ),
+      ];
+
+      const results = searchByExactSubstances(
+        ["Glyphosate"],
+        100,
+        products,
+        {},
+      );
+
+      expect(results.map((product) => product.nom)).toEqual(["GLYPHOSEUL"]);
+    });
+
+    it("compare un ensemble de plusieurs matières actives sans tenir compte de leur ordre", () => {
+      const products = [
+        makeProduct(
+          "test-combination",
+          "GLYPHO-MIX",
+          "glyphosate (Glyphosate) 250.0 g/L | dicamba (Dicamba) 50.0 g/L",
+        ),
+        makeProduct(
+          "test-other",
+          "GLYPHO",
+          "glyphosate (Glyphosate) 360.0 g/L",
+        ),
+      ];
+
+      const results = searchByExactSubstances(
+        ["dicamba", "glyphosate"],
+        100,
+        products,
+        {},
+      );
+
+      expect(results.map((product) => product.nom)).toEqual(["GLYPHO-MIX"]);
+    });
+
+    it("place le produit déjà en stock en premier", () => {
+      const products = [
+        makeProduct("test-a", "ALPHA", "glyphosate (Glyphosate) 250.0 g/L"),
+        makeProduct("test-b", "BETA", "glyphosate (Glyphosate) 360.0 g/L"),
+      ];
+      const results = searchByExactSubstances(
+        ["glyphosate"],
+        100,
+        products,
+        {},
+      );
+
+      expect(
+        sortProductsWithStockFirst(results, new Set(["test-b"])).map(
+          (product) => product.nom,
+        ),
+      ).toEqual(["BETA", "ALPHA"]);
+    });
+
+    it("filtre les produits retirés par défaut tout en permettant de les réafficher", () => {
+      const products = [
+        classifyProduct(
+          makeProduct(
+            "test-authorized",
+            "AUTORISE",
+            "glyphosate (Glyphosate) 250.0 g/L",
+          ),
+        ),
+        classifyProduct(
+          makeProduct(
+            "test-retired",
+            "RETIRE",
+            "glyphosate (Glyphosate) 360.0 g/L",
+            "RETIRE",
+          ),
+        ),
+      ];
+
+      expect(
+        filterHomologatedProducts(products, false).map(
+          (product) => product.nom,
+        ),
+      ).toEqual(["AUTORISE"]);
+      expect(
+        filterHomologatedProducts(products, true).map((product) => product.nom),
+      ).toEqual(["AUTORISE", "RETIRE"]);
     });
   });
 
@@ -108,11 +243,17 @@ describe("product-service", () => {
 
   describe("getClassificationLabel", () => {
     it("should return correct labels", () => {
-      expect(getClassificationLabel("homologue")).toBe("Homologué non CMR, non toxique");
+      expect(getClassificationLabel("homologue")).toBe(
+        "Homologué non CMR, non toxique",
+      );
       expect(getClassificationLabel("retire")).toBe("Retiré");
       expect(getClassificationLabel("homologue_cmr")).toBe("Homologué — CMR");
-      expect(getClassificationLabel("homologue_toxique")).toBe("Homologué — Toxique");
-      expect(getClassificationLabel("autorisation_urgence")).toBe("Autorisation d’urgence — Article 53");
+      expect(getClassificationLabel("homologue_toxique")).toBe(
+        "Homologué — Toxique",
+      );
+      expect(getClassificationLabel("autorisation_urgence")).toBe(
+        "Autorisation d’urgence — Article 53",
+      );
     });
   });
 

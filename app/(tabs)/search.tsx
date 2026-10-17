@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useMemo,
+} from "react";
 import {
   ScrollView,
   Text,
@@ -20,6 +26,8 @@ import {
   getClassificationLabel,
   getClassificationColor,
   getClassificationBgColor,
+  sortProductsWithStockFirst,
+  filterHomologatedProducts,
 } from "@/lib/product-service";
 import { useApp } from "@/lib/app-context";
 import { useData } from "@/lib/data-context";
@@ -36,16 +44,23 @@ import {
   getEmergencyAuthorizationsForCulture,
   searchEmergencyAuthorizations,
 } from "@/lib/emergency-authorizations";
+import { formatStockQuantity } from "@/lib/quantity";
 
 // Filtres de type disponibles pour la recherche par culture
-const TYPE_FILTERS = ["Tous", "Herbicide", "Fongicide", "Insecticide", "Acaricide"] as const;
+const TYPE_FILTERS = [
+  "Tous",
+  "Herbicide",
+  "Fongicide",
+  "Insecticide",
+  "Acaricide",
+] as const;
 type TypeFilter = (typeof TYPE_FILTERS)[number];
 const CULTURE_RESULT_PAGE_SIZE = 50;
 
 export default function SearchScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string; q?: string }>();
-  const { remainingSearches, isPremium, performSearch } = useApp();
+  const { remainingSearches, isPremium, performSearch, stock } = useApp();
   const {
     products: dynamicProducts,
     riskPhrases: dynamicRiskPhrases,
@@ -59,20 +74,27 @@ export default function SearchScreen() {
   const [autoSearchDone, setAutoSearchDone] = useState(false);
   const [results, setResults] = useState<ClassifiedProduct[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
-  const [searchType, setSearchType] = useState<"name" | "substance" | "culture">("name");
-  const [filterHomologues, setFilterHomologues] = useState(false);
+  const [searchType, setSearchType] = useState<
+    "name" | "substance" | "culture"
+  >("name");
+  // Les recherches commencent par les produits homologués. Le bouton permet
+  // ensuite de réafficher les produits retirés à la demande.
+  const [filterHomologues, setFilterHomologues] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
 
   // --- États recherche par culture ---
   const [cultureQuery, setCultureQuery] = useState("");
-  const [selectedTypeFilter, setSelectedTypeFilter] = useState<TypeFilter>("Tous");
+  const [selectedTypeFilter, setSelectedTypeFilter] =
+    useState<TypeFilter>("Tous");
   const [showCultureSuggestions, setShowCultureSuggestions] = useState(false);
   // Filtre par cible/maladie dans les résultats culture
   const [selectedCible, setSelectedCible] = useState<string | null>(null);
-  const [cultureCiblesByAmm, setCultureCiblesByAmm] = useState<ReadonlyMap<string, readonly string[]>>(
-    new Map(),
+  const [cultureCiblesByAmm, setCultureCiblesByAmm] = useState<
+    ReadonlyMap<string, readonly string[]>
+  >(new Map());
+  const [visibleCultureResultCount, setVisibleCultureResultCount] = useState(
+    CULTURE_RESULT_PAGE_SIZE,
   );
-  const [visibleCultureResultCount, setVisibleCultureResultCount] = useState(CULTURE_RESULT_PAGE_SIZE);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const resultsRef = useRef<View>(null);
@@ -102,7 +124,9 @@ export default function SearchScreen() {
     if (searchType !== "culture" || results.length === 0) return [];
     const cibles = new Set<string>();
     results.forEach((product) => {
-      cultureCiblesByAmm.get(product.amm)?.forEach((cible) => cibles.add(cible));
+      cultureCiblesByAmm
+        .get(product.amm)
+        ?.forEach((cible) => cibles.add(cible));
     });
     return Array.from(cibles).sort((a, b) => a.localeCompare(b, "fr"));
   }, [searchType, results, cultureCiblesByAmm]);
@@ -110,12 +134,33 @@ export default function SearchScreen() {
   // Produits filtrés par cible sélectionnée
   const cibleFilteredResults = useMemo(() => {
     if (!selectedCible || searchType !== "culture") return results;
-    return results.filter((product) => cultureCiblesByAmm.get(product.amm)?.includes(selectedCible));
+    return results.filter((product) =>
+      cultureCiblesByAmm.get(product.amm)?.includes(selectedCible),
+    );
   }, [selectedCible, results, searchType, cultureCiblesByAmm]);
 
+  const stockByAmm = useMemo(
+    () => new Map(stock.map((item) => [item.amm, item] as const)),
+    [stock],
+  );
+  const stockedAmms = useMemo(() => new Set(stockByAmm.keys()), [stockByAmm]);
+
+  const filteredResults = useMemo(() => {
+    const statusFiltered =
+      searchType !== "culture"
+        ? filterHomologatedProducts(results, !filterHomologues)
+        : results;
+    return sortProductsWithStockFirst(statusFiltered, stockedAmms);
+  }, [filterHomologues, results, searchType, stockedAmms]);
+
+  const sortedCibleFilteredResults = useMemo(
+    () => sortProductsWithStockFirst(cibleFilteredResults, stockedAmms),
+    [cibleFilteredResults, stockedAmms],
+  );
+
   const visibleCultureResults = useMemo(
-    () => cibleFilteredResults.slice(0, visibleCultureResultCount),
-    [cibleFilteredResults, visibleCultureResultCount],
+    () => sortedCibleFilteredResults.slice(0, visibleCultureResultCount),
+    [sortedCibleFilteredResults, visibleCultureResultCount],
   );
 
   // Les suggestions restent vides jusqu'à l'activation volontaire de la recherche culture.
@@ -133,7 +178,8 @@ export default function SearchScreen() {
   // Les décisions Article 53 restent séparées des homologations E‑Phy : elles
   // sont limitées dans le temps et dans le périmètre de chaque décision.
   const emergencyCultureResults = useMemo(() => {
-    if (searchType !== "culture" || !hasSearched || !cultureQuery.trim()) return [];
+    if (searchType !== "culture" || !hasSearched || !cultureQuery.trim())
+      return [];
     return getEmergencyAuthorizationsForCulture(
       emergencyAuthorizations,
       cultureQuery.trim(),
@@ -155,11 +201,25 @@ export default function SearchScreen() {
     return searchEmergencyAuthorizations(emergencyAuthorizations, query.trim());
   }, [searchType, hasSearched, query, emergencyAuthorizations]);
 
-  const emergencyResults = searchType === "culture"
-    ? emergencyCultureResults
-    : searchType === "name"
-      ? emergencyNameResults
-      : [];
+  const emergencyResults =
+    searchType === "culture"
+      ? emergencyCultureResults
+      : searchType === "name"
+        ? emergencyNameResults
+        : [];
+
+  const sortedEmergencyResults = useMemo(
+    () =>
+      [...emergencyResults].sort((a, b) => {
+        const inStockDifference =
+          Number(stockedAmms.has(b.amm)) - Number(stockedAmms.has(a.amm));
+        if (inStockDifference !== 0) return inStockDifference;
+        return a.productName.localeCompare(b.productName, "fr", {
+          sensitivity: "base",
+        });
+      }),
+    [emergencyResults, stockedAmms],
+  );
 
   // --- Recherche par culture ---
   const searchByCulture = useCallback(
@@ -187,11 +247,14 @@ export default function SearchScreen() {
         }, 150);
       }, 100);
     },
-    [prepareCultureSearch]
+    [prepareCultureSearch],
   );
 
   const handleCultureSearch = useCallback(
-    async (cultureName?: string, typeFilter: TypeFilter = selectedTypeFilter) => {
+    async (
+      cultureName?: string,
+      typeFilter: TypeFilter = selectedTypeFilter,
+    ) => {
       const name = cultureName || cultureQuery.trim();
       if (!name) return;
 
@@ -209,7 +272,7 @@ export default function SearchScreen() {
           [
             { text: "Annuler", style: "cancel" },
             { text: "Voir Premium", onPress: () => router.push("/premium") },
-          ]
+          ],
         );
         return;
       }
@@ -219,7 +282,7 @@ export default function SearchScreen() {
       setShowCultureSuggestions(false);
       searchByCulture(name, typeFilter);
     },
-    [cultureQuery, selectedTypeFilter, performSearch, router, searchByCulture]
+    [cultureQuery, selectedTypeFilter, performSearch, router, searchByCulture],
   );
 
   // Relancer la recherche par culture quand le filtre de type change
@@ -240,13 +303,22 @@ export default function SearchScreen() {
         void handleCultureSearch(cultureName, filter);
       }
     },
-    [searchType, hasSearched, cultureQuery, searchByCulture, handleCultureSearch]
+    [
+      searchType,
+      hasSearched,
+      cultureQuery,
+      searchByCulture,
+      handleCultureSearch,
+    ],
   );
 
   const handleOpenEmergencyProduct = useCallback(
     (amm: string, productName: string) => {
       isNavigatingToProduct.current = true;
-      router.push({ pathname: "/product/[amm]", params: { amm, name: productName } });
+      router.push({
+        pathname: "/product/[amm]",
+        params: { amm, name: productName },
+      });
     },
     [router],
   );
@@ -259,8 +331,18 @@ export default function SearchScreen() {
       setTimeout(() => {
         const found =
           type === "substance"
-            ? searchBySubstance(searchQuery, 10000, dynamicProducts, dynamicRiskPhrases)
-            : searchProducts(searchQuery, 50, dynamicProducts, dynamicRiskPhrases);
+            ? searchBySubstance(
+                searchQuery,
+                10000,
+                dynamicProducts,
+                dynamicRiskPhrases,
+              )
+            : searchProducts(
+                searchQuery,
+                50,
+                dynamicProducts,
+                dynamicRiskPhrases,
+              );
         setResults(found);
         setHasSearched(true);
         setIsSearching(false);
@@ -272,12 +354,12 @@ export default function SearchScreen() {
             (_x: number, y: number) => {
               scrollViewRef.current?.scrollTo({ y: y - 20, animated: true });
             },
-            () => {}
+            () => {},
           );
         }, 200);
       }, 100);
     },
-    [dynamicProducts, dynamicRiskPhrases]
+    [dynamicProducts, dynamicRiskPhrases],
   );
 
   useEffect(() => {
@@ -292,7 +374,10 @@ export default function SearchScreen() {
       if (isNavigatingToProduct.current) {
         isNavigatingToProduct.current = false;
         setTimeout(() => {
-          scrollViewRef.current?.scrollTo({ y: savedScrollY.current, animated: false });
+          scrollViewRef.current?.scrollTo({
+            y: savedScrollY.current,
+            animated: false,
+          });
         }, 50);
         return;
       }
@@ -302,12 +387,12 @@ export default function SearchScreen() {
         setCultureQuery("");
         setResults([]);
         setHasSearched(false);
-        setFilterHomologues(false);
+        setFilterHomologues(true);
         setSelectedTypeFilter("Tous");
         setShowCultureSuggestions(false);
         savedScrollY.current = 0;
       }
-    }, [params.q])
+    }, [params.q]),
   );
 
   const handleSearch = useCallback(async () => {
@@ -320,7 +405,7 @@ export default function SearchScreen() {
         [
           { text: "Annuler", style: "cancel" },
           { text: "Voir Premium", onPress: () => router.push("/premium") },
-        ]
+        ],
       );
       return;
     }
@@ -337,7 +422,7 @@ export default function SearchScreen() {
         [
           { text: "Annuler", style: "cancel" },
           { text: "Voir Premium", onPress: () => router.push("/premium") },
-        ]
+        ],
       );
       return;
     }
@@ -349,67 +434,112 @@ export default function SearchScreen() {
   }, [router]);
 
   const renderProduct = useCallback(
-    ({ item }: { item: ClassifiedProduct }) => (
-      <Pressable
-        style={({ pressed }) => [styles.resultCard, pressed && { opacity: 0.7 }]}
-        onPress={() => {
-          isNavigatingToProduct.current = true;
-          router.push({
-            pathname: "/product/[amm]" as any,
-            params: {
-              amm: item.amm,
-              name: item.matchedName || item.nom,
-              // Passer la culture sélectionnée pour pré-filtrer les usages autorisés
-              ...(searchType === "culture" && cultureQuery.trim()
-                ? { culture: cultureQuery.trim() }
-                : {}),
-            },
-          });
-        }}
-      >
-        <Text style={styles.resultName}>{item.matchedName || item.nom}</Text>
-        {item.matchedName && (
-          <Text style={styles.resultSecondary}>(Nom principal : {item.nom})</Text>
-        )}
-        <View style={styles.resultBottomRow}>
-          <View style={styles.resultCardContent}>
-            <Text style={styles.resultAMM}>AMM : {item.amm}</Text>
-            <Text style={styles.resultInfo} numberOfLines={1}>
-              {item.titulaire}
-            </Text>
+    ({ item }: { item: ClassifiedProduct }) => {
+      const stockItem = stockByAmm.get(item.amm);
+      const inStock = Boolean(stockItem);
+      const stockLabel = stockItem
+        ? `En stock : ${formatStockQuantity(stockItem.quantite)} ${stockItem.unite}`
+        : "En stock";
+
+      return (
+        <Pressable
+          style={({ pressed }) => [
+            styles.resultCard,
+            inStock && styles.resultCardInStock,
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={() => {
+            isNavigatingToProduct.current = true;
+            router.push({
+              pathname: "/product/[amm]" as any,
+              params: {
+                amm: item.amm,
+                name: item.matchedName || item.nom,
+                // Passer la culture sélectionnée pour pré-filtrer les usages autorisés
+                ...(searchType === "culture" && cultureQuery.trim()
+                  ? { culture: cultureQuery.trim() }
+                  : {}),
+              },
+            });
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.matchedName || item.nom}${inStock ? ", en stock" : ""}`}
+        >
+          <View style={styles.resultTitleRow}>
+            <View style={styles.resultTitleContainer}>
+              <Text style={styles.resultName}>
+                {item.matchedName || item.nom}
+              </Text>
+              {item.matchedName && (
+                <Text style={styles.resultSecondary}>
+                  (Nom principal : {item.nom})
+                </Text>
+              )}
+            </View>
+            {inStock && (
+              <View style={styles.stockBadge}>
+                <IconSymbol
+                  name="checkmark.circle.fill"
+                  size={14}
+                  color="#15803D"
+                />
+                <Text style={styles.stockBadgeText}>{stockLabel}</Text>
+              </View>
+            )}
           </View>
-          <View
-            style={[
-              styles.badge,
-              { backgroundColor: getClassificationBgColor(item.classification) },
-            ]}
-          >
-            <Text
-              style={[styles.badgeText, { color: getClassificationColor(item.classification) }]}
-              numberOfLines={2}
+          <View style={styles.resultBottomRow}>
+            <View style={styles.resultCardContent}>
+              <Text style={styles.resultAMM}>AMM : {item.amm}</Text>
+              <Text style={styles.resultInfo} numberOfLines={1}>
+                {item.titulaire}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.badge,
+                {
+                  backgroundColor: getClassificationBgColor(
+                    item.classification,
+                  ),
+                },
+              ]}
             >
-              {getClassificationLabel(item.classification)}
-            </Text>
+              <Text
+                style={[
+                  styles.badgeText,
+                  { color: getClassificationColor(item.classification) },
+                ]}
+                numberOfLines={2}
+              >
+                {getClassificationLabel(item.classification)}
+              </Text>
+            </View>
           </View>
-        </View>
-      </Pressable>
-    ),
-    [router, searchType, cultureQuery]
+        </Pressable>
+      );
+    },
+    [router, searchType, cultureQuery, stockByAmm],
   );
 
   // Titre du résultat selon le type de recherche
   const resultsTitle = useMemo(() => {
     if (searchType === "culture") {
-      const count = cibleFilteredResults.length;
-      const filterLabel = selectedTypeFilter !== "Tous" ? ` — ${selectedTypeFilter}` : "";
+      const count = sortedCibleFilteredResults.length;
+      const filterLabel =
+        selectedTypeFilter !== "Tous" ? ` — ${selectedTypeFilter}` : "";
       const cibleLabel = selectedCible ? ` · ${selectedCible}` : "";
       return `${count} produit${count > 1 ? "s" : ""} autorisé${count > 1 ? "s" : ""} sur ${cultureQuery}${filterLabel}${cibleLabel}`;
     }
-    const count = filterHomologues
-      ? results.filter((r) => r.classification !== "retire").length
-      : results.length;
+    const count = filteredResults.length;
     return `${count} résultat${count > 1 ? "s" : ""}${filterHomologues ? " (homologués)" : ""}`;
-  }, [searchType, results, cultureQuery, selectedTypeFilter, filterHomologues]);
+  }, [
+    searchType,
+    filteredResults,
+    cultureQuery,
+    selectedTypeFilter,
+    filterHomologues,
+    sortedCibleFilteredResults,
+  ]);
 
   const isCultureSearchLoading = isSearching && searchType === "culture";
   const cultureSearchLoadingDescription = getCultureSearchLoadingDescription(
@@ -445,461 +575,638 @@ export default function SearchScreen() {
             </View>
             <ActivityIndicator size="large" color="#2E7D32" />
             <Text style={styles.cultureLoadingTitle}>Recherche en cours…</Text>
-            <Text style={styles.cultureLoadingDescription}>{cultureSearchLoadingDescription}</Text>
+            <Text style={styles.cultureLoadingDescription}>
+              {cultureSearchLoadingDescription}
+            </Text>
             <Text style={styles.cultureLoadingHint}>
               Nous vérifions les produits autorisés et leurs usages E‑Phy.
             </Text>
           </View>
         ) : (
           <>
-          {/* Bouton Nouvelle recherche */}
-          {hasSearched && (
-          <Pressable
-            style={({ pressed }) => [
-              styles.newSearchButton,
-              pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-            ]}
-            onPress={() => {
-              setQuery("");
-              setSubstanceQuery("");
-              setCultureQuery("");
-              setResults([]);
-              setHasSearched(false);
-              setFilterHomologues(false);
-              setSelectedTypeFilter("Tous");
-              setShowCultureSuggestions(false);
-            }}
-          >
-            <IconSymbol name="plus.circle.fill" size={20} color="#FFFFFF" />
-            <Text style={styles.newSearchButtonText}>Nouvelle recherche</Text>
-          </Pressable>
-          )}
-
-          <ScrollView
-          ref={scrollViewRef}
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          onScroll={(e) => {
-            savedScrollY.current = e.nativeEvent.contentOffset.y;
-          }}
-          scrollEventThrottle={16}
-        >
-          {/* Formulaires de recherche — masqués quand résultats affichés */}
-          {!hasSearched && (
-            <>
-              <View style={styles.searchIntro}>
-                <Text style={styles.searchIntroTitle}>Comment souhaitez-vous rechercher ?</Text>
-                <Text style={styles.searchIntroText}>
-                  Choisissez la méthode la plus adaptée à l’information dont vous disposez.
-                </Text>
-              </View>
-
-              {/* Recherche par produit */}
-              <View style={styles.searchMethodCard}>
-                <View style={styles.searchMethodHeader}>
-                  <View style={[styles.searchMethodIcon, styles.searchMethodIconBlue]}>
-                    <IconSymbol name="magnifyingglass" size={22} color="#0A7EA5" />
-                  </View>
-                  <View style={styles.searchMethodHeaderText}>
-                    <Text style={styles.searchMethodTitle}>Par produit ou n° AMM</Text>
-                    <Text style={styles.searchMethodDescription}>
-                      Retrouvez un produit à partir de son nom commercial ou de son numéro d’autorisation.
-                    </Text>
-                  </View>
-                </View>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Nom du produit ou n° AMM"
-                  placeholderTextColor="#9BA1A6"
-                  value={query}
-                  onChangeText={setQuery}
-                  returnKeyType="search"
-                  onSubmitEditing={handleSearch}
-                  autoCorrect={false}
-                  accessibilityLabel="Rechercher un produit par nom ou numéro AMM"
-                />
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.searchButton,
-                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                  ]}
-                  onPress={handleSearch}
-                >
-                  <IconSymbol name="magnifyingglass" size={22} color="#FFFFFF" />
-                  <Text style={styles.searchButtonText}>Rechercher un produit</Text>
-                </Pressable>
-              </View>
-
-              {/* Recherche par matière active */}
-              <View style={styles.searchMethodCard}>
-                <View style={styles.searchMethodHeader}>
-                  <View style={[styles.searchMethodIcon, styles.searchMethodIconTeal]}>
-                    <IconSymbol name="leaf.fill" size={22} color="#0F766E" />
-                  </View>
-                  <View style={styles.searchMethodHeaderText}>
-                    <Text style={styles.searchMethodTitle}>Par matière active</Text>
-                    <Text style={styles.searchMethodDescription}>
-                      Identifiez tous les produits contenant une substance active donnée.
-                    </Text>
-                  </View>
-                </View>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex. glyphosate, fluroxypyr…"
-                  placeholderTextColor="#9BA1A6"
-                  value={substanceQuery}
-                  onChangeText={setSubstanceQuery}
-                  returnKeyType="search"
-                  onSubmitEditing={handleSubstanceSearch}
-                  autoCorrect={false}
-                  autoCapitalize="none"
-                  accessibilityLabel="Rechercher par matière active"
-                />
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.searchButton,
-                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                  ]}
-                  onPress={handleSubstanceSearch}
-                >
-                  <IconSymbol name="leaf.fill" size={22} color="#FFFFFF" />
-                  <Text style={styles.searchButtonText}>Rechercher une matière active</Text>
-                </Pressable>
-              </View>
-
-              {/* Recherche par culture */}
-              <View style={styles.searchMethodCard}>
-                <View style={styles.searchMethodHeader}>
-                  <View style={[styles.searchMethodIcon, styles.searchMethodIconGreen]}>
-                    <IconSymbol name="leaf.fill" size={22} color="#2E7D32" />
-                  </View>
-                  <View style={styles.searchMethodHeaderText}>
-                    <Text style={styles.searchMethodTitle}>Par culture</Text>
-                    <Text style={styles.searchMethodDescription}>
-                      Consultez les produits autorisés pour une culture et filtrez par opération.
-                    </Text>
-                  </View>
-                </View>
-                <View style={{ position: "relative" }}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Ex. blé, vigne, maïs, tomate…"
-                    placeholderTextColor="#9BA1A6"
-                    value={cultureQuery}
-                    onChangeText={(text) => {
-                      setCultureQuery(text);
-                      setShowCultureSuggestions(true);
-                      void prepareCultureSearch();
-                    }}
-                    onFocus={() => void prepareCultureSearch()}
-                    returnKeyType="search"
-                    onSubmitEditing={() => handleCultureSearch()}
-                    autoCorrect={false}
-                    autoCapitalize="words"
-                    accessibilityLabel="Rechercher par culture"
-                  />
-                  {showCultureSuggestions && cultureSuggestions.length > 0 && (
-                    <View style={styles.suggestionsContainer}>
-                      {cultureSuggestions.map((suggestion) => (
-                        <Pressable
-                          key={suggestion.value}
-                          style={({ pressed }) => [
-                            styles.suggestionItem,
-                            pressed && { backgroundColor: "#F0F9FF" },
-                          ]}
-                          onPress={() => {
-                            prepareCultureFilterInteraction(Keyboard.dismiss);
-                            setCultureQuery(suggestion.value);
-                            setShowCultureSuggestions(false);
-                          }}
-                        >
-                          <Text style={styles.suggestionText}>{suggestion.label}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.filterLabel}>Opération recherchée</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  style={{ marginBottom: 12 }}
-                  contentContainerStyle={{ gap: 8, paddingRight: 4 }}
-                >
-                  {TYPE_FILTERS.map((filter) => (
-                    <Pressable
-                      key={filter}
-                      style={({ pressed }) => [
-                        styles.typeFilterButton,
-                        selectedTypeFilter === filter && styles.typeFilterButtonActive,
-                        pressed && { opacity: 0.8 },
-                      ]}
-                      onPress={() => handleTypeFilterChange(filter)}
-                    >
-                      <Text
-                        style={[
-                          styles.typeFilterText,
-                          selectedTypeFilter === filter && styles.typeFilterTextActive,
-                        ]}
-                      >
-                        {filter}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.cultureSearchButton,
-                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                  ]}
-                  onPress={() => handleCultureSearch()}
-                >
-                  <IconSymbol name="leaf.fill" size={22} color="#FFFFFF" />
-                  <Text style={styles.searchButtonText}>Rechercher par culture</Text>
-                </Pressable>
-              </View>
-
-              {/* Recherche par photo */}
-              <View style={styles.searchMethodCard}>
-                <View style={styles.searchMethodHeader}>
-                  <View style={[styles.searchMethodIcon, styles.searchMethodIconOrange]}>
-                    <IconSymbol name="camera.fill" size={22} color="#C2410C" />
-                  </View>
-                  <View style={styles.searchMethodHeaderText}>
-                    <Text style={styles.searchMethodTitle}>Par photo d’étiquette</Text>
-                    <Text style={styles.searchMethodDescription}>
-                      Photographiez l’étiquette d’un bidon pour identifier automatiquement le produit.
-                    </Text>
-                  </View>
-                </View>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.scanButton,
-                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                  ]}
-                  onPress={handleScan}
-                  accessibilityRole="button"
-                  accessibilityLabel="Scanner une étiquette"
-                >
-                  <IconSymbol name="camera.fill" size={22} color="#FFFFFF" />
-                  <Text style={styles.searchButtonText}>Scanner une étiquette</Text>
-                </Pressable>
-              </View>
-            </>
-          )}
-
-          {/* Filtres de type affichés dans les résultats culture */}
-          {!isSearching && hasSearched && searchType === "culture" && (
-            <View ref={filtersRef} style={{ marginBottom: 12 }}>
-              <Text style={styles.cultureResultTitle}>
-                Produits autorisés sur : <Text style={{ color: "#0a7ea5" }}>{cultureQuery}</Text>
-              </Text>
-              {/* Filtre par type (Herbicide, Fongicide...) */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                style={{ marginTop: 8 }}
-                contentContainerStyle={{ gap: 8, paddingRight: 4 }}
-              >
-                {TYPE_FILTERS.map((filter) => (
-                  <Pressable
-                    key={filter}
-                    style={({ pressed }) => [
-                      styles.typeFilterButton,
-                      selectedTypeFilter === filter && styles.typeFilterButtonActive,
-                      pressed && { opacity: 0.8 },
-                    ]}
-                    onPress={() => handleTypeFilterChange(filter)}
-                  >
-                    <Text
-                      style={[
-                        styles.typeFilterText,
-                        selectedTypeFilter === filter && styles.typeFilterTextActive,
-                      ]}
-                    >
-                      {filter}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-              {/* Filtre par cible/maladie (si des cibles sont disponibles) */}
-              {availableCibles.length > 0 && (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  style={{ marginTop: 8 }}
-                  contentContainerStyle={{ gap: 8, paddingRight: 4 }}
-                >
-                  <Pressable
-                    style={[
-                      styles.cibleFilterButton,
-                      selectedCible === null && styles.cibleFilterButtonActive,
-                    ]}
-                    onPress={() => setSelectedCible(null)}
-                  >
-                    <Text style={[styles.cibleFilterText, selectedCible === null && styles.cibleFilterTextActive]}>
-                      Toutes cibles
-                    </Text>
-                  </Pressable>
-                  {availableCibles.map((cible) => (
-                    <Pressable
-                      key={cible}
-                      style={[
-                        styles.cibleFilterButton,
-                        selectedCible === cible && styles.cibleFilterButtonActive,
-                      ]}
-                      onPress={() => setSelectedCible(selectedCible === cible ? null : cible)}
-                    >
-                      <Text style={[styles.cibleFilterText, selectedCible === cible && styles.cibleFilterTextActive]}>
-                        {cible}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              )}
-            </View>
-          )}
-
-          {/* Chargement */}
-          {isSearching && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#0a7ea5" />
-              <Text style={styles.loadingText}>Recherche en cours...</Text>
-            </View>
-          )}
-
-          {/* Aucun résultat */}
-          {!isSearching && hasSearched && results.length === 0 && emergencyResults.length === 0 && (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>
-                {searchType === "culture"
-                  ? `Aucun produit autorisé trouvé sur "${cultureQuery}"${selectedTypeFilter !== "Tous" ? ` pour le type "${selectedTypeFilter}"` : ""}`
-                  : `Aucun produit trouvé pour "${searchType === "substance" ? substanceQuery : query}"`}
-              </Text>
-            </View>
-          )}
-
-          {/* Les dérogations temporaires sont prioritaires : elles peuvent répondre à un besoin urgent. */}
-          {!isSearching && hasSearched && emergencyResults.length > 0 && (
-            <View style={styles.emergencyResultsSection}>
-              <View style={styles.emergencyResultsHeader}>
-                <Text style={styles.emergencyResultsTitle}>Autorisations d’urgence — 120 jours</Text>
-                <Text style={styles.emergencyResultsCount}>
-                  {emergencyResults.length} décision{emergencyResults.length > 1 ? "s" : ""} active{emergencyResults.length > 1 ? "s" : ""}
-                </Text>
-              </View>
-              <Text style={styles.emergencyResultsHint}>
-                Dérogations temporaires Article 53 correspondant à la culture et à l’opération sélectionnées.
-              </Text>
-              {emergencyResults.map((authorization) => (
-                <Pressable
-                  key={authorization.id}
-                  style={({ pressed }) => [styles.emergencyResultCard, pressed && { opacity: 0.72 }]}
-                  onPress={() => handleOpenEmergencyProduct(authorization.amm, authorization.productName)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Ouvrir la fiche de ${authorization.productName}, autorisation d’urgence`}
-                >
-                  <View style={styles.emergencyResultTopRow}>
-                    <Text style={styles.emergencyResultName}>{authorization.productName}</Text>
-                    <View style={styles.emergencyValidityBadge}>
-                      <Text style={styles.emergencyValidityText}>
-                        Jusqu’au {formatEmergencyAuthorizationDate(authorization.expiresAt)}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.emergencyResultAmm}>AMM : {authorization.amm}</Text>
-                  <Text style={styles.emergencyResultLabel}>Culture(s) : {authorization.cultures}</Text>
-                  <Text style={styles.emergencyResultLabel}>Cible : {authorization.purpose}</Text>
-                  <Text style={styles.emergencyResultLink}>Voir la fiche et la décision officielle ›</Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
-
-          {/* Résultats */}
-          {!isSearching && results.length > 0 && (
-            <View ref={resultsRef} style={{ marginTop: 16 }}>
-              <Text style={styles.helpHint}>
-                ℹ️ Cliquez sur un produit pour plus de détails (Usages, matière active…)
-              </Text>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 8,
+            {/* Bouton Nouvelle recherche */}
+            {hasSearched && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.newSearchButton,
+                  pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                ]}
+                onPress={() => {
+                  setQuery("");
+                  setSubstanceQuery("");
+                  setCultureQuery("");
+                  setResults([]);
+                  setHasSearched(false);
+                  setFilterHomologues(true);
+                  setSelectedTypeFilter("Tous");
+                  setShowCultureSuggestions(false);
                 }}
               >
-                <Text style={styles.resultsCount}>{resultsTitle}</Text>
-                {/* Bouton filtre Homologués — uniquement pour recherche nom/substance */}
-                {searchType !== "culture" && (
-                  <Pressable
-                    style={({ pressed }) => ({
-                      backgroundColor: filterHomologues ? "#2E7D32" : "#FFFFFF",
-                      borderRadius: 20,
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      flexDirection: "row" as const,
-                      alignItems: "center" as const,
-                      gap: 5,
-                      opacity: pressed ? 0.8 : 1,
-                      borderWidth: 1.5,
-                      borderColor: "#2E7D32",
-                    })}
-                    onPress={() => setFilterHomologues((f) => !f)}
-                  >
-                    <IconSymbol
-                      name={filterHomologues ? "checkmark.circle.fill" : "circle"}
-                      size={16}
-                      color={filterHomologues ? "#FFFFFF" : "#2E7D32"}
-                    />
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: "600",
-                        color: filterHomologues ? "#FFFFFF" : "#2E7D32",
-                      }}
-                    >
-                      {filterHomologues ? "Homologués ✓" : "Homologués"}
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-              {(searchType !== "culture" && filterHomologues
-                ? results.filter((r) => r.classification !== "retire")
-                : searchType === "culture"
-                ? visibleCultureResults
-                : results
-              ).map((item, index) => (
-                <View key={`${item.amm}-${item.nom}-${index}`}>
-                  {renderProduct({ item })}
-                </View>
-              ))}
-              {searchType === "culture" && cibleFilteredResults.length > visibleCultureResults.length && (
-                <Pressable
-                  style={({ pressed }) => [styles.showMoreButton, pressed && { opacity: 0.8 }]}
-                  onPress={() => setVisibleCultureResultCount((count) => count + CULTURE_RESULT_PAGE_SIZE)}
-                >
-                  <Text style={styles.showMoreButtonText}>
-                    Afficher les {Math.min(CULTURE_RESULT_PAGE_SIZE, cibleFilteredResults.length - visibleCultureResults.length)} produits suivants
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          )}
+                <IconSymbol name="plus.circle.fill" size={20} color="#FFFFFF" />
+                <Text style={styles.newSearchButtonText}>
+                  Nouvelle recherche
+                </Text>
+              </Pressable>
+            )}
 
-          {!hasSearched && !isSearching && (
-            <View style={styles.hintCard}>
-              <Text style={styles.hintText}>
-                Recherchez par nom, AMM, matière active ou culture pour trouver les produits autorisés
-              </Text>
-            </View>
-          )}
-          </ScrollView>
+            <ScrollView
+              ref={scrollViewRef}
+              contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              onScroll={(e) => {
+                savedScrollY.current = e.nativeEvent.contentOffset.y;
+              }}
+              scrollEventThrottle={16}
+            >
+              {/* Formulaires de recherche — masqués quand résultats affichés */}
+              {!hasSearched && (
+                <>
+                  <View style={styles.searchIntro}>
+                    <Text style={styles.searchIntroTitle}>
+                      Comment souhaitez-vous rechercher ?
+                    </Text>
+                    <Text style={styles.searchIntroText}>
+                      Choisissez la méthode la plus adaptée à l’information dont
+                      vous disposez.
+                    </Text>
+                  </View>
+
+                  {/* Recherche par produit */}
+                  <View style={styles.searchMethodCard}>
+                    <View style={styles.searchMethodHeader}>
+                      <View
+                        style={[
+                          styles.searchMethodIcon,
+                          styles.searchMethodIconBlue,
+                        ]}
+                      >
+                        <IconSymbol
+                          name="magnifyingglass"
+                          size={22}
+                          color="#0A7EA5"
+                        />
+                      </View>
+                      <View style={styles.searchMethodHeaderText}>
+                        <Text style={styles.searchMethodTitle}>
+                          Par produit ou n° AMM
+                        </Text>
+                        <Text style={styles.searchMethodDescription}>
+                          Retrouvez un produit à partir de son nom commercial ou
+                          de son numéro d’autorisation.
+                        </Text>
+                      </View>
+                    </View>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Nom du produit ou n° AMM"
+                      placeholderTextColor="#9BA1A6"
+                      value={query}
+                      onChangeText={setQuery}
+                      returnKeyType="search"
+                      onSubmitEditing={handleSearch}
+                      autoCorrect={false}
+                      accessibilityLabel="Rechercher un produit par nom ou numéro AMM"
+                    />
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.searchButton,
+                        pressed && {
+                          opacity: 0.85,
+                          transform: [{ scale: 0.97 }],
+                        },
+                      ]}
+                      onPress={handleSearch}
+                    >
+                      <IconSymbol
+                        name="magnifyingglass"
+                        size={22}
+                        color="#FFFFFF"
+                      />
+                      <Text style={styles.searchButtonText}>
+                        Rechercher un produit
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  {/* Recherche par matière active */}
+                  <View style={styles.searchMethodCard}>
+                    <View style={styles.searchMethodHeader}>
+                      <View
+                        style={[
+                          styles.searchMethodIcon,
+                          styles.searchMethodIconTeal,
+                        ]}
+                      >
+                        <IconSymbol name="molecule" size={22} color="#0F766E" />
+                      </View>
+                      <View style={styles.searchMethodHeaderText}>
+                        <Text style={styles.searchMethodTitle}>
+                          Par matière active
+                        </Text>
+                        <Text style={styles.searchMethodDescription}>
+                          Identifiez tous les produits contenant une substance
+                          active donnée.
+                        </Text>
+                      </View>
+                    </View>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Ex. glyphosate, fluroxypyr…"
+                      placeholderTextColor="#9BA1A6"
+                      value={substanceQuery}
+                      onChangeText={setSubstanceQuery}
+                      returnKeyType="search"
+                      onSubmitEditing={handleSubstanceSearch}
+                      autoCorrect={false}
+                      autoCapitalize="none"
+                      accessibilityLabel="Rechercher par matière active"
+                    />
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.searchButton,
+                        pressed && {
+                          opacity: 0.85,
+                          transform: [{ scale: 0.97 }],
+                        },
+                      ]}
+                      onPress={handleSubstanceSearch}
+                    >
+                      <IconSymbol name="molecule" size={22} color="#FFFFFF" />
+                      <Text style={styles.searchButtonText}>
+                        Rechercher une matière active
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  {/* Recherche par culture */}
+                  <View style={styles.searchMethodCard}>
+                    <View style={styles.searchMethodHeader}>
+                      <View
+                        style={[
+                          styles.searchMethodIcon,
+                          styles.searchMethodIconGreen,
+                        ]}
+                      >
+                        <IconSymbol
+                          name="leaf.fill"
+                          size={22}
+                          color="#2E7D32"
+                        />
+                      </View>
+                      <View style={styles.searchMethodHeaderText}>
+                        <Text style={styles.searchMethodTitle}>
+                          Par culture
+                        </Text>
+                        <Text style={styles.searchMethodDescription}>
+                          Consultez les produits autorisés pour une culture et
+                          filtrez par opération.
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={{ position: "relative" }}>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Ex. blé, vigne, maïs, tomate…"
+                        placeholderTextColor="#9BA1A6"
+                        value={cultureQuery}
+                        onChangeText={(text) => {
+                          setCultureQuery(text);
+                          setShowCultureSuggestions(true);
+                          void prepareCultureSearch();
+                        }}
+                        onFocus={() => void prepareCultureSearch()}
+                        returnKeyType="search"
+                        onSubmitEditing={() => handleCultureSearch()}
+                        autoCorrect={false}
+                        autoCapitalize="words"
+                        accessibilityLabel="Rechercher par culture"
+                      />
+                      {showCultureSuggestions &&
+                        cultureSuggestions.length > 0 && (
+                          <View style={styles.suggestionsContainer}>
+                            {cultureSuggestions.map((suggestion) => (
+                              <Pressable
+                                key={suggestion.value}
+                                style={({ pressed }) => [
+                                  styles.suggestionItem,
+                                  pressed && { backgroundColor: "#F0F9FF" },
+                                ]}
+                                onPress={() => {
+                                  prepareCultureFilterInteraction(
+                                    Keyboard.dismiss,
+                                  );
+                                  setCultureQuery(suggestion.value);
+                                  setShowCultureSuggestions(false);
+                                }}
+                              >
+                                <Text style={styles.suggestionText}>
+                                  {suggestion.label}
+                                </Text>
+                              </Pressable>
+                            ))}
+                          </View>
+                        )}
+                    </View>
+                    <Text style={styles.filterLabel}>Opération recherchée</Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      keyboardShouldPersistTaps="handled"
+                      style={{ marginBottom: 12 }}
+                      contentContainerStyle={{ gap: 8, paddingRight: 4 }}
+                    >
+                      {TYPE_FILTERS.map((filter) => (
+                        <Pressable
+                          key={filter}
+                          style={({ pressed }) => [
+                            styles.typeFilterButton,
+                            selectedTypeFilter === filter &&
+                              styles.typeFilterButtonActive,
+                            pressed && { opacity: 0.8 },
+                          ]}
+                          onPress={() => handleTypeFilterChange(filter)}
+                        >
+                          <Text
+                            style={[
+                              styles.typeFilterText,
+                              selectedTypeFilter === filter &&
+                                styles.typeFilterTextActive,
+                            ]}
+                          >
+                            {filter}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.cultureSearchButton,
+                        pressed && {
+                          opacity: 0.85,
+                          transform: [{ scale: 0.97 }],
+                        },
+                      ]}
+                      onPress={() => handleCultureSearch()}
+                    >
+                      <IconSymbol name="leaf.fill" size={22} color="#FFFFFF" />
+                      <Text style={styles.searchButtonText}>
+                        Rechercher par culture
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  {/* Recherche par photo */}
+                  <View style={styles.searchMethodCard}>
+                    <View style={styles.searchMethodHeader}>
+                      <View
+                        style={[
+                          styles.searchMethodIcon,
+                          styles.searchMethodIconOrange,
+                        ]}
+                      >
+                        <IconSymbol
+                          name="camera.fill"
+                          size={22}
+                          color="#C2410C"
+                        />
+                      </View>
+                      <View style={styles.searchMethodHeaderText}>
+                        <Text style={styles.searchMethodTitle}>
+                          Par photo d’étiquette
+                        </Text>
+                        <Text style={styles.searchMethodDescription}>
+                          Photographiez l’étiquette d’un bidon pour identifier
+                          automatiquement le produit.
+                        </Text>
+                      </View>
+                    </View>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.scanButton,
+                        pressed && {
+                          opacity: 0.85,
+                          transform: [{ scale: 0.97 }],
+                        },
+                      ]}
+                      onPress={handleScan}
+                      accessibilityRole="button"
+                      accessibilityLabel="Scanner une étiquette"
+                    >
+                      <IconSymbol
+                        name="camera.fill"
+                        size={22}
+                        color="#FFFFFF"
+                      />
+                      <Text style={styles.searchButtonText}>
+                        Scanner une étiquette
+                      </Text>
+                    </Pressable>
+                  </View>
+                </>
+              )}
+
+              {/* Filtres de type affichés dans les résultats culture */}
+              {!isSearching && hasSearched && searchType === "culture" && (
+                <View ref={filtersRef} style={{ marginBottom: 12 }}>
+                  <Text style={styles.cultureResultTitle}>
+                    Produits autorisés sur :{" "}
+                    <Text style={{ color: "#0a7ea5" }}>{cultureQuery}</Text>
+                  </Text>
+                  {/* Filtre par type (Herbicide, Fongicide...) */}
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    style={{ marginTop: 8 }}
+                    contentContainerStyle={{ gap: 8, paddingRight: 4 }}
+                  >
+                    {TYPE_FILTERS.map((filter) => (
+                      <Pressable
+                        key={filter}
+                        style={({ pressed }) => [
+                          styles.typeFilterButton,
+                          selectedTypeFilter === filter &&
+                            styles.typeFilterButtonActive,
+                          pressed && { opacity: 0.8 },
+                        ]}
+                        onPress={() => handleTypeFilterChange(filter)}
+                      >
+                        <Text
+                          style={[
+                            styles.typeFilterText,
+                            selectedTypeFilter === filter &&
+                              styles.typeFilterTextActive,
+                          ]}
+                        >
+                          {filter}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                  {/* Filtre par cible/maladie (si des cibles sont disponibles) */}
+                  {availableCibles.length > 0 && (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      keyboardShouldPersistTaps="handled"
+                      style={{ marginTop: 8 }}
+                      contentContainerStyle={{ gap: 8, paddingRight: 4 }}
+                    >
+                      <Pressable
+                        style={[
+                          styles.cibleFilterButton,
+                          selectedCible === null &&
+                            styles.cibleFilterButtonActive,
+                        ]}
+                        onPress={() => setSelectedCible(null)}
+                      >
+                        <Text
+                          style={[
+                            styles.cibleFilterText,
+                            selectedCible === null &&
+                              styles.cibleFilterTextActive,
+                          ]}
+                        >
+                          Toutes cibles
+                        </Text>
+                      </Pressable>
+                      {availableCibles.map((cible) => (
+                        <Pressable
+                          key={cible}
+                          style={[
+                            styles.cibleFilterButton,
+                            selectedCible === cible &&
+                              styles.cibleFilterButtonActive,
+                          ]}
+                          onPress={() =>
+                            setSelectedCible(
+                              selectedCible === cible ? null : cible,
+                            )
+                          }
+                        >
+                          <Text
+                            style={[
+                              styles.cibleFilterText,
+                              selectedCible === cible &&
+                                styles.cibleFilterTextActive,
+                            ]}
+                          >
+                            {cible}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  )}
+                </View>
+              )}
+
+              {/* Chargement */}
+              {isSearching && (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#0a7ea5" />
+                  <Text style={styles.loadingText}>Recherche en cours...</Text>
+                </View>
+              )}
+
+              {/* Aucun résultat */}
+              {!isSearching &&
+                hasSearched &&
+                results.length === 0 &&
+                emergencyResults.length === 0 && (
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>
+                      {searchType === "culture"
+                        ? `Aucun produit autorisé trouvé sur "${cultureQuery}"${selectedTypeFilter !== "Tous" ? ` pour le type "${selectedTypeFilter}"` : ""}`
+                        : `Aucun produit trouvé pour "${searchType === "substance" ? substanceQuery : query}"`}
+                    </Text>
+                  </View>
+                )}
+
+              {/* Les dérogations temporaires sont prioritaires : elles peuvent répondre à un besoin urgent. */}
+              {!isSearching && hasSearched && emergencyResults.length > 0 && (
+                <View style={styles.emergencyResultsSection}>
+                  <View style={styles.emergencyResultsHeader}>
+                    <Text style={styles.emergencyResultsTitle}>
+                      Autorisations d’urgence — 120 jours
+                    </Text>
+                    <Text style={styles.emergencyResultsCount}>
+                      {emergencyResults.length} décision
+                      {emergencyResults.length > 1 ? "s" : ""} active
+                      {emergencyResults.length > 1 ? "s" : ""}
+                    </Text>
+                  </View>
+                  <Text style={styles.emergencyResultsHint}>
+                    Dérogations temporaires Article 53 correspondant à la
+                    culture et à l’opération sélectionnées.
+                  </Text>
+                  {sortedEmergencyResults.map((authorization) => {
+                    const stockItem = stockByAmm.get(authorization.amm);
+                    return (
+                      <Pressable
+                        key={authorization.id}
+                        style={({ pressed }) => [
+                          styles.emergencyResultCard,
+                          stockItem && styles.emergencyResultInStock,
+                          pressed && { opacity: 0.72 },
+                        ]}
+                        onPress={() =>
+                          handleOpenEmergencyProduct(
+                            authorization.amm,
+                            authorization.productName,
+                          )
+                        }
+                        accessibilityRole="button"
+                        accessibilityLabel={`Ouvrir la fiche de ${authorization.productName}, autorisation d’urgence`}
+                      >
+                        <View style={styles.emergencyResultTopRow}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.emergencyResultName}>
+                              {authorization.productName}
+                            </Text>
+                            {stockItem && (
+                              <View style={styles.stockBadge}>
+                                <IconSymbol
+                                  name="checkmark.circle.fill"
+                                  size={14}
+                                  color="#15803D"
+                                />
+                                <Text style={styles.stockBadgeText}>
+                                  En stock :{" "}
+                                  {formatStockQuantity(stockItem.quantite)}{" "}
+                                  {stockItem.unite}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                          <View style={styles.emergencyValidityBadge}>
+                            <Text style={styles.emergencyValidityText}>
+                              Jusqu’au{" "}
+                              {formatEmergencyAuthorizationDate(
+                                authorization.expiresAt,
+                              )}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.emergencyResultAmm}>
+                          AMM : {authorization.amm}
+                        </Text>
+                        <Text style={styles.emergencyResultLabel}>
+                          Culture(s) : {authorization.cultures}
+                        </Text>
+                        <Text style={styles.emergencyResultLabel}>
+                          Cible : {authorization.purpose}
+                        </Text>
+                        <Text style={styles.emergencyResultLink}>
+                          Voir la fiche et la décision officielle ›
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* Résultats */}
+              {!isSearching && results.length > 0 && (
+                <View ref={resultsRef} style={{ marginTop: 16 }}>
+                  <Text style={styles.helpHint}>
+                    ℹ️ Cliquez sur un produit pour plus de détails (Usages,
+                    matière active…)
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Text style={styles.resultsCount}>{resultsTitle}</Text>
+                    {/* Bouton filtre Homologués — uniquement pour recherche nom/substance */}
+                    {searchType !== "culture" && (
+                      <Pressable
+                        style={({ pressed }) => ({
+                          backgroundColor: filterHomologues
+                            ? "#2E7D32"
+                            : "#FFFFFF",
+                          borderRadius: 20,
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          flexDirection: "row" as const,
+                          alignItems: "center" as const,
+                          gap: 5,
+                          opacity: pressed ? 0.8 : 1,
+                          borderWidth: 1.5,
+                          borderColor: "#2E7D32",
+                        })}
+                        onPress={() => setFilterHomologues((f) => !f)}
+                      >
+                        <IconSymbol
+                          name={
+                            filterHomologues
+                              ? "checkmark.circle.fill"
+                              : "circle"
+                          }
+                          size={16}
+                          color={filterHomologues ? "#FFFFFF" : "#2E7D32"}
+                        />
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: "600",
+                            color: filterHomologues ? "#FFFFFF" : "#2E7D32",
+                          }}
+                        >
+                          {filterHomologues ? "Homologués ✓" : "Homologués"}
+                        </Text>
+                      </Pressable>
+                    )}
+                  </View>
+                  {(searchType === "culture"
+                    ? visibleCultureResults
+                    : filteredResults
+                  ).map((item, index) => (
+                    <View key={`${item.amm}-${item.nom}-${index}`}>
+                      {renderProduct({ item })}
+                    </View>
+                  ))}
+                  {searchType === "culture" &&
+                    cibleFilteredResults.length >
+                      visibleCultureResults.length && (
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.showMoreButton,
+                          pressed && { opacity: 0.8 },
+                        ]}
+                        onPress={() =>
+                          setVisibleCultureResultCount(
+                            (count) => count + CULTURE_RESULT_PAGE_SIZE,
+                          )
+                        }
+                      >
+                        <Text style={styles.showMoreButtonText}>
+                          Afficher les{" "}
+                          {Math.min(
+                            CULTURE_RESULT_PAGE_SIZE,
+                            cibleFilteredResults.length -
+                              visibleCultureResults.length,
+                          )}{" "}
+                          produits suivants
+                        </Text>
+                      </Pressable>
+                    )}
+                </View>
+              )}
+
+              {!hasSearched && !isSearching && (
+                <View style={styles.hintCard}>
+                  <Text style={styles.hintText}>
+                    Recherchez par nom, AMM, matière active ou culture pour
+                    trouver les produits autorisés
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
           </>
         )}
       </View>
@@ -1234,6 +1541,35 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     flexDirection: "column",
   },
+  resultCardInStock: {
+    borderWidth: 1,
+    borderColor: "#86EFAC",
+    backgroundColor: "#F0FDF4",
+  },
+  resultTitleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  resultTitleContainer: {
+    flex: 1,
+  },
+  stockBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#DCFCE7",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    flexShrink: 0,
+  },
+  stockBadgeText: {
+    color: "#15803D",
+    fontSize: 11,
+    fontWeight: "700",
+  },
   resultBottomRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1314,6 +1650,11 @@ const styles = StyleSheet.create({
     marginBottom: 9,
     borderWidth: 1,
     borderColor: "#BFDBFE",
+  },
+  emergencyResultInStock: {
+    borderColor: "#22C55E",
+    borderWidth: 2,
+    backgroundColor: "#F0FDF4",
   },
   emergencyResultTopRow: {
     flexDirection: "row",

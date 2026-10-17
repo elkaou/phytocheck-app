@@ -66,28 +66,47 @@ export function createEmergencyAuthorizationProduct(
 
 // CMR codes: Cancérogène, Mutagène, Reprotoxique
 const CMR_CODES = [
-  "H340", "H341", // Mutagène
-  "H350", "H351", // Cancérogène
-  "H360", "H360D", "H360Df", "H360F", "H360FD", "H360Fd", // Reprotoxique
-  "H361", "H361d", "H361f", "H361fd", "H362", // Reprotoxique suspecté
+  "H340",
+  "H341", // Mutagène
+  "H350",
+  "H351", // Cancérogène
+  "H360",
+  "H360D",
+  "H360Df",
+  "H360F",
+  "H360FD",
+  "H360Fd", // Reprotoxique
+  "H361",
+  "H361d",
+  "H361f",
+  "H361fd",
+  "H362", // Reprotoxique suspecté
 ];
 
 // Toxique codes: Toxicité aiguë élevée
 const TOXIQUE_CODES = [
-  "H300", "H301", // Mortel/Toxique en cas d'ingestion
-  "H310", "H311", // Mortel/Toxique par contact cutané
-  "H330", "H331", // Mortel/Toxique par inhalation
+  "H300",
+  "H301", // Mortel/Toxique en cas d'ingestion
+  "H310",
+  "H311", // Mortel/Toxique par contact cutané
+  "H330",
+  "H331", // Mortel/Toxique par inhalation
   "H304", // Mortel en cas d'ingestion et pénétration voies respiratoires
-  "H370", "H371", // Toxique pour organes cibles (exposition unique)
-  "H372", "H373", // Toxique pour organes cibles (exposition répétée)
+  "H370",
+  "H371", // Toxique pour organes cibles (exposition unique)
+  "H372",
+  "H373", // Toxique pour organes cibles (exposition répétée)
 ];
 
 const products: Product[] = productsData as Product[];
-const riskPhrases: Record<string, RiskPhrase[]> = riskPhrasesData as Record<string, RiskPhrase[]>;
+const riskPhrases: Record<string, RiskPhrase[]> = riskPhrasesData as Record<
+  string,
+  RiskPhrase[]
+>;
 
 // Total count
 export const TOTAL_PRODUCTS = products.length;
-export const DB_UPDATE_DATE = "16/10/2026";
+export const DB_UPDATE_DATE = "08/04/2026";
 
 // Détermine si un produit est retiré, en se basant sur le champ etat
 // OU sur la dateRetrait si etat est vide (cas du CSV E-Phy où la colonne peut être absente)
@@ -98,7 +117,11 @@ function isProductRetired(product: Product): boolean {
   if (product.dateRetrait) {
     const parts = product.dateRetrait.split("/");
     if (parts.length === 3) {
-      const retrait = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+      const retrait = new Date(
+        Number(parts[2]),
+        Number(parts[1]) - 1,
+        Number(parts[0]),
+      );
       return retrait <= new Date();
     }
   }
@@ -140,7 +163,7 @@ export function searchBySubstance(
   query: string,
   limit = 10000,
   dynamicProducts?: Product[],
-  dynamicRiskPhrases?: Record<string, RiskPhrase[]>
+  dynamicRiskPhrases?: Record<string, RiskPhrase[]>,
 ): ClassifiedProduct[] {
   if (!query || query.trim().length < 2) return [];
   const dataProducts = dynamicProducts ?? products;
@@ -169,7 +192,10 @@ export function searchBySubstance(
       // Une carte supplémentaire par nom secondaire :
       // matchedName = nom secondaire (affiché en noir comme titre de la carte)
       // nom = nom principal (affiché en bleu en dessous)
-      const secondaryNames = product.nomsSecondaires.split(" | ").map(s => s.trim()).filter(Boolean);
+      const secondaryNames = product.nomsSecondaires
+        .split(" | ")
+        .map((s) => s.trim())
+        .filter(Boolean);
       for (const sn of secondaryNames) {
         results.push({
           ...classified,
@@ -189,12 +215,149 @@ export function searchBySubstance(
   return results.slice(0, limit);
 }
 
+/**
+ * Extrait le nom réglementaire de la matière active entre parenthèses.
+ * Les données E‑Phy contiennent généralement le nom français puis le nom
+ * harmonisé entre parenthèses, suivi de la concentration.
+ */
+function extractActiveSubstanceName(segment: string): string {
+  let depth = 0;
+  let end = -1;
+  let start = -1;
+
+  // Recherche le dernier groupe parenthésé en gérant les parenthèses imbriquées
+  // présentes dans certains noms CAS.
+  for (let index = segment.length - 1; index >= 0; index -= 1) {
+    const character = segment[index];
+    if (character === ")") {
+      if (end === -1) end = index;
+      depth += 1;
+    } else if (character === "(" && depth > 0) {
+      depth -= 1;
+      if (depth === 0) {
+        start = index;
+        break;
+      }
+    }
+  }
+
+  if (start >= 0 && end > start) {
+    return segment.slice(start + 1, end).trim();
+  }
+
+  return segment
+    .replace(
+      /\s+\d+(?:[.,]\d+)?\s*(?:g\s*\/\s*(?:L|kg)|mg\s*\/\s*(?:L|kg)|%)(?:\s*)$/i,
+      "",
+    )
+    .trim();
+}
+
+/** Normalise un nom de matière active pour comparer des ensembles sans tenir compte des accents. */
+export function normalizeActiveSubstanceName(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+/**
+ * Retourne les matières actives distinctes d'une formulation, sans les doses.
+ * L'ordre d'affichage des données E‑Phy est conservé.
+ */
+export function extractActiveSubstanceNames(
+  substancesActives: string,
+): string[] {
+  const seen = new Set<string>();
+  const names: string[] = [];
+
+  for (const segment of substancesActives.split(" | ")) {
+    const name = extractActiveSubstanceName(segment);
+    const normalized = normalizeActiveSubstanceName(name);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    names.push(name);
+  }
+
+  return names;
+}
+
+/**
+ * Recherche les produits homologués dont l'ensemble des matières actives est
+ * exactement identique à celui demandé. Les concentrations ne sont pas
+ * comparées : la recherche porte sur les matières actives elles-mêmes.
+ */
+export function searchByExactSubstances(
+  substances: string[],
+  limit = 10000,
+  dynamicProducts?: Product[],
+  dynamicRiskPhrases?: Record<string, RiskPhrase[]>,
+): ClassifiedProduct[] {
+  const requested = new Set(
+    substances.map(normalizeActiveSubstanceName).filter(Boolean),
+  );
+  if (requested.size === 0) return [];
+
+  const dataProducts = dynamicProducts ?? products;
+  const dataRiskPhrases = dynamicRiskPhrases ?? riskPhrases;
+  const results: ClassifiedProduct[] = [];
+
+  for (const product of dataProducts) {
+    const actual = new Set(
+      extractActiveSubstanceNames(product.substancesActives).map(
+        normalizeActiveSubstanceName,
+      ),
+    );
+    if (actual.size !== requested.size) continue;
+    if (![...requested].every((substance) => actual.has(substance))) continue;
+
+    const classified = classifyProductWithData(product, dataRiskPhrases);
+    // La page dédiée porte sur les produits homologués ; les produits retirés
+    // restent accessibles depuis leur fiche, mais ne sont pas proposés ici.
+    if (classified.classification !== "retire") {
+      results.push(classified);
+    }
+    if (results.length >= limit) break;
+  }
+
+  return results.sort((a, b) =>
+    a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }),
+  );
+}
+
+/** Place en tête les produits dont l'AMM est déjà présente dans le stock. */
+export function sortProductsWithStockFirst(
+  results: ClassifiedProduct[],
+  stockedAmms: ReadonlySet<string>,
+): ClassifiedProduct[] {
+  return [...results].sort((a, b) => {
+    const inStockDifference =
+      Number(stockedAmms.has(b.amm)) - Number(stockedAmms.has(a.amm));
+    if (inStockDifference !== 0) return inStockDifference;
+    return a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" });
+  });
+}
+
+/** Filtre les produits retirés quand l’affichage homologué est actif. */
+export function filterHomologatedProducts(
+  results: ClassifiedProduct[],
+  includeRetired: boolean,
+): ClassifiedProduct[] {
+  return includeRetired
+    ? results
+    : results.filter((product) => product.classification !== "retire");
+}
+
 // Search products by name or AMM (avec données dynamiques optionnelles)
 export function searchProducts(
   query: string,
   limit = 50,
   dynamicProducts?: Product[],
-  dynamicRiskPhrases?: Record<string, RiskPhrase[]>
+  dynamicRiskPhrases?: Record<string, RiskPhrase[]>,
 ): ClassifiedProduct[] {
   const dataProducts = dynamicProducts ?? products;
   const dataRiskPhrases = dynamicRiskPhrases ?? riskPhrases;
@@ -205,7 +368,7 @@ function _searchProducts(
   query: string,
   limit: number,
   dataProducts: Product[],
-  dataRiskPhrases: Record<string, RiskPhrase[]>
+  dataRiskPhrases: Record<string, RiskPhrase[]>,
 ): ClassifiedProduct[] {
   if (!query || query.trim().length < 2) return [];
 
@@ -236,7 +399,10 @@ function _searchProducts(
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[®™©℠]/g, "");
 
-    if (normalizedName.includes(normalizedQuery) || normalizedAMM.includes(normalizedQuery)) {
+    if (
+      normalizedName.includes(normalizedQuery) ||
+      normalizedAMM.includes(normalizedQuery)
+    ) {
       // Match par nom principal ou AMM → priorité haute
       primaryResults.push(classifyProductWithData(product, dataRiskPhrases));
     } else if (normalizedSecondary.includes(normalizedQuery)) {
@@ -245,9 +411,16 @@ function _searchProducts(
         const secondaryNames = product.nomsSecondaires.split(" | ");
         for (const sn of secondaryNames) {
           if (primaryResults.length + secondaryResults.length >= limit) break;
-          const normalizedSN = sn.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[®™©℠]/g, "");
+          const normalizedSN = sn
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[®™©℠]/g, "");
           if (normalizedSN.includes(normalizedQuery)) {
-            const classified = classifyProductWithData(product, dataRiskPhrases);
+            const classified = classifyProductWithData(
+              product,
+              dataRiskPhrases,
+            );
             classified.matchedName = sn.trim();
             secondaryResults.push(classified);
           }
@@ -264,7 +437,7 @@ function _searchProducts(
 // Classify avec données dynamiques
 export function classifyProductWithData(
   product: Product,
-  dataRiskPhrases: Record<string, RiskPhrase[]>
+  dataRiskPhrases: Record<string, RiskPhrase[]>,
 ): ClassifiedProduct {
   const phrases = dataRiskPhrases[product.amm] || [];
   const codes = phrases.map((p) => p.code);
@@ -288,28 +461,31 @@ export function getProductByAMM(
   amm: string,
   preferredName?: string,
   dynamicProducts?: Product[],
-  dynamicRiskPhrases?: Record<string, RiskPhrase[]>
+  dynamicRiskPhrases?: Record<string, RiskPhrase[]>,
 ): ClassifiedProduct | null {
   const dataProducts = dynamicProducts ?? products;
   const dataRiskPhrases = dynamicRiskPhrases ?? riskPhrases;
   const matchingProducts = dataProducts.filter((p) => p.amm === amm);
   if (matchingProducts.length === 0) return null;
-  
+
   // If preferred name is provided, try to find exact match
   if (preferredName && matchingProducts.length > 1) {
-    const exactMatch = matchingProducts.find((p) => 
-      p.nom.toLowerCase() === preferredName.toLowerCase() ||
-      p.nomsSecondaires.toLowerCase().includes(preferredName.toLowerCase())
+    const exactMatch = matchingProducts.find(
+      (p) =>
+        p.nom.toLowerCase() === preferredName.toLowerCase() ||
+        p.nomsSecondaires.toLowerCase().includes(preferredName.toLowerCase()),
     );
     if (exactMatch) return classifyProductWithData(exactMatch, dataRiskPhrases);
   }
-  
+
   // Return first match
   return classifyProductWithData(matchingProducts[0], dataRiskPhrases);
 }
 
 // Get classification label
-export function getClassificationLabel(classification: ProductClassification): string {
+export function getClassificationLabel(
+  classification: ProductClassification,
+): string {
   switch (classification) {
     case "homologue":
       return "Homologué non CMR, non toxique";
@@ -325,7 +501,9 @@ export function getClassificationLabel(classification: ProductClassification): s
 }
 
 // Get classification color
-export function getClassificationColor(classification: ProductClassification): string {
+export function getClassificationColor(
+  classification: ProductClassification,
+): string {
   switch (classification) {
     case "homologue":
       return "#22C55E";
@@ -341,7 +519,9 @@ export function getClassificationColor(classification: ProductClassification): s
 }
 
 // Get classification background color (lighter)
-export function getClassificationBgColor(classification: ProductClassification): string {
+export function getClassificationBgColor(
+  classification: ProductClassification,
+): string {
   switch (classification) {
     case "homologue":
       return "#F0FDF4";

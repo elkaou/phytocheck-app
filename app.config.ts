@@ -32,7 +32,8 @@ const env = {
   appSlug: "phytocheck-app",
   // S3 URL of the app logo - set this to the URL returned by generate_image when creating custom logo
   // Leave empty to use the default icon from assets/images/icon.png
-  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663301976938/TBJqsPYErRPRAlVD.png",
+  logoUrl:
+    "https://files.manuscdn.com/user_upload_by_module/session_file/310519663301976938/TBJqsPYErRPRAlVD.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
@@ -41,7 +42,7 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.3.0",
+  version: "1.3.1",
   // Pas de restriction d'orientation pour compatibilité grand écran (Android 16+)
   orientation: "default",
   icon: "./assets/images/icon.png",
@@ -96,14 +97,17 @@ const config: ExpoConfig = {
     [
       "expo-camera",
       {
-        cameraPermission: "Autoriser PhytoCheck à accéder à votre appareil photo pour scanner les étiquettes et inventorier votre stock.",
+        cameraPermission:
+          "Autoriser PhytoCheck à accéder à votre appareil photo pour scanner les étiquettes et inventorier votre stock.",
       },
     ],
     [
       "expo-image-picker",
       {
-        photosPermission: "Autoriser PhytoCheck à accéder à vos photos pour identifier les produits et inventorier votre stock.",
-        cameraPermission: "Autoriser PhytoCheck à prendre des photos pour scanner les étiquettes et inventorier votre stock.",
+        photosPermission:
+          "Autoriser PhytoCheck à accéder à vos photos pour identifier les produits et inventorier votre stock.",
+        cameraPermission:
+          "Autoriser PhytoCheck à prendre des photos pour scanner les étiquettes et inventorier votre stock.",
       },
     ],
     // expo-audio et expo-video retirés : PhytoCheck n'utilise ni audio ni vidéo en arrière-plan
