@@ -309,12 +309,41 @@ export default function ProductDetailScreen() {
             ) : null}
 
             {product.substancesActives ? (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Substances actives</Text>
-                <Text style={styles.infoValue}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.infoRow,
+                  styles.activeSubstancesRow,
+                  pressed && { opacity: 0.72 },
+                ]}
+                onPress={() => {
+                  router.push({
+                    pathname: "/active-substances",
+                    params: {
+                      substances: JSON.stringify(
+                        product.substancesActives
+                          .split(" | ")
+                          .map((substance) => substance.trim())
+                          .filter(Boolean),
+                      ),
+                      sourceName: product.nom,
+                    },
+                  });
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Rechercher les produits homologués avec les mêmes matières actives"
+              >
+                <View style={styles.activeSubstancesHeader}>
+                  <Text style={styles.infoLabel}>Substances actives</Text>
+                  <IconSymbol name="chevron.right" size={18} color="#0A7EA5" />
+                </View>
+                <Text style={[styles.infoValue, styles.activeSubstancesValue]}>
                   {product.substancesActives.split(" | ").join("\n")}
                 </Text>
-              </View>
+                <Text style={styles.activeSubstancesHint}>
+                  Touchez pour rechercher les produits homologués avec la même
+                  composition
+                </Text>
+              </Pressable>
             ) : null}
 
             {product.dateAutorisation ? (
@@ -585,6 +614,28 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#1A1A1A",
     lineHeight: 22,
+  },
+  activeSubstancesRow: {
+    backgroundColor: "#F0FDFA",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingBottom: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#CCFBF1",
+  },
+  activeSubstancesHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  activeSubstancesValue: {
+    color: "#134E4A",
+  },
+  activeSubstancesHint: {
+    marginTop: 8,
+    color: "#0F766E",
+    fontSize: 12,
+    lineHeight: 17,
   },
   emergencyCard: {
     backgroundColor: "#EFF6FF",
