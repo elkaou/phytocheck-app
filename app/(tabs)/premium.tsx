@@ -16,11 +16,31 @@ export default function PremiumScreen() {
     restorePurchases,
     monthlyPrice,
     yearlyPrice,
+    monthlyAmount,
+    yearlyAmount,
     platformSupported,
   } = useIAPContext();
 
   // L'utilisateur est premium si l'un des deux systèmes le confirme
   const isPremium = appIsPremium || iapIsPremium;
+
+  const annualEquivalent = monthlyAmount !== null ? monthlyAmount * 12 : null;
+  const annualSavingPercent =
+    annualEquivalent !== null &&
+    yearlyAmount !== null &&
+    annualEquivalent > 0 &&
+    yearlyAmount < annualEquivalent
+      ? Math.round(((annualEquivalent - yearlyAmount) / annualEquivalent) * 100)
+      : null;
+  const annualMonthlyEquivalentLabel =
+    yearlyAmount !== null
+      ? (yearlyAmount / 12).toLocaleString("fr-FR", {
+          style: "currency",
+          currency: "EUR",
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
+      : "—";
 
   const handlePurchase = async (type: SubscriptionType) => {
     if (!type) return;
@@ -172,11 +192,15 @@ export default function PremiumScreen() {
                 <Text style={styles.subscriptionTitle}>Annuel</Text>
                 <View style={{ alignItems: "flex-end" }}>
                   <Text style={styles.subscriptionPrice}>{yearlyPrice}</Text>
-                  <Text style={styles.subscriptionPriceEquiv}>soit 1,67 €/mois</Text>
+                  <Text style={styles.subscriptionPriceEquiv}>
+                    soit {annualMonthlyEquivalentLabel}/mois
+                  </Text>
                 </View>
               </View>
               <Text style={styles.subscriptionDescription}>
-                Économisez 70% • Facturation annuelle
+                {annualSavingPercent !== null
+                  ? `Économisez ${annualSavingPercent} % • Facturation annuelle`
+                  : "Facturation annuelle"}
               </Text>
             </Pressable>
 

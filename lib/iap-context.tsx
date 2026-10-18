@@ -27,6 +27,7 @@ interface IAPProduct {
   title: string;
   description: string;
   price: string;
+  amount: number;
   currency: string;
   subscriptionType: SubscriptionType;
   basePlanId?: string; // Pour Android : ID du base plan
@@ -52,6 +53,10 @@ interface IAPContextType {
   monthlyPrice: string;
   /** Prix de l'abonnement annuel */
   yearlyPrice: string;
+  /** Montant numérique mensuel, dans la devise du store */
+  monthlyAmount: number | null;
+  /** Montant numérique annuel, dans la devise du store */
+  yearlyAmount: number | null;
   /** Plateforme supportée */
   platformSupported: boolean;
 }
@@ -64,8 +69,10 @@ const IAPContext = createContext<IAPContextType>({
   subscriptionType: null,
   purchaseSubscription: async () => {},
   restorePurchases: async () => {},
-  monthlyPrice: "9,99 €",
-  yearlyPrice: "19,99 €",
+  monthlyPrice: "—",
+  yearlyPrice: "—",
+  monthlyAmount: null,
+  yearlyAmount: null,
   platformSupported: false,
 });
 
@@ -84,8 +91,10 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
   const [purchasing, setPurchasing] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [subscriptionType, setSubscriptionType] = useState<SubscriptionType>(null);
-  const [monthlyPrice, setMonthlyPrice] = useState("9,99 €");
-  const [yearlyPrice, setYearlyPrice] = useState("19,99 €");
+  const [monthlyPrice, setMonthlyPrice] = useState("—");
+  const [yearlyPrice, setYearlyPrice] = useState("—");
+  const [monthlyAmount, setMonthlyAmount] = useState<number | null>(null);
+  const [yearlyAmount, setYearlyAmount] = useState<number | null>(null);
   const platformSupported = isPlatformSupported();
 
   // Ref pour les modules expo-iap (chargés dynamiquement)
@@ -200,7 +209,11 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
               for (const offer of offerDetails) {
                 const basePlanId = offer.basePlanId;
                 const pricingPhase = offer.pricingPhases?.pricingPhaseList?.[0];
-                const price = pricingPhase?.formattedPrice || "N/A";
+                const price = pricingPhase?.formattedPrice || "—";
+                const priceAmountMicros = Number(pricingPhase?.priceAmountMicros);
+                const amount = Number.isFinite(priceAmountMicros)
+                  ? priceAmountMicros / 1_000_000
+                  : 0;
 
                 if (basePlanId === IAP_BASE_PLANS.MONTHLY) {
                   mappedProducts.push({
@@ -210,10 +223,12 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
                     title: "PhytoCheck Premium Mensuel",
                     description: "Abonnement mensuel - Toutes les fonctionnalités",
                     price: price,
-                    currency: "EUR",
+                    amount,
+                    currency: pricingPhase?.priceCurrencyCode || "EUR",
                     subscriptionType: "monthly",
                   });
                   setMonthlyPrice(price);
+                  setMonthlyAmount(amount > 0 ? amount : null);
                 } else if (basePlanId === IAP_BASE_PLANS.YEARLY) {
                   mappedProducts.push({
                     id: IAP_PRODUCTS_ANDROID.PREMIUM,
@@ -222,10 +237,12 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
                     title: "PhytoCheck Premium Annuel",
                     description: "Abonnement annuel - Facturation annuelle",
                     price: price,
-                    currency: "EUR",
+                    amount,
+                    currency: pricingPhase?.priceCurrencyCode || "EUR",
                     subscriptionType: "yearly",
                   });
                   setYearlyPrice(price);
+                  setYearlyAmount(amount > 0 ? amount : null);
                 }
               }
               console.log("[IAP] Mapped products count:", mappedProducts.length);
@@ -254,22 +271,31 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
                   continue;
                 }
 
-                // displayPrice est le prix formaté par StoreKit (ex: "9,99 €")
-                const price = (product as any).displayPrice || (product as any).localizedPrice || (isMonthly ? "9,99 €" : "19,99 €");
+                // displayPrice est le prix formaté par StoreKit (ex: "1,99 €").
+                const price = (product as any).displayPrice || (product as any).localizedPrice || "—";
+                const rawAmount =
+                  (product as any).price ??
+                  (product as any).priceDecimal ??
+                  (product as any).amount;
+                const parsedAmount = Number(rawAmount);
+                const amount = Number.isFinite(parsedAmount) ? parsedAmount : 0;
 
                 mappedProducts.push({
                   id: productId,
                   title: isMonthly ? "PhytoCheck Premium Mensuel" : "PhytoCheck Premium Annuel",
                   description: isMonthly ? "Abonnement mensuel - Toutes les fonctionnalités" : "Abonnement annuel - Facturation annuelle",
                   price: price,
+                  amount,
                   currency: (product as any).currency || "EUR",
                   subscriptionType: isMonthly ? "monthly" : "yearly",
                 });
 
                 if (isMonthly) {
                   setMonthlyPrice(price);
+                  setMonthlyAmount(amount > 0 ? amount : null);
                 } else {
                   setYearlyPrice(price);
+                  setYearlyAmount(amount > 0 ? amount : null);
                 }
               }
               console.log("[IAP] iOS mapped products count:", mappedProducts.length);
@@ -282,7 +308,8 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
                 id: IAP_PRODUCTS_IOS.PREMIUM_MONTHLY,
                 title: "PhytoCheck Premium Mensuel",
                 description: "Abonnement mensuel - Toutes les fonctionnalités",
-                price: "9,99 €",
+                price: "—",
+                amount: 0,
                 currency: "EUR",
                 subscriptionType: "monthly",
               });
@@ -290,7 +317,8 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
                 id: IAP_PRODUCTS_IOS.PREMIUM_YEARLY,
                 title: "PhytoCheck Premium Annuel",
                 description: "Abonnement annuel - Facturation annuelle",
-                price: "19,99 €",
+                price: "—",
+                amount: 0,
                 currency: "EUR",
                 subscriptionType: "yearly",
               });
@@ -307,7 +335,8 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
                 id: IAP_PRODUCTS_IOS.PREMIUM_MONTHLY,
                 title: "PhytoCheck Premium Mensuel",
                 description: "Abonnement mensuel",
-                price: "9,99 €",
+                price: "—",
+                amount: 0,
                 currency: "EUR",
                 subscriptionType: "monthly",
               },
@@ -315,7 +344,8 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
                 id: IAP_PRODUCTS_IOS.PREMIUM_YEARLY,
                 title: "PhytoCheck Premium Annuel",
                 description: "Abonnement annuel",
-                price: "19,99 €",
+                price: "—",
+                amount: 0,
                 currency: "EUR",
                 subscriptionType: "yearly",
               },
@@ -556,6 +586,8 @@ export function IAPProvider({ children, onPremiumChange }: IAPProviderProps) {
     restorePurchases,
     monthlyPrice,
     yearlyPrice,
+    monthlyAmount,
+    yearlyAmount,
     platformSupported,
   };
 
