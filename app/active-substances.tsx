@@ -307,9 +307,11 @@ export default function ActiveSubstancesScreen() {
                               ),
                             },
                           ]}
-                          numberOfLines={2}
                         >
-                          {getClassificationLabel(product.classification)}
+                          {getClassificationLabel(
+                            product.classification,
+                            product.fonctions,
+                          )}
                         </Text>
                       </View>
                     </View>
@@ -477,16 +479,24 @@ const styles = StyleSheet.create({
   resultHolder: { marginTop: 4, color: "#475569", fontSize: 13 },
   resultFooter: {
     flexDirection: "row",
-    alignItems: "flex-end",
+    alignItems: "flex-start",
     gap: 10,
     marginTop: 12,
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: "#E2E8F0",
   },
-  resultSubstances: { flex: 1, color: "#334155", fontSize: 12, lineHeight: 17 },
+  resultSubstances: {
+    flex: 1,
+    minWidth: 0,
+    color: "#334155",
+    fontSize: 12,
+    lineHeight: 17,
+  },
   classificationBadge: {
-    maxWidth: "43%",
+    maxWidth: "48%",
+    minWidth: 0,
+    flexShrink: 1,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 6,
@@ -495,6 +505,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 14,
     fontWeight: "700",
+    flexShrink: 1,
     textAlign: "center",
   },
 });

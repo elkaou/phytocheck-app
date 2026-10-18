@@ -482,13 +482,61 @@ export function getProductByAMM(
   return classifyProductWithData(matchingProducts[0], dataRiskPhrases);
 }
 
+const BADGE_FUNCTIONS: Array<{ match: string; label: string }> = [
+  { match: "herbicide", label: "Herbicide" },
+  { match: "fongicide", label: "Fongicide" },
+  { match: "insecticide", label: "Insecticide" },
+  { match: "acaricide", label: "Acaricide" },
+  { match: "molluscicide", label: "Molluscicide" },
+  { match: "nématicide", label: "Nématicide" },
+  { match: "rodenticide", label: "Rodenticide" },
+  { match: "taupicide", label: "Taupicide" },
+  { match: "corvicide", label: "Corvicide" },
+  { match: "bactéricide", label: "Bactéricide" },
+  { match: "virucide", label: "Virucide" },
+  { match: "régulateur de croissance", label: "Régulateur de croissance" },
+  { match: "répulsif", label: "Répulsif" },
+  { match: "désinfectant", label: "Désinfectant" },
+  { match: "dévitalisation", label: "Dévitalisant" },
+  { match: "destruct. mousses", label: "Destructeur de mousses" },
+  { match: "éclaircissage", label: "Éclaircissant" },
+  { match: "traitement des maladies à virus", label: "Virucide" },
+];
+
+/**
+ * Retourne les fonctions phytosanitaires utiles à un badge court.
+ * Les fonctions E‑Phy peuvent être combinées avec « | » et contenir aussi
+ * des catégories non phytosanitaires (engrais, adjuvant, amendement, etc.).
+ */
+export function getProductBadgeFunctions(fonctions?: string): string[] {
+  if (!fonctions) return [];
+
+  const normalized = fonctions
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  const labels: string[] = [];
+  for (const entry of BADGE_FUNCTIONS) {
+    const match = entry.match.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (normalized.includes(match) && !labels.includes(entry.label)) {
+      labels.push(entry.label);
+    }
+  }
+  return labels;
+}
+
 // Get classification label
 export function getClassificationLabel(
   classification: ProductClassification,
+  fonctions?: string,
 ): string {
   switch (classification) {
     case "homologue":
-      return "Homologué non CMR, non toxique";
+      const functionLabels = getProductBadgeFunctions(fonctions);
+      return functionLabels.length > 0
+        ? `${functionLabels.join(" / ")} non CMR, non toxique`
+        : "Homologué non CMR, non toxique";
     case "retire":
       return "Retiré";
     case "homologue_cmr":

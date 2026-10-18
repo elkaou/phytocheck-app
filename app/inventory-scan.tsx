@@ -585,12 +585,19 @@ const styles = StyleSheet.create({
   productMeta: { color: "#0A7EA5", fontSize: 14, fontWeight: "600" },
   regulatoryBadge: {
     alignSelf: "flex-start",
+    maxWidth: "100%",
+    minWidth: 0,
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  regulatoryBadgeText: { fontSize: 12, lineHeight: 16, fontWeight: "700" },
+  regulatoryBadgeText: {
+    flexShrink: 1,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "700",
+  },
   cardHint: { color: "#687076", fontSize: 13, lineHeight: 18 },
   namePriorityNotice: {
     alignSelf: "stretch",

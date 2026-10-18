@@ -483,7 +483,7 @@ export default function StockScreen() {
                       <td class="col-qty">${item.quantite ?? 1} ${item.unite ?? "L"}</td>
                       <td style="font-size:11px;color:#475569">${item.titulaire ?? "—"}</td>
                       <td class="col-date">${dateAjout}</td>
-                      <td class="col-status"><span class="badge ${badgeClass}">${getClassificationLabel(item.classification as ProductClassification)}</span></td>
+                      <td class="col-status"><span class="badge ${badgeClass}">${getClassificationLabel(item.classification as ProductClassification, item.fonctions)}</span></td>
                     </tr>`;
                   }).join("")}
                 </tbody>
@@ -781,7 +781,8 @@ export default function StockScreen() {
                         ]}
                       >
                         {getClassificationLabel(
-                          item.classification as ProductClassification
+                          item.classification as ProductClassification,
+                          item.fonctions,
                         )}
                       </Text>
                     </View>
@@ -1035,9 +1036,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     maxWidth: "100%",
+    minWidth: 0,
   },
   stockBadgeText: {
     fontSize: 11,
+    lineHeight: 15,
     fontWeight: "bold",
     flexShrink: 1,
   },

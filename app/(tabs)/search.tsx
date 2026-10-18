@@ -487,7 +487,7 @@ export default function SearchScreen() {
               </View>
             )}
           </View>
-          <View style={styles.resultBottomRow}>
+            <View style={styles.resultBottomRow}>
             <View style={styles.resultCardContent}>
               <Text style={styles.resultAMM}>AMM : {item.amm}</Text>
               <Text style={styles.resultInfo} numberOfLines={1}>
@@ -509,9 +509,8 @@ export default function SearchScreen() {
                   styles.badgeText,
                   { color: getClassificationColor(item.classification) },
                 ]}
-                numberOfLines={2}
               >
-                {getClassificationLabel(item.classification)}
+                {getClassificationLabel(item.classification, item.fonctions)}
               </Text>
             </View>
           </View>
@@ -1572,12 +1571,13 @@ const styles = StyleSheet.create({
   },
   resultBottomRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     marginTop: 6,
   },
   resultCardContent: {
     flex: 1,
+    minWidth: 0,
     marginRight: 12,
     flexDirection: "column",
   },
@@ -1607,12 +1607,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    flexShrink: 0,
-    maxWidth: 140,
+    flexShrink: 1,
+    minWidth: 0,
+    maxWidth: "48%",
   },
   badgeText: {
     fontSize: 11,
+    lineHeight: 15,
     fontWeight: "bold",
+    flexShrink: 1,
     textAlign: "center",
   },
   emergencyResultsSection: {

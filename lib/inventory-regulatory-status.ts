@@ -1,6 +1,7 @@
 import {
   getClassificationBgColor,
   getClassificationColor,
+  getProductBadgeFunctions,
   type ClassifiedProduct,
   type ProductClassification,
 } from "./product-service";
@@ -24,10 +25,18 @@ const LABELS: Record<ProductClassification, string> = {
 };
 
 export function getInventoryRegulatoryStatus(
-  product: Pick<ClassifiedProduct, "classification">,
+  product: Pick<ClassifiedProduct, "classification"> &
+    Partial<Pick<ClassifiedProduct, "fonctions">>,
 ): InventoryRegulatoryStatus {
+  const functionLabels =
+    product.classification === "homologue"
+      ? getProductBadgeFunctions(product.fonctions)
+      : [];
   return {
-    label: LABELS[product.classification],
+    label:
+      functionLabels.length > 0
+        ? `${functionLabels.join(" / ")} non CMR, non toxique`
+        : LABELS[product.classification],
     color: getClassificationColor(product.classification),
     backgroundColor: getClassificationBgColor(product.classification),
   };
