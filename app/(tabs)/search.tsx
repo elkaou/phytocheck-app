@@ -119,6 +119,28 @@ export default function SearchScreen() {
     return index;
   }, [deferredCultureSearchIndex]);
 
+  // Les suggestions n'ont besoin que des libellés de culture présents dans les
+  // usages. Les construire séparément évite d'attendre l'index complet
+  // (produits + risques + usages), beaucoup plus coûteux, dès la première
+  // lettre saisie.
+  const usageCultureNames = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const productUsages of Object.values(usages)) {
+      for (const usage of productUsages) {
+        const culture = usage.culture?.trim();
+        if (!culture) continue;
+        const key = culture
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+        if (!names.has(key)) names.set(key, culture);
+      }
+    }
+    return Array.from(names.values()).sort((a, b) =>
+      a.localeCompare(b, "fr"),
+    );
+  }, [usages]);
+
   // --- Cibles disponibles pour les résultats culture actuels ---
   const availableCibles = useMemo(() => {
     if (searchType !== "culture" || results.length === 0) return [];
@@ -172,8 +194,12 @@ export default function SearchScreen() {
 
   // --- Suggestions de cultures filtrées par la saisie ---
   const cultureSuggestions = useMemo<CultureSuggestion[]>(() => {
-    return getCultureSuggestions(cultureQuery, allCultures, 10);
-  }, [cultureQuery, allCultures]);
+    return getCultureSuggestions(
+      cultureQuery,
+      allCultures.length > 0 ? allCultures : usageCultureNames,
+      10,
+    );
+  }, [cultureQuery, allCultures, usageCultureNames]);
 
   // Les décisions Article 53 restent séparées des homologations E‑Phy : elles
   // sont limitées dans le temps et dans le périmètre de chaque décision.
@@ -772,7 +798,6 @@ export default function SearchScreen() {
                         onChangeText={(text) => {
                           setCultureQuery(text);
                           setShowCultureSuggestions(true);
-                          void prepareCultureSearch();
                         }}
                         onFocus={() => void prepareCultureSearch()}
                         returnKeyType="search"
