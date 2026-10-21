@@ -29,6 +29,18 @@ function productMatchesType(product: Product, typeFilter: CultureProductType): b
     .some((functionName) => normalizeCultureName(functionName).includes(normalizedType));
 }
 
+function expandCommercialNames(product: ClassifiedProduct): ClassifiedProduct[] {
+  const secondaryNames = (product.nomsSecondaires || "")
+    .split("|")
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+  return [
+    product,
+    ...secondaryNames.map((matchedName) => ({ ...product, matchedName })),
+  ];
+}
+
 /**
  * Prépare un index d'accès direct culture → AMM. Il est créé une seule fois
  * par jeu de données, ce qui évite de balayer tous les usages à chaque recherche.
@@ -90,11 +102,15 @@ export function createCultureSearchIndex(
 
         for (const product of productsByAmm.get(amm) ?? []) {
           if (product.etat !== "AUTORISE" || !productMatchesType(product, typeFilter)) continue;
-          found.push(classifyProductWithData(product, riskPhrases));
+          found.push(...expandCommercialNames(classifyProductWithData(product, riskPhrases)));
         }
       }
 
-      found.sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }));
+      found.sort((a, b) => {
+        const nameA = a.matchedName || a.nom;
+        const nameB = b.matchedName || b.nom;
+        return nameA.localeCompare(nameB, "fr", { sensitivity: "base" });
+      });
       return { products: found, ciblesByAmm };
     },
   };

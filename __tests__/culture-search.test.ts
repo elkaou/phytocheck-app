@@ -8,7 +8,7 @@ const products: Product[] = [
   {
     amm: "1000001",
     nom: "HERBI ORGE",
-    nomsSecondaires: "",
+    nomsSecondaires: "ALIAS HERBI",
     titulaire: "Test",
     gammeUsage: "Professionnel",
     substancesActives: "Substance A",
@@ -76,13 +76,15 @@ describe("indexed culture search", () => {
   it("inclut les alias d'Orge, exclut les retraits et conserve les risques dynamiques", () => {
     const result = index.search("Orge", "Tous");
 
-    expect(result.products.map((product) => product.amm)).toEqual(["1000002", "1000001"]);
+    expect(result.products.map((product) => product.amm)).toEqual(["1000001", "1000002", "1000001"]);
     expect(result.products.find((product) => product.amm === "1000001")?.classification).toBe("homologue_cmr");
     expect(result.ciblesByAmm.get("1000002")).toEqual(["Oïdium"]);
   });
 
   it("applique le filtre de type au premier calcul", () => {
-    expect(index.search("Orge", "Herbicide").products.map((product) => product.amm)).toEqual(["1000001"]);
+    const herbicideResults = index.search("Orge", "Herbicide").products;
+    expect(herbicideResults.map((product) => product.amm)).toEqual(["1000001", "1000001"]);
+    expect(herbicideResults.map((product) => product.matchedName)).toEqual(["ALIAS HERBI", undefined]);
     expect(index.search("Orge", "Fongicide").products.map((product) => product.amm)).toEqual(["1000002"]);
   });
 
