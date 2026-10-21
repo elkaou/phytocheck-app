@@ -5,7 +5,9 @@ import {
   classifyProduct,
   createEmergencyAuthorizationProduct,
   getClassificationLabel,
+  getProductBadgeFunctions,
   getClassificationColor,
+  getCommercialNameType,
   extractActiveSubstanceNames,
   searchByExactSubstances,
   sortProductsWithStockFirst,
@@ -89,6 +91,12 @@ describe("product-service", () => {
       dateAutorisation: "01/01/2020",
     });
 
+    it("identifie le nom principal et le nom secondaire pour l’affichage", () => {
+      expect(getCommercialNameType()).toBe("principal");
+      expect(getCommercialNameType("EMBARDEX")).toBe("secondaire");
+      expect(getCommercialNameType("  ")).toBe("principal");
+    });
+
     it("extrait le nom harmonisé même lorsque le libellé contient des parenthèses imbriquées", () => {
       expect(
         extractActiveSubstanceNames(
@@ -168,6 +176,29 @@ describe("product-service", () => {
           (product) => product.nom,
         ),
       ).toEqual(["BETA", "ALPHA"]);
+    });
+
+    it("crée une carte distincte pour chaque nom commercial d’une même AMM", () => {
+      const product = makeProduct(
+        "test-amm",
+        "DEFI",
+        "prosulfocarbe (Prosulfocarb) 800.0 g/L",
+      );
+      product.nomsSecondaires = "AUROS | EMBARDEX | PIROSEO";
+
+      const results = searchByExactSubstances(
+        ["Prosulfocarb"],
+        100,
+        [product],
+        {},
+      );
+
+      expect(results.map((item) => item.matchedName || item.nom)).toEqual([
+        "DEFI",
+        "AUROS",
+        "EMBARDEX",
+        "PIROSEO",
+      ]);
     });
 
     it("filtre les produits retirés par défaut tout en permettant de les réafficher", () => {
@@ -254,6 +285,24 @@ describe("product-service", () => {
       expect(getClassificationLabel("autorisation_urgence")).toBe(
         "Autorisation d’urgence — Article 53",
       );
+
+      expect(getClassificationLabel("homologue", "Herbicide | Engrais")).toBe(
+        "Herbicide non CMR, non toxique",
+      );
+      expect(
+        getClassificationLabel("homologue", "Fongicide | Insecticide"),
+      ).toBe("Fongicide / Insecticide non CMR, non toxique");
+      expect(getClassificationLabel("homologue_cmr", "Herbicide")).toBe(
+        "Homologué — CMR",
+      );
+    });
+
+    it("retient uniquement les grandes fonctions phytosanitaires du badge", () => {
+      expect(
+        getProductBadgeFunctions(
+          "Fongicide | Adjuvant pour bouillie herbicide | Engrais",
+        ),
+      ).toEqual(["Herbicide", "Fongicide"]);
     });
   });
 

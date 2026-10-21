@@ -18,6 +18,7 @@ import {
   getClassificationBgColor,
   getClassificationColor,
   getClassificationLabel,
+  getCommercialNameType,
   searchByExactSubstances,
   type ClassifiedProduct,
 } from "@/lib/product-service";
@@ -63,12 +64,7 @@ export default function ActiveSubstancesScreen() {
     substances?: string | string[];
     sourceName?: string | string[];
   }>();
-  const {
-    performSearch,
-    isPremium,
-    remainingSearches,
-    stock,
-  } = useApp();
+  const { performSearch, isPremium, remainingSearches, stock } = useApp();
   const { products, riskPhrases } = useData();
   const countedSearch = useRef(false);
   const substances = useMemo(
@@ -129,8 +125,12 @@ export default function ActiveSubstancesScreen() {
 
       // Plusieurs noms commerciaux peuvent partager la même AMM. Le nom
       // enregistré doit donc également correspondre au résultat affiché.
-      const stockDisplayName = normalizeStockName(item.secondaryName || item.nom);
-      const resultDisplayName = normalizeStockName(product.matchedName || product.nom);
+      const stockDisplayName = normalizeStockName(
+        item.secondaryName || item.nom,
+      );
+      const resultDisplayName = normalizeStockName(
+        product.matchedName || product.nom,
+      );
       return stockDisplayName === resultDisplayName;
     });
 
@@ -255,6 +255,7 @@ export default function ActiveSubstancesScreen() {
               </Text>
               {stockedResults.map((product) => {
                 const inStock = isActiveProductInStock(product);
+                const nameType = getCommercialNameType(product.matchedName);
                 const stockItem = stock.find(
                   (item) =>
                     item.amm === product.amm &&
@@ -276,18 +277,41 @@ export default function ActiveSubstancesScreen() {
                     ]}
                     onPress={() => openProduct(product)}
                     accessibilityRole="button"
-                    accessibilityLabel={`${product.nom}${inStock ? ", déjà présent dans le stock" : ""}`}
+                    accessibilityLabel={`${product.matchedName || product.nom}, nom ${nameType}${inStock ? ", déjà présent dans le stock" : ""}`}
                   >
                     <View style={styles.resultHeader}>
                       <View style={styles.resultNameContainer}>
-                        <Text
-                          style={[
-                            styles.resultName,
-                            inStock && styles.inStockResultName,
-                          ]}
-                        >
-                          {product.matchedName || product.nom}
-                        </Text>
+                        <View style={styles.resultNameLine}>
+                          <Text
+                            style={[
+                              styles.resultName,
+                              inStock && styles.inStockResultName,
+                            ]}
+                          >
+                            {product.matchedName || product.nom}
+                          </Text>
+                          <View
+                            style={[
+                              styles.nameTypeBadge,
+                              nameType === "secondaire"
+                                ? styles.secondaryNameBadge
+                                : styles.primaryNameBadge,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.nameTypeBadgeText,
+                                nameType === "secondaire"
+                                  ? styles.secondaryNameBadgeText
+                                  : styles.primaryNameBadgeText,
+                              ]}
+                            >
+                              {nameType === "secondaire"
+                                ? "Secondaire"
+                                : "Principal"}
+                            </Text>
+                          </View>
+                        </View>
                         {product.matchedName ? (
                           <Text style={styles.resultSubName}>
                             (Nom principal : {product.nom})
@@ -491,12 +515,29 @@ const styles = StyleSheet.create({
   },
   resultHeader: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   resultNameContainer: { flex: 1, gap: 6 },
+  resultNameLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 7,
+  },
   resultName: {
     color: "#0F172A",
     fontSize: 18,
     fontWeight: "700",
     flexShrink: 1,
   },
+  nameTypeBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    flexShrink: 0,
+  },
+  nameTypeBadgeText: { fontSize: 10, fontWeight: "700" },
+  primaryNameBadge: { backgroundColor: "#E0F2FE" },
+  primaryNameBadgeText: { color: "#0369A1" },
+  secondaryNameBadge: { backgroundColor: "#F1F5F9" },
+  secondaryNameBadgeText: { color: "#475569" },
   resultSubName: {
     color: "#0F766E",
     fontSize: 13,

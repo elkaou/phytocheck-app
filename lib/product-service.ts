@@ -37,6 +37,12 @@ export interface ClassifiedProduct extends Product {
   matchedName?: string; // Nom secondaire par lequel le produit a été trouvé
 }
 
+export function getCommercialNameType(
+  matchedName?: string,
+): "principal" | "secondaire" {
+  return matchedName?.trim() ? "secondaire" : "principal";
+}
+
 /**
  * Crée une fiche stockable quand une AMM est uniquement publiée au titre de
  * l’article 53 et n’existe pas encore dans le catalogue E‑Phy téléchargé.
@@ -318,8 +324,17 @@ export function searchByExactSubstances(
     const classified = classifyProductWithData(product, dataRiskPhrases);
     // La page dédiée porte sur les produits homologués ; les produits retirés
     // restent accessibles depuis leur fiche, mais ne sont pas proposés ici.
-    if (classified.classification !== "retire") {
-      results.push(classified);
+    if (classified.classification === "retire") continue;
+
+    // Une même AMM peut correspondre à plusieurs noms commerciaux. Chaque
+    // nom doit rester une carte indépendante afin que le stock soit comparé
+    // au nom réellement enregistré, et non à l'AMM seule.
+    results.push(classified);
+    for (const secondaryName of (product.nomsSecondaires || "")
+      .split("|")
+      .map((name) => name.trim())
+      .filter(Boolean)) {
+      results.push({ ...classified, matchedName: secondaryName });
     }
     if (results.length >= limit) break;
   }

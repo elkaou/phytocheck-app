@@ -56,6 +56,10 @@ export async function addToStock(
       }
       // Increment quantity
       stock[existingIndex].quantite = (stock[existingIndex].quantite || 1) + quantity;
+      // Une AMM peut avoir plusieurs noms commerciaux. Conserver le nom
+      // effectivement choisi afin que les recherches par matière active ne
+      // marquent pas tous les alias comme étant en stock.
+      stock[existingIndex].secondaryName = secondaryName;
       await AsyncStorage.setItem(STORAGE_KEYS.STOCK, JSON.stringify(stock));
       return "incremented";
     }
