@@ -19,11 +19,21 @@ import {
   getClassificationColor,
   getClassificationLabel,
   searchByExactSubstances,
-  sortProductsWithStockFirst,
   type ClassifiedProduct,
 } from "@/lib/product-service";
 import { useData } from "@/lib/data-context";
 import { formatStockQuantity } from "@/lib/quantity";
+
+function normalizeStockName(value: string | undefined): string {
+  return (value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[®™©℠]/g, "")
+    .replace(/[’']/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
 
 function readSubstances(value: string | string[] | undefined): string[] {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -56,7 +66,6 @@ export default function ActiveSubstancesScreen() {
   const {
     performSearch,
     isPremium,
-    isProductInStock,
     remainingSearches,
     stock,
   } = useApp();
@@ -114,19 +123,31 @@ export default function ActiveSubstancesScreen() {
     return () => clearTimeout(timer);
   }, [activeNames, isAllowed, products, riskPhrases]);
 
-  const stockedResults = useMemo(() => {
-    const stockedAmms = new Set(
-      results
-        .filter((result) => isProductInStock(result.amm))
-        .map((result) => result.amm),
-    );
-    return sortProductsWithStockFirst(results, stockedAmms);
-  }, [isProductInStock, results]);
+  const isActiveProductInStock = (product: ClassifiedProduct) =>
+    stock.some((item) => {
+      if (item.amm !== product.amm) return false;
+
+      // Plusieurs noms commerciaux peuvent partager la même AMM. Le nom
+      // enregistré doit donc également correspondre au résultat affiché.
+      const stockDisplayName = normalizeStockName(item.secondaryName || item.nom);
+      const resultDisplayName = normalizeStockName(product.matchedName || product.nom);
+      return stockDisplayName === resultDisplayName;
+    });
+
+  const stockedResults = useMemo(
+    () =>
+      [...results].sort(
+        (left, right) =>
+          Number(isActiveProductInStock(right)) -
+          Number(isActiveProductInStock(left)),
+      ),
+    [results, stock],
+  );
 
   const openProduct = (product: ClassifiedProduct) => {
     router.push({
       pathname: "/product/[amm]",
-      params: { amm: product.amm, name: product.nom },
+      params: { amm: product.amm, name: product.matchedName || product.nom },
     });
   };
 
@@ -233,13 +254,21 @@ export default function ActiveSubstancesScreen() {
                 {stockedResults.length > 1 ? "s" : ""}
               </Text>
               {stockedResults.map((product) => {
-                const inStock = isProductInStock(product.amm);
+                const inStock = isActiveProductInStock(product);
                 const stockItem = stock.find(
-                  (item) => item.amm === product.amm,
+                  (item) =>
+                    item.amm === product.amm &&
+                    normalizeStockName(item.secondaryName || item.nom) ===
+                      normalizeStockName(product.matchedName || product.nom),
                 );
                 return (
                   <Pressable
-                    key={product.amm}
+                    // Plusieurs cartes peuvent partager la même AMM (nom
+                    // principal et noms secondaires). L'AMM seule ne doit
+                    // donc pas être utilisée comme clé React : sinon React
+                    // peut réutiliser l'état visuel « En stock » d'une carte
+                    // pour les autres noms commerciaux.
+                    key={`${product.amm}:${normalizeStockName(product.matchedName || product.nom)}`}
                     style={({ pressed }) => [
                       styles.resultCard,
                       inStock && styles.inStockResultCard,
@@ -257,8 +286,13 @@ export default function ActiveSubstancesScreen() {
                             inStock && styles.inStockResultName,
                           ]}
                         >
-                          {product.nom}
+                          {product.matchedName || product.nom}
                         </Text>
+                        {product.matchedName ? (
+                          <Text style={styles.resultSubName}>
+                            (Nom principal : {product.nom})
+                          </Text>
+                        ) : null}
                         {inStock ? (
                           <View style={styles.inStockLabel}>
                             <IconSymbol
@@ -460,8 +494,14 @@ const styles = StyleSheet.create({
   resultName: {
     color: "#0F172A",
     fontSize: 18,
-    lineHeight: 23,
     fontWeight: "700",
+    flexShrink: 1,
+  },
+  resultSubName: {
+    color: "#0F766E",
+    fontSize: 13,
+    fontStyle: "italic",
+    lineHeight: 18,
   },
   inStockResultName: { color: "#166534" },
   inStockLabel: {
