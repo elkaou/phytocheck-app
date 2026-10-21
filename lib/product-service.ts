@@ -37,6 +37,41 @@ export interface ClassifiedProduct extends Product {
   matchedName?: string; // Nom secondaire par lequel le produit a été trouvé
 }
 
+export interface StockNameRecord {
+  amm: string;
+  nom: string;
+  secondaryName?: string;
+}
+
+export function normalizeCommercialName(value: string | undefined): string {
+  return (value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[®™©℠]/g, "")
+    .replace(/[’']/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
+export function getDisplayedCommercialName(product: ClassifiedProduct): string {
+  return product.matchedName || product.nom;
+}
+
+export function isProductNameInStock(
+  product: ClassifiedProduct,
+  stock: readonly StockNameRecord[],
+): boolean {
+  const displayedName = normalizeCommercialName(
+    getDisplayedCommercialName(product),
+  );
+  return stock.some(
+    (item) =>
+      item.amm === product.amm &&
+      normalizeCommercialName(item.secondaryName || item.nom) === displayedName,
+  );
+}
+
 export function getCommercialNameType(
   matchedName?: string,
 ): "principal" | "secondaire" {
@@ -354,6 +389,24 @@ export function sortProductsWithStockFirst(
       Number(stockedAmms.has(b.amm)) - Number(stockedAmms.has(a.amm));
     if (inStockDifference !== 0) return inStockDifference;
     return a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" });
+  });
+}
+
+/** Place en tête uniquement les noms commerciaux réellement enregistrés. */
+export function sortProductsWithStockItemsFirst(
+  results: ClassifiedProduct[],
+  stock: readonly StockNameRecord[],
+): ClassifiedProduct[] {
+  return [...results].sort((a, b) => {
+    const inStockDifference =
+      Number(isProductNameInStock(b, stock)) -
+      Number(isProductNameInStock(a, stock));
+    if (inStockDifference !== 0) return inStockDifference;
+    return getDisplayedCommercialName(a).localeCompare(
+      getDisplayedCommercialName(b),
+      "fr",
+      { sensitivity: "base" },
+    );
   });
 }
 

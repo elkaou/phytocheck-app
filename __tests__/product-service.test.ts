@@ -11,6 +11,8 @@ import {
   extractActiveSubstanceNames,
   searchByExactSubstances,
   sortProductsWithStockFirst,
+  sortProductsWithStockItemsFirst,
+  isProductNameInStock,
   filterHomologatedProducts,
   TOTAL_PRODUCTS,
   DB_UPDATE_DATE,
@@ -199,6 +201,35 @@ describe("product-service", () => {
         "EMBARDEX",
         "PIROSEO",
       ]);
+    });
+
+    it("marque uniquement le nom commercial réellement présent en stock", () => {
+      const product = makeProduct(
+        "8700462",
+        "DEFI",
+        "prosulfocarbe (Prosulfocarb) 800.0 g/L",
+      );
+      product.nomsSecondaires = "AUROS | EMBARDEX";
+      const results = searchByExactSubstances(
+        ["Prosulfocarb"],
+        100,
+        [product],
+        {},
+      );
+      const stock = [
+        { amm: "8700462", nom: "DEFI", secondaryName: "EMBARDEX" },
+      ];
+
+      expect(
+        results
+          .filter((item) => isProductNameInStock(item, stock))
+          .map((item) => item.matchedName || item.nom),
+      ).toEqual(["EMBARDEX"]);
+      expect(
+        sortProductsWithStockItemsFirst(results, stock).map(
+          (item) => item.matchedName || item.nom,
+        ),
+      ).toEqual(["EMBARDEX", "AUROS", "DEFI"]);
     });
 
     it("filtre les produits retirés par défaut tout en permettant de les réafficher", () => {

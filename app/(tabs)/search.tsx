@@ -27,7 +27,9 @@ import {
   getClassificationColor,
   getClassificationBgColor,
   sortProductsWithStockFirst,
+  sortProductsWithStockItemsFirst,
   filterHomologatedProducts,
+  isProductNameInStock,
 } from "@/lib/product-service";
 import { useApp } from "@/lib/app-context";
 import { useData } from "@/lib/data-context";
@@ -136,9 +138,7 @@ export default function SearchScreen() {
         if (!names.has(key)) names.set(key, culture);
       }
     }
-    return Array.from(names.values()).sort((a, b) =>
-      a.localeCompare(b, "fr"),
-    );
+    return Array.from(names.values()).sort((a, b) => a.localeCompare(b, "fr"));
   }, [usages]);
 
   // --- Cibles disponibles pour les résultats culture actuels ---
@@ -172,12 +172,12 @@ export default function SearchScreen() {
       searchType !== "culture"
         ? filterHomologatedProducts(results, !filterHomologues)
         : results;
-    return sortProductsWithStockFirst(statusFiltered, stockedAmms);
-  }, [filterHomologues, results, searchType, stockedAmms]);
+    return sortProductsWithStockItemsFirst(statusFiltered, stock);
+  }, [filterHomologues, results, searchType, stock]);
 
   const sortedCibleFilteredResults = useMemo(
-    () => sortProductsWithStockFirst(cibleFilteredResults, stockedAmms),
-    [cibleFilteredResults, stockedAmms],
+    () => sortProductsWithStockItemsFirst(cibleFilteredResults, stock),
+    [cibleFilteredResults, stock],
   );
 
   const visibleCultureResults = useMemo(
@@ -461,8 +461,14 @@ export default function SearchScreen() {
 
   const renderProduct = useCallback(
     ({ item }: { item: ClassifiedProduct }) => {
-      const stockItem = stockByAmm.get(item.amm);
-      const inStock = Boolean(stockItem);
+      const inStock = isProductNameInStock(item, stock);
+      const stockItem = inStock
+        ? stock.find(
+            (stockEntry) =>
+              stockEntry.amm === item.amm &&
+              isProductNameInStock(item, [stockEntry]),
+          )
+        : undefined;
       const stockLabel = stockItem
         ? `En stock : ${formatStockQuantity(stockItem.quantite)} ${stockItem.unite}`
         : "En stock";
@@ -513,7 +519,7 @@ export default function SearchScreen() {
               </View>
             )}
           </View>
-            <View style={styles.resultBottomRow}>
+          <View style={styles.resultBottomRow}>
             <View style={styles.resultCardContent}>
               <Text style={styles.resultAMM}>AMM : {item.amm}</Text>
               <Text style={styles.resultInfo} numberOfLines={1}>
@@ -543,7 +549,7 @@ export default function SearchScreen() {
         </Pressable>
       );
     },
-    [router, searchType, cultureQuery, stockByAmm],
+    [router, searchType, cultureQuery, stock],
   );
 
   // Titre du résultat selon le type de recherche
