@@ -10,16 +10,21 @@ import {
   Platform,
 } from "react-native";
 import { useColors } from "@/hooks/use-colors";
-import { formatStockQuantity, normalizeStockQuantityInput, parseStockQuantity } from "@/lib/quantity";
+import {
+  formatStockQuantity,
+  normalizeStockQuantityInput,
+  parseStockQuantity,
+} from "@/lib/quantity";
+import type { StockUnit } from "@/lib/product-quantity-unit";
 
 interface QuantityModalProps {
   visible: boolean;
   productName: string;
   mode?: "add" | "edit";
   initialQuantity?: number;
-  initialUnit?: "L" | "Kg";
+  unit: StockUnit;
   onCancel: () => void;
-  onConfirm: (quantity: number, unit: "L" | "Kg") => void;
+  onConfirm: (quantity: number, unit: StockUnit) => void;
 }
 
 export function QuantityModal({
@@ -27,27 +32,33 @@ export function QuantityModal({
   productName,
   mode = "add",
   initialQuantity,
-  initialUnit = "L",
+  unit,
   onCancel,
   onConfirm,
 }: QuantityModalProps) {
   const colors = useColors();
   const [quantity, setQuantity] = useState("");
-  const [unit, setUnit] = useState<"L" | "Kg">(initialUnit);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
-      setQuantity(initialQuantity !== undefined ? formatStockQuantity(initialQuantity) : "");
-      setUnit(initialUnit);
+      setQuantity(
+        initialQuantity !== undefined
+          ? formatStockQuantity(initialQuantity)
+          : "",
+      );
       setError(null);
     }
-  }, [visible, initialQuantity, initialUnit]);
+  }, [visible, initialQuantity]);
 
   const handleConfirm = () => {
     const qty = parseStockQuantity(quantity, mode === "edit");
     if (qty === null) {
-      setError(mode === "edit" ? "Saisissez une quantité valide (0 pour retirer le produit)." : "Saisissez une quantité supérieure à 0.");
+      setError(
+        mode === "edit"
+          ? "Saisissez une quantité valide (0 pour retirer le produit)."
+          : "Saisissez une quantité supérieure à 0.",
+      );
       return;
     }
     onConfirm(qty, unit);
@@ -66,13 +77,18 @@ export function QuantityModal({
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
-        <View style={[styles.modalView, { backgroundColor: colors.background }]}>
+        <View
+          style={[styles.modalView, { backgroundColor: colors.background }]}
+        >
           <Text style={[styles.modalTitle, { color: colors.foreground }]}>
             {mode === "edit" ? "Modifier la quantité" : "Quantité en stock"}
           </Text>
 
           {mode === "edit" && (
-            <Text style={[styles.helperText, { color: colors.muted }]}>Saisissez la quantité totale présente dans votre stock. Entrez 0 pour retirer le produit.</Text>
+            <Text style={[styles.helperText, { color: colors.muted }]}>
+              Saisissez la quantité totale présente dans votre stock. Entrez 0
+              pour retirer le produit.
+            </Text>
           )}
 
           <View style={styles.section}>
@@ -103,51 +119,18 @@ export function QuantityModal({
             {error && <Text style={styles.errorText}>{error}</Text>}
           </View>
 
-          <View style={styles.section}>
+          <View
+            style={[
+              styles.unitInfo,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             <Text style={[styles.sectionLabel, { color: colors.muted }]}>
-              UNITÉ
+              UNITÉ AUTOMATIQUE
             </Text>
-            <View style={styles.unitRow}>
-              <TouchableOpacity
-                onPress={() => setUnit("L")}
-                style={[
-                  styles.unitButton,
-                  {
-                    backgroundColor: unit === "L" ? colors.primary : colors.surface,
-                    borderColor: unit === "L" ? colors.primary : colors.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.unitButtonText,
-                    { color: unit === "L" ? "white" : colors.foreground },
-                  ]}
-                >
-                  L
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => setUnit("Kg")}
-                style={[
-                  styles.unitButton,
-                  {
-                    backgroundColor: unit === "Kg" ? colors.primary : colors.surface,
-                    borderColor: unit === "Kg" ? colors.primary : colors.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.unitButtonText,
-                    { color: unit === "Kg" ? "white" : colors.foreground },
-                  ]}
-                >
-                  Kg
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={[styles.unitInfoText, { color: colors.foreground }]}>
+              {unit} — déterminée selon la formulation du produit
+            </Text>
           </View>
 
           <View style={styles.actionRow}>
@@ -161,7 +144,9 @@ export function QuantityModal({
                 },
               ]}
             >
-              <Text style={[styles.cancelButtonText, { color: colors.foreground }]}>
+              <Text
+                style={[styles.cancelButtonText, { color: colors.foreground }]}
+              >
                 Annuler
               </Text>
             </TouchableOpacity>
@@ -170,7 +155,9 @@ export function QuantityModal({
               onPress={handleConfirm}
               style={[styles.actionButton, { backgroundColor: colors.primary }]}
             >
-              <Text style={styles.confirmButtonText}>{mode === "edit" ? "Enregistrer" : "Ajouter"}</Text>
+              <Text style={styles.confirmButtonText}>
+                {mode === "edit" ? "Enregistrer" : "Ajouter"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -227,21 +214,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  unitRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  unitButton: {
-    flex: 1,
+  unitInfo: {
     borderRadius: 8,
-    paddingVertical: 10,
     paddingHorizontal: 12,
+    paddingVertical: 10,
     borderWidth: 1,
+    gap: 4,
   },
-  unitButtonText: {
-    textAlign: "center",
-    fontWeight: "700",
+  unitInfoText: {
     fontSize: 16,
+    fontWeight: "700",
   },
   actionRow: {
     flexDirection: "row",

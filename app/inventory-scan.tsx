@@ -26,6 +26,7 @@ import {
 } from "@/lib/inventory-stock-resolution";
 import { getInventoryRegulatoryStatus } from "@/lib/inventory-regulatory-status";
 import { formatStockQuantity } from "@/lib/quantity";
+import { getProductQuantityUnit } from "@/lib/product-quantity-unit";
 import type { ClassifiedProduct } from "@/lib/product-service";
 import {
   applyManualInventoryCorrection,
@@ -507,7 +508,10 @@ export default function InventoryScanScreen() {
         productName={selectedDetection?.stockDisplayName || selectedDetection?.product?.nom || ""}
         mode={stock.some((item) => item.amm === selectedDetection?.product?.amm) ? "edit" : "add"}
         initialQuantity={stock.find((item) => item.amm === selectedDetection?.product?.amm)?.quantite}
-        initialUnit={stock.find((item) => item.amm === selectedDetection?.product?.amm)?.unite}
+        unit={
+          stock.find((item) => item.amm === selectedDetection?.product?.amm)?.unite ??
+          (selectedDetection?.product ? getProductQuantityUnit(selectedDetection.product) : "L")
+        }
         onCancel={() => setSelectedDetection(null)}
         onConfirm={addSelectedProduct}
       />

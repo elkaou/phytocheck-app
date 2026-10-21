@@ -1,5 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { formatStockQuantity, normalizeStockQuantityInput, parseStockQuantity } from "../lib/quantity";
+import {
+  formatStockQuantity,
+  normalizeStockQuantityInput,
+  parseStockQuantity,
+} from "../lib/quantity";
+import { getProductQuantityUnit } from "../lib/product-quantity-unit";
+
+describe("getProductQuantityUnit", () => {
+  it("utilise les kilogrammes pour une poudre ou un granulé", () => {
+    expect(getProductQuantityUnit({ formulation: "Poudre mouillable" })).toBe(
+      "Kg",
+    );
+    expect(getProductQuantityUnit({ formulation: "Granulé dispersable" })).toBe(
+      "Kg",
+    );
+  });
+
+  it("utilise les litres pour une formulation liquide ou inconnue", () => {
+    expect(getProductQuantityUnit({ formulation: "Liquide" })).toBe("L");
+    expect(
+      getProductQuantityUnit({ formulation: "Concentré émulsionnable" }),
+    ).toBe("L");
+    expect(getProductQuantityUnit({ formulation: "" })).toBe("L");
+  });
+});
 
 describe("normalizeStockQuantityInput", () => {
   it("convertit immédiatement la virgule du clavier iOS en point", () => {

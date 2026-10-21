@@ -852,7 +852,7 @@ export default function StockScreen() {
         productName={itemBeingEdited?.secondaryName || itemBeingEdited?.nom || "Produit"}
         mode="edit"
         initialQuantity={itemBeingEdited?.quantite ?? 0}
-        initialUnit={itemBeingEdited?.unite ?? "L"}
+        unit={itemBeingEdited?.unite ?? "L"}
         onCancel={() => setItemBeingEdited(null)}
         onConfirm={handleQuantityConfirm}
       />
