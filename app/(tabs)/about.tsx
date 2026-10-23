@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useState } from "react";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/data-update-service";
 
 export default function AboutScreen() {
+  const router = useRouter();
   const { products, updateDate } = useData();
   const appVersion = Constants.expoConfig?.version ?? "1.0.0";
   const [checking, setChecking] = useState(false);
@@ -91,7 +92,7 @@ export default function AboutScreen() {
               styles.farmCulturesShortcut,
               pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
             ]}
-            onPress={() => router.push("/farm-cultures")}
+            onPress={() => router.push({ pathname: "/farm-cultures" })}
             accessibilityRole="button"
             accessibilityLabel="Configurer les cultures de l’exploitation"
             accessibilityHint="Ouvre la page Quelles cultures pratiquez-vous ?"

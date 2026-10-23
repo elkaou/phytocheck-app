@@ -110,6 +110,10 @@ export default function RootLayout() {
                     options={{ presentation: "card" }}
                   />
                   <Stack.Screen
+                    name="farm-cultures"
+                    options={{ presentation: "card" }}
+                  />
+                  <Stack.Screen
                     name="scan"
                     options={{ presentation: "modal" }}
                   />

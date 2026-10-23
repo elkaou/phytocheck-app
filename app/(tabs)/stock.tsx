@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ScrollView,
   Text,
@@ -18,6 +19,7 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { ScreenContainer } from "@/components/screen-container";
 import { QuantityModal } from "@/components/quantity-modal";
+import { StockFilterPanel } from "@/components/stock-filter-panel";
 import { StockWithdrawalWarningModal } from "@/components/stock-withdrawal-warning-modal";
 import { useApp } from "@/lib/app-context";
 import { useData } from "@/lib/data-context";
@@ -29,7 +31,10 @@ import {
   getEmergencyAuthorizationReminderForAmm,
 } from "@/lib/emergency-authorizations";
 import { formatStockQuantity } from "@/lib/quantity";
-import { createStockWorkbook, createStockWorkbookBase64 } from "@/lib/stock-export";
+import {
+  createStockWorkbook,
+  createStockWorkbookBase64,
+} from "@/lib/stock-export";
 import {
   getClassificationLabel,
   getClassificationColor,
@@ -39,6 +44,15 @@ import {
 import { getStock, StockItem, FREE_STOCK_LIMIT } from "@/lib/store";
 import { stockItemMatchesSearch } from "@/lib/stock-search";
 import {
+  EMPTY_STOCK_FILTERS,
+  isStockProductOutsideFarmCultures,
+  stockProductMatchesFilters,
+  type StockFilters,
+} from "@/lib/stock-filters";
+import { loadFarmCultures } from "@/lib/farm-cultures";
+
+const STOCK_FILTERS_STORAGE_KEY = "phytocheck_stock_filters_v1";
+import {
   acknowledgeStockWithdrawalWarnings,
   filterUnacknowledgedStockWithdrawalWarnings,
   formatStockWithdrawalDate,
@@ -47,8 +61,6 @@ import {
   getUpcomingStockWithdrawalWarnings,
   StockWithdrawalWarning,
 } from "@/lib/stock-withdrawal-warning";
-
-type FilterType = "all" | "homologue" | "retire" | "homologue_cmr" | "homologue_toxique";
 
 export default function StockScreen() {
   const router = useRouter();
@@ -66,70 +78,142 @@ export default function StockScreen() {
   const {
     products,
     riskPhrases,
+    usages,
     updateDate,
     emergencyAuthorizations,
     emergencyAuthorizationsUpdateDate,
   } = useData();
 
-  const [filter, setFilter] = useState<FilterType>("all");
-  const [itemBeingEdited, setItemBeingEdited] = useState<StockItem | null>(null);
+  const [filters, setFilters] = useState<StockFilters>(EMPTY_STOCK_FILTERS);
+  const [farmCultures, setFarmCultures] = useState<string[]>([]);
+  const [itemBeingEdited, setItemBeingEdited] = useState<StockItem | null>(
+    null,
+  );
   const [isStockSearchOpen, setIsStockSearchOpen] = useState(false);
   const [stockSearchQuery, setStockSearchQuery] = useState("");
-  const [withdrawalWarnings, setWithdrawalWarnings] = useState<StockWithdrawalWarning[]>([]);
+  const [withdrawalWarnings, setWithdrawalWarnings] = useState<
+    StockWithdrawalWarning[]
+  >([]);
   const isCheckingRegulatoryStatus = useRef(false);
 
   useEffect(() => {
     refreshStock();
   }, [refreshStock]);
 
-  const showRegulatoryAlert = useCallback((
-    changes: StockRegulatoryChange[],
-    emergencyChanges: StockEmergencyAuthorizationChange[],
-    onDismiss?: () => void,
-  ) => {
-    const details = changes
-      .slice(0, 5)
-      .map((change) => {
-        const suffix = change.dateRetrait ? ` (retrait : ${change.dateRetrait})` : "";
-        return `• ${change.productName} : ${getClassificationLabel(change.currentClassification)}${suffix}`;
+  useEffect(() => {
+    void AsyncStorage.getItem(STOCK_FILTERS_STORAGE_KEY)
+      .then((raw) => {
+        if (!raw) return;
+        try {
+          const saved = JSON.parse(raw) as Partial<StockFilters>;
+          setFilters({
+            ...EMPTY_STOCK_FILTERS,
+            ...saved,
+            functions: Array.isArray(saved.functions)
+              ? saved.functions
+              : EMPTY_STOCK_FILTERS.functions,
+            cultures: Array.isArray(saved.cultures)
+              ? saved.cultures
+              : EMPTY_STOCK_FILTERS.cultures,
+          });
+        } catch {
+          // Une préférence corrompue ne doit pas bloquer l’onglet Stock.
+        }
       })
-      .join("\n");
-    const remaining = changes.length > 5 ? `\n• … et ${changes.length - 5} autre${changes.length > 6 ? "s" : ""}` : "";
-    const ephySection = changes.length > 0
-      ? `Base E‑Phy du ${updateDate}\n${changes.length} produit${changes.length > 1 ? "s ont" : " a"} changé de statut.\n\n${details}${remaining}`
-      : "";
+      .catch((error: unknown) => {
+        console.warn(
+          "Préférences de filtres Stock impossibles à charger:",
+          error,
+        );
+      });
+  }, []);
 
-    const article53Labels: Record<StockEmergencyAuthorizationChange["type"], string> = {
-      new: "Nouvelle autorisation temporaire",
-      expiring: "Échéance proche",
-      expired: "Autorisation expirée",
-    };
-    const article53Details = emergencyChanges
-      .slice(0, 5)
-      .map((change) => {
-        const date = formatEmergencyAuthorizationDate(change.authorization.expiresAt);
-        return `• ${article53Labels[change.type]} : ${change.authorization.productName} — ${change.authorization.cultures} (jusqu’au ${date})`;
-      })
-      .join("\n");
-    const article53Remaining = emergencyChanges.length > 5
-      ? `\n• … et ${emergencyChanges.length - 5} autre${emergencyChanges.length > 6 ? "s" : ""}`
-      : "";
-    const article53Section = emergencyChanges.length > 0
-      ? `Autorisations d’urgence Article 53\n${article53Details}${article53Remaining}\n\nCes décisions temporaires ne modifient pas le statut E‑Phy du produit.`
-      : "";
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void loadFarmCultures().then((cultures) => {
+        if (!active) return;
+        setFarmCultures(cultures);
+        setFilters((current) => ({
+          ...current,
+          cultures: cultures.length
+            ? current.cultures.filter((culture) => cultures.includes(culture))
+            : [],
+        }));
+      });
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
-    Alert.alert(
-      "Mise à jour réglementaire",
-      [ephySection, article53Section].filter(Boolean).join("\n\n"),
-      [{ text: "Compris", onPress: onDismiss }],
-      { cancelable: false },
-    );
-  }, [updateDate]);
+  const showRegulatoryAlert = useCallback(
+    (
+      changes: StockRegulatoryChange[],
+      emergencyChanges: StockEmergencyAuthorizationChange[],
+      onDismiss?: () => void,
+    ) => {
+      const details = changes
+        .slice(0, 5)
+        .map((change) => {
+          const suffix = change.dateRetrait
+            ? ` (retrait : ${change.dateRetrait})`
+            : "";
+          return `• ${change.productName} : ${getClassificationLabel(change.currentClassification)}${suffix}`;
+        })
+        .join("\n");
+      const remaining =
+        changes.length > 5
+          ? `\n• … et ${changes.length - 5} autre${changes.length > 6 ? "s" : ""}`
+          : "";
+      const ephySection =
+        changes.length > 0
+          ? `Base E‑Phy du ${updateDate}\n${changes.length} produit${changes.length > 1 ? "s ont" : " a"} changé de statut.\n\n${details}${remaining}`
+          : "";
+
+      const article53Labels: Record<
+        StockEmergencyAuthorizationChange["type"],
+        string
+      > = {
+        new: "Nouvelle autorisation temporaire",
+        expiring: "Échéance proche",
+        expired: "Autorisation expirée",
+      };
+      const article53Details = emergencyChanges
+        .slice(0, 5)
+        .map((change) => {
+          const date = formatEmergencyAuthorizationDate(
+            change.authorization.expiresAt,
+          );
+          return `• ${article53Labels[change.type]} : ${change.authorization.productName} — ${change.authorization.cultures} (jusqu’au ${date})`;
+        })
+        .join("\n");
+      const article53Remaining =
+        emergencyChanges.length > 5
+          ? `\n• … et ${emergencyChanges.length - 5} autre${emergencyChanges.length > 6 ? "s" : ""}`
+          : "";
+      const article53Section =
+        emergencyChanges.length > 0
+          ? `Autorisations d’urgence Article 53\n${article53Details}${article53Remaining}\n\nCes décisions temporaires ne modifient pas le statut E‑Phy du produit.`
+          : "";
+
+      Alert.alert(
+        "Mise à jour réglementaire",
+        [ephySection, article53Section].filter(Boolean).join("\n\n"),
+        [{ text: "Compris", onPress: onDismiss }],
+        { cancelable: false },
+      );
+    },
+    [updateDate],
+  );
 
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-      if (isCheckingRegulatoryStatus.current) return () => { isActive = false; };
+      if (isCheckingRegulatoryStatus.current)
+        return () => {
+          isActive = false;
+        };
 
       isCheckingRegulatoryStatus.current = true;
       void Promise.all([
@@ -138,41 +222,50 @@ export default function StockScreen() {
         getStockWithdrawalWarningState(),
         getStock(),
       ])
-        .then(([
-          changes,
-          emergencyChanges,
-          withdrawalWarningState,
-          storedStock,
-        ]: [
-          StockRegulatoryChange[],
-          StockEmergencyAuthorizationChange[],
-          Awaited<ReturnType<typeof getStockWithdrawalWarningState>>,
-          StockItem[],
-        ]) => {
-          if (!isActive) return;
+        .then(
+          ([changes, emergencyChanges, withdrawalWarningState, storedStock]: [
+            StockRegulatoryChange[],
+            StockEmergencyAuthorizationChange[],
+            Awaited<ReturnType<typeof getStockWithdrawalWarningState>>,
+            StockItem[],
+          ]) => {
+            if (!isActive) return;
 
-          const upcomingWithdrawalWarnings = filterUnacknowledgedStockWithdrawalWarnings(
-            getUpcomingStockWithdrawalWarnings(storedStock, products),
-            withdrawalWarningState.acknowledgedWarningIds,
-          );
-          const showWithdrawalWarning = () => {
-            if (isActive && upcomingWithdrawalWarnings.length > 0) {
-              setWithdrawalWarnings(upcomingWithdrawalWarnings);
+            const upcomingWithdrawalWarnings =
+              filterUnacknowledgedStockWithdrawalWarnings(
+                getUpcomingStockWithdrawalWarnings(storedStock, products),
+                withdrawalWarningState.acknowledgedWarningIds,
+              );
+            const showWithdrawalWarning = () => {
+              if (isActive && upcomingWithdrawalWarnings.length > 0) {
+                setWithdrawalWarnings(upcomingWithdrawalWarnings);
+              }
+            };
+
+            if (changes.length > 0 || emergencyChanges.length > 0) {
+              showRegulatoryAlert(
+                changes,
+                emergencyChanges,
+                showWithdrawalWarning,
+              );
+            } else {
+              showWithdrawalWarning();
             }
-          };
-
-          if (changes.length > 0 || emergencyChanges.length > 0) {
-            showRegulatoryAlert(changes, emergencyChanges, showWithdrawalWarning);
-          } else {
-            showWithdrawalWarning();
-          }
-        })
-        .catch((error: unknown) => console.warn("Vérification réglementaire du stock impossible:", error))
+          },
+        )
+        .catch((error: unknown) =>
+          console.warn(
+            "Vérification réglementaire du stock impossible:",
+            error,
+          ),
+        )
         .finally(() => {
           isCheckingRegulatoryStatus.current = false;
         });
 
-      return () => { isActive = false; };
+      return () => {
+        isActive = false;
+      };
     }, [
       checkStockRegulatoryStatus,
       checkStockEmergencyAuthorizations,
@@ -184,13 +277,16 @@ export default function StockScreen() {
     ]),
   );
 
-  const handleWithdrawalWarningClose = useCallback((acknowledge: boolean) => {
-    const warningsToHandle = withdrawalWarnings;
-    setWithdrawalWarnings([]);
-    if (acknowledge) {
-      void acknowledgeStockWithdrawalWarnings(warningsToHandle);
-    }
-  }, [withdrawalWarnings]);
+  const handleWithdrawalWarningClose = useCallback(
+    (acknowledge: boolean) => {
+      const warningsToHandle = withdrawalWarnings;
+      setWithdrawalWarnings([]);
+      if (acknowledge) {
+        void acknowledgeStockWithdrawalWarnings(warningsToHandle);
+      }
+    },
+    [withdrawalWarnings],
+  );
 
   const handleRemove = useCallback(
     (item: StockItem) => {
@@ -206,69 +302,110 @@ export default function StockScreen() {
               await removeProductFromStock(item.amm);
             },
           },
-        ]
+        ],
       );
     },
-    [removeProductFromStock]
+    [removeProductFromStock],
   );
 
   const handleEditQuantity = useCallback((item: StockItem) => {
     setItemBeingEdited(item);
   }, []);
 
-  const handleOpenProduct = useCallback((item: StockItem) => {
-    router.push({
-      pathname: "/product/[amm]",
-      params: {
-        amm: item.amm,
-        name: item.secondaryName || item.nom,
-      },
-    });
-  }, [router]);
+  const handleOpenProduct = useCallback(
+    (item: StockItem) => {
+      router.push({
+        pathname: "/product/[amm]",
+        params: {
+          amm: item.amm,
+          name: item.secondaryName || item.nom,
+        },
+      });
+    },
+    [router],
+  );
 
   const handleQuantityConfirm = useCallback(
     async (quantity: number) => {
       if (!itemBeingEdited) return;
 
-      const success = await updateProductQuantity(itemBeingEdited.amm, quantity);
+      const success = await updateProductQuantity(
+        itemBeingEdited.amm,
+        quantity,
+      );
       if (!success) {
         Alert.alert("Erreur", "La quantité n’a pas pu être mise à jour.");
         return;
       }
       setItemBeingEdited(null);
     },
-    [itemBeingEdited, updateProductQuantity]
+    [itemBeingEdited, updateProductQuantity],
   );
 
+  const productsByAmm = useMemo(
+    () => new Map(products.map((product) => [product.amm, product])),
+    [products],
+  );
 
+  const stockWithdrawalReminders = useMemo(() => {
+    return new Map(
+      getUpcomingStockWithdrawalWarnings(stock, products).map((warning) => [
+        warning.amm,
+        warning,
+      ]),
+    );
+  }, [stock, products]);
 
-  // Filter and sort stock alphabetically
+  // Applique les filtres combinables puis trie le stock alphabétiquement.
   const filteredStock = useMemo(() => {
+    const effectiveFilters: StockFilters = {
+      ...filters,
+      // Sans cultures configurées pour l’exploitation, aucun filtre culturel
+      // résiduel ne doit modifier la liste du stock.
+      cultures: farmCultures.length
+        ? filters.cultures.filter((culture) => farmCultures.includes(culture))
+        : [],
+    };
     const filtered = stock.filter((item) => {
-      const matchesClassification = filter === "all" || item.classification === filter;
-      return matchesClassification && stockItemMatchesSearch(item, stockSearchQuery);
+      return (
+        stockProductMatchesFilters(
+          item,
+          effectiveFilters,
+          productsByAmm,
+          usages,
+          new Set(stockWithdrawalReminders.keys()),
+        ) && stockItemMatchesSearch(item, stockSearchQuery)
+      );
     });
     return [...filtered].sort((a, b) => {
       const nameA = (a.secondaryName || a.nom).toLowerCase();
       const nameB = (b.secondaryName || b.nom).toLowerCase();
       return nameA.localeCompare(nameB, "fr", { sensitivity: "base" });
     });
-  }, [stock, filter, stockSearchQuery]);
+  }, [
+    stock,
+    filters,
+    farmCultures,
+    productsByAmm,
+    usages,
+    stockWithdrawalReminders,
+    stockSearchQuery,
+  ]);
 
   const stockEmergencyReminders = useMemo(() => {
-    const reminders = new Map<string, NonNullable<ReturnType<typeof getEmergencyAuthorizationReminderForAmm>>>();
+    const reminders = new Map<
+      string,
+      NonNullable<ReturnType<typeof getEmergencyAuthorizationReminderForAmm>>
+    >();
     stock.forEach((item) => {
-      const reminder = getEmergencyAuthorizationReminderForAmm(emergencyAuthorizations, item.amm);
+      const reminder = getEmergencyAuthorizationReminderForAmm(
+        emergencyAuthorizations,
+        item.amm,
+      );
       if (reminder) reminders.set(item.amm, reminder);
     });
     return reminders;
   }, [stock, emergencyAuthorizations]);
-
-  const stockWithdrawalReminders = useMemo(() => {
-    return new Map(
-      getUpcomingStockWithdrawalWarnings(stock, products).map((warning) => [warning.amm, warning]),
-    );
-  }, [stock, products]);
 
   const handleStockSearchToggle = useCallback(() => {
     setIsStockSearchOpen((isOpen) => {
@@ -277,21 +414,55 @@ export default function StockScreen() {
     });
   }, []);
 
-  const handleFilterToggle = useCallback((filterType: FilterType) => {
-    setFilter((current) => (current === filterType ? "all" : filterType));
+  const handleFiltersChange = useCallback(
+    (nextFilters: StockFilters) => {
+      const sanitizedFilters = {
+        ...nextFilters,
+        cultures: farmCultures.length
+          ? nextFilters.cultures.filter((culture) =>
+              farmCultures.includes(culture),
+            )
+          : [],
+      };
+      setFilters(sanitizedFilters);
+      void AsyncStorage.setItem(
+        STOCK_FILTERS_STORAGE_KEY,
+        JSON.stringify(sanitizedFilters),
+      );
+    },
+    [farmCultures],
+  );
+
+  const resetFilters = useCallback(() => {
+    setFilters(EMPTY_STOCK_FILTERS);
+    void AsyncStorage.removeItem(STOCK_FILTERS_STORAGE_KEY);
   }, []);
 
   const handleExportPDF = useCallback(async () => {
     try {
       const exportDate = new Date().toLocaleDateString("fr-FR", {
-        weekday: "long", year: "numeric", month: "long", day: "numeric"
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       });
-      const exportTime = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      const exportTime = new Date().toLocaleTimeString("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
 
-      const statsHomologue = stock.filter(i => i.classification === "homologue").length;
-      const statsPPNU = stock.filter(i => i.classification === "retire").length;
-      const statsCMR = stock.filter(i => i.classification === "homologue_cmr").length;
-      const statsToxique = stock.filter(i => i.classification === "homologue_toxique").length;
+      const statsHomologue = stock.filter(
+        (i) => i.classification === "homologue",
+      ).length;
+      const statsPPNU = stock.filter(
+        (i) => i.classification === "retire",
+      ).length;
+      const statsCMR = stock.filter(
+        (i) => i.classification === "homologue_cmr",
+      ).length;
+      const statsToxique = stock.filter(
+        (i) => i.classification === "homologue_toxique",
+      ).length;
 
       const htmlContent = `
         <!DOCTYPE html>
@@ -448,9 +619,10 @@ export default function StockScreen() {
           <!-- TABLEAU PRINCIPAL -->
           <div class="main">
             <div class="table-wrapper">
-              ${stock.length === 0
-                ? `<div class="empty-state">Aucun produit dans le stock</div>`
-                : `<table>
+              ${
+                stock.length === 0
+                  ? `<div class="empty-state">Aucun produit dans le stock</div>`
+                  : `<table>
                 <thead>
                   <tr>
                     <th style="width:35%">Nom du produit</th>
@@ -462,21 +634,23 @@ export default function StockScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  ${stock.map((item, index) => {
-                    const badgeClass = {
-                      homologue: "badge-homologue",
-                      retire: "badge-retire",
-                      homologue_cmr: "badge-cmr",
-                      homologue_toxique: "badge-toxique",
-                      autorisation_urgence: "badge-emergency",
-                    }[item.classification] ?? "badge-homologue";
-                    const dateAjout = item.dateAjout
-                      ? new Date(item.dateAjout).toLocaleDateString("fr-FR")
-                      : "—";
-                    const nomDisplay = item.secondaryName
-                      ? `${item.secondaryName}<div class="secondary">${item.nom}</div>`
-                      : item.nom;
-                    return `
+                  ${stock
+                    .map((item, index) => {
+                      const badgeClass =
+                        {
+                          homologue: "badge-homologue",
+                          retire: "badge-retire",
+                          homologue_cmr: "badge-cmr",
+                          homologue_toxique: "badge-toxique",
+                          autorisation_urgence: "badge-emergency",
+                        }[item.classification] ?? "badge-homologue";
+                      const dateAjout = item.dateAjout
+                        ? new Date(item.dateAjout).toLocaleDateString("fr-FR")
+                        : "—";
+                      const nomDisplay = item.secondaryName
+                        ? `${item.secondaryName}<div class="secondary">${item.nom}</div>`
+                        : item.nom;
+                      return `
                     <tr>
                       <td class="col-nom">${nomDisplay}</td>
                       <td><span class="col-amm">${item.amm}</span></td>
@@ -485,7 +659,8 @@ export default function StockScreen() {
                       <td class="col-date">${dateAjout}</td>
                       <td class="col-status"><span class="badge ${badgeClass}">${getClassificationLabel(item.classification as ProductClassification, item.fonctions)}</span></td>
                     </tr>`;
-                  }).join("")}
+                    })
+                    .join("")}
                 </tbody>
               </table>`
               }
@@ -530,7 +705,7 @@ export default function StockScreen() {
       console.error("Error exporting PDF:", error);
       Alert.alert(
         "Erreur",
-        "Une erreur est survenue lors de l'export du PDF. Veuillez réessayer."
+        "Une erreur est survenue lors de l'export du PDF. Veuillez réessayer.",
       );
     }
   }, [stock]);
@@ -551,12 +726,16 @@ export default function StockScreen() {
       });
 
       if (!(await Sharing.isAvailableAsync())) {
-        Alert.alert("Export Excel", "Le partage de fichiers n’est pas disponible sur cet appareil.");
+        Alert.alert(
+          "Export Excel",
+          "Le partage de fichiers n’est pas disponible sur cet appareil.",
+        );
         return;
       }
 
       await Sharing.shareAsync(fileUri, {
-        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         dialogTitle: "Exporter le stock en Excel",
         UTI: "org.openxmlformats.spreadsheetml.sheet",
       });
@@ -564,7 +743,7 @@ export default function StockScreen() {
       console.error("Error exporting Excel:", error);
       Alert.alert(
         "Erreur",
-        "Une erreur est survenue lors de l’export Excel. Veuillez réessayer."
+        "Une erreur est survenue lors de l’export Excel. Veuillez réessayer.",
       );
     }
   }, [stock]);
@@ -583,7 +762,10 @@ export default function StockScreen() {
             </Text>
           </View>
           <Pressable
-            style={({ pressed }) => [styles.inventoryScanButton, pressed && { opacity: 0.72 }]}
+            style={({ pressed }) => [
+              styles.inventoryScanButton,
+              pressed && { opacity: 0.72 },
+            ]}
             onPress={() => router.push("/inventory-scan" as any)}
             accessibilityRole="button"
             accessibilityLabel="Ajout multiple au stock"
@@ -592,13 +774,24 @@ export default function StockScreen() {
             <MaterialIcons name="add-a-photo" size={22} color="#1D4ED8" />
           </Pressable>
           <Pressable
-            style={({ pressed }) => [styles.stockSearchButton, pressed && { opacity: 0.72 }]}
+            style={({ pressed }) => [
+              styles.stockSearchButton,
+              pressed && { opacity: 0.72 },
+            ]}
             onPress={handleStockSearchToggle}
             accessibilityRole="button"
-            accessibilityLabel={isStockSearchOpen ? "Fermer la recherche dans le stock" : "Rechercher dans le stock"}
+            accessibilityLabel={
+              isStockSearchOpen
+                ? "Fermer la recherche dans le stock"
+                : "Rechercher dans le stock"
+            }
             accessibilityHint="Recherche un produit déjà enregistré par nom ou numéro AMM"
           >
-            <MaterialIcons name={isStockSearchOpen ? "close" : "search"} size={23} color="#0a7ea5" />
+            <MaterialIcons
+              name={isStockSearchOpen ? "close" : "search"}
+              size={23}
+              color="#0a7ea5"
+            />
           </Pressable>
         </View>
         {isStockSearchOpen ? (
@@ -627,7 +820,8 @@ export default function StockScreen() {
             style={({ pressed }) => [
               styles.exportButton,
               !isPremium && styles.exportButtonDisabled,
-              pressed && isPremium && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+              pressed &&
+                isPremium && { opacity: 0.85, transform: [{ scale: 0.97 }] },
             ]}
             onPress={handleExportPDF}
             disabled={!isPremium}
@@ -635,7 +829,12 @@ export default function StockScreen() {
             accessibilityLabel="Exporter le stock en PDF"
             accessibilityState={{ disabled: !isPremium }}
           >
-            <Text style={[styles.exportButtonText, !isPremium && styles.exportButtonTextDisabled]}>
+            <Text
+              style={[
+                styles.exportButtonText,
+                !isPremium && styles.exportButtonTextDisabled,
+              ]}
+            >
               {isPremium ? "Export PDF" : "🔒 Export PDF"}
             </Text>
           </Pressable>
@@ -643,7 +842,8 @@ export default function StockScreen() {
             style={({ pressed }) => [
               styles.exportButton,
               !isPremium && styles.exportButtonDisabled,
-              pressed && isPremium && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+              pressed &&
+                isPremium && { opacity: 0.85, transform: [{ scale: 0.97 }] },
             ]}
             onPress={handleExportExcel}
             disabled={!isPremium}
@@ -651,196 +851,195 @@ export default function StockScreen() {
             accessibilityLabel="Exporter le stock en Excel"
             accessibilityState={{ disabled: !isPremium }}
           >
-            <Text style={[styles.exportButtonText, !isPremium && styles.exportButtonTextDisabled]}>
+            <Text
+              style={[
+                styles.exportButtonText,
+                !isPremium && styles.exportButtonTextDisabled,
+              ]}
+            >
               {isPremium ? "Export Excel" : "🔒 Export Excel"}
             </Text>
           </Pressable>
+        </View>
+
+        <View style={styles.compactFilterRow}>
+          <Text style={styles.filteredCountText}>
+            {filteredStock.length} produit
+            {filteredStock.length > 1 ? "s" : ""}
+          </Text>
+          <StockFilterPanel
+            filters={filters}
+            farmCultures={farmCultures}
+            onChange={handleFiltersChange}
+            onReset={resetFilters}
+          />
         </View>
 
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Stats grid with filters */}
-          <View style={styles.statsGrid}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.statCard,
-                { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" },
-                filter === "homologue" && styles.statCardActive,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={() => handleFilterToggle("homologue")}
-            >
-              <Text style={[styles.statNumber, { color: "#16A34A" }]}>
-                {stockStats.homologues}
-              </Text>
-              <Text style={[styles.statLabel, { color: "#16A34A" }]}>
-                Homologués
-              </Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                styles.statCard,
-                { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
-                filter === "retire" && styles.statCardActive,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={() => handleFilterToggle("retire")}
-            >
-              <Text style={[styles.statNumber, { color: "#DC2626" }]}>
-                {stockStats.ppnu}
-              </Text>
-              <Text style={[styles.statLabel, { color: "#DC2626" }]}>PPNU</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                styles.statCard,
-                { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" },
-                filter === "homologue_cmr" && styles.statCardActive,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={() => handleFilterToggle("homologue_cmr")}
-            >
-              <Text style={[styles.statNumber, { color: "#D97706" }]}>
-                {stockStats.cmr}
-              </Text>
-              <Text style={[styles.statLabel, { color: "#D97706" }]}>CMR</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                styles.statCard,
-                { backgroundColor: "#FFF7ED", borderColor: "#FED7AA" },
-                filter === "homologue_toxique" && styles.statCardActive,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={() => handleFilterToggle("homologue_toxique")}
-            >
-              <Text style={[styles.statNumber, { color: "#C2410C" }]}>
-                {stockStats.toxiques}
-              </Text>
-              <Text style={[styles.statLabel, { color: "#C2410C" }]}>
-                Toxiques
-              </Text>
-            </Pressable>
-          </View>
-
           {/* Stock list */}
           {filteredStock.length === 0 ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyText}>
                 {stockSearchQuery.trim()
                   ? "Aucun produit ne correspond à cette recherche"
-                  : filter === "all"
-                  ? "Aucun produit dans le stock"
-                  : "Aucun produit dans cette catégorie"}
+                  : filters.functions.length > 0 ||
+                      filters.cultures.length > 0 ||
+                      filters.nonCmr ||
+                      filters.nonToxique ||
+                      filters.withdrawalWithinThreeMonths ||
+                      !filters.includeRetired
+                    ? "Aucun produit ne correspond aux filtres sélectionnés"
+                    : "Aucun produit dans le stock"}
               </Text>
             </View>
           ) : (
             filteredStock.map((item) => {
               const emergencyReminder = stockEmergencyReminders.get(item.amm);
               const withdrawalReminder = stockWithdrawalReminders.get(item.amm);
+              const outsideFarmCultures = isStockProductOutsideFarmCultures(
+                item.amm,
+                farmCultures,
+                usages,
+              );
               return (
-              <View key={item.amm} style={styles.stockCard}>
-                <View style={styles.stockCardContent}>
-                  <Pressable
-                    onPress={() => handleOpenProduct(item)}
-                    style={({ pressed }) => [
-                      styles.stockNameButton,
-                      pressed && { opacity: 0.65 },
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Ouvrir la fiche de ${item.secondaryName || item.nom}`}
-                    accessibilityHint="Affiche les informations détaillées du produit"
-                  >
-                    <Text style={styles.stockName} numberOfLines={1}>
-                      {item.secondaryName ? `${item.secondaryName} (${item.nom})` : item.nom}
-                    </Text>
-                    <Text style={styles.stockNameChevron}>›</Text>
-                  </Pressable>
-                  <Text style={styles.stockAMM}>AMM : {item.amm}</Text>
-                  <View style={styles.stockCardBottom}>
-                    <View
-                      style={[
-                        styles.stockBadge,
-                        {
-                          backgroundColor: getClassificationBgColor(
-                            item.classification as ProductClassification
-                          ),
-                        },
+                <View key={item.amm} style={styles.stockCard}>
+                  <View style={styles.stockCardContent}>
+                    <Pressable
+                      onPress={() => handleOpenProduct(item)}
+                      style={({ pressed }) => [
+                        styles.stockNameButton,
+                        pressed && { opacity: 0.65 },
                       ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Ouvrir la fiche de ${item.secondaryName || item.nom}`}
+                      accessibilityHint="Affiche les informations détaillées du produit"
                     >
-                      <Text
+                      <Text style={styles.stockName} numberOfLines={1}>
+                        {item.secondaryName
+                          ? `${item.secondaryName} (${item.nom})`
+                          : item.nom}
+                      </Text>
+                      <Text style={styles.stockNameChevron}>›</Text>
+                    </Pressable>
+                    <Text style={styles.stockAMM}>AMM : {item.amm}</Text>
+                    {outsideFarmCultures ? (
+                      <View style={styles.stockCultureWarning}>
+                        <MaterialIcons
+                          name="agriculture"
+                          size={17}
+                          color="#9A3412"
+                        />
+                        <Text style={styles.stockCultureWarningText}>
+                          Culture non déclarée sur l’exploitation
+                        </Text>
+                      </View>
+                    ) : null}
+                    <View style={styles.stockCardBottom}>
+                      <View
                         style={[
-                          styles.stockBadgeText,
+                          styles.stockBadge,
                           {
-                            color: getClassificationColor(
-                              item.classification as ProductClassification
+                            backgroundColor: getClassificationBgColor(
+                              item.classification as ProductClassification,
                             ),
                           },
                         ]}
                       >
-                        {getClassificationLabel(
-                          item.classification as ProductClassification,
-                          item.fonctions,
-                        )}
-                      </Text>
-                    </View>
-                    {withdrawalReminder ? (
-                      <View style={styles.stockWithdrawalReminder}>
-                        <MaterialIcons name="warning-amber" size={17} color="#B45309" />
-                        <Text style={styles.stockWithdrawalReminderText}>
-                          {formatStockWithdrawalRemainingDays(withdrawalReminder.daysRemaining)} · {formatStockWithdrawalDate(withdrawalReminder.withdrawalDate)}
+                        <Text
+                          style={[
+                            styles.stockBadgeText,
+                            {
+                              color: getClassificationColor(
+                                item.classification as ProductClassification,
+                              ),
+                            },
+                          ]}
+                        >
+                          {getClassificationLabel(
+                            item.classification as ProductClassification,
+                            item.fonctions,
+                          )}
                         </Text>
                       </View>
-                    ) : null}
-                    {emergencyReminder ? (
-                      <View style={styles.stockEmergencyReminder}>
-                        <MaterialIcons name="schedule" size={18} color="#1D4ED8" />
-                        <View style={styles.stockEmergencyReminderContent}>
-                          <Text style={styles.stockEmergencyReminderTitle}>
-                            Autorisation d’urgence — Article 53
-                          </Text>
-                          <Text style={styles.stockEmergencyReminderText}>
-                            {formatEmergencyAuthorizationRemainingDays(emergencyReminder.daysRemaining)} · jusqu’au {formatEmergencyAuthorizationDate(emergencyReminder.authorization.expiresAt)}
-                            {emergencyReminder.activeDecisionCount > 1
-                              ? ` · +${emergencyReminder.activeDecisionCount - 1} autre décision`
-                              : ""}
+                      {withdrawalReminder ? (
+                        <View style={styles.stockWithdrawalReminder}>
+                          <MaterialIcons
+                            name="warning-amber"
+                            size={17}
+                            color="#B45309"
+                          />
+                          <Text style={styles.stockWithdrawalReminderText}>
+                            {formatStockWithdrawalRemainingDays(
+                              withdrawalReminder.daysRemaining,
+                            )}{" "}
+                            ·{" "}
+                            {formatStockWithdrawalDate(
+                              withdrawalReminder.withdrawalDate,
+                            )}
                           </Text>
                         </View>
-                      </View>
-                    ) : null}
+                      ) : null}
+                      {emergencyReminder ? (
+                        <View style={styles.stockEmergencyReminder}>
+                          <MaterialIcons
+                            name="schedule"
+                            size={18}
+                            color="#1D4ED8"
+                          />
+                          <View style={styles.stockEmergencyReminderContent}>
+                            <Text style={styles.stockEmergencyReminderTitle}>
+                              Autorisation d’urgence — Article 53
+                            </Text>
+                            <Text style={styles.stockEmergencyReminderText}>
+                              {formatEmergencyAuthorizationRemainingDays(
+                                emergencyReminder.daysRemaining,
+                              )}{" "}
+                              · jusqu’au{" "}
+                              {formatEmergencyAuthorizationDate(
+                                emergencyReminder.authorization.expiresAt,
+                              )}
+                              {emergencyReminder.activeDecisionCount > 1
+                                ? ` · +${emergencyReminder.activeDecisionCount - 1} autre décision`
+                                : ""}
+                            </Text>
+                          </View>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                  <View style={styles.stockCardActions}>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.stockQuantityButton,
+                        pressed && { opacity: 0.72 },
+                      ]}
+                      onPress={() => handleEditQuantity(item)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Modifier la quantité de ${item.secondaryName || item.nom}`}
+                      accessibilityHint="Ouvre la saisie de la quantité restante totale"
+                    >
+                      <Text style={styles.stockQuantityText}>
+                        Qté : {formatStockQuantity(item.quantite ?? 0)}{" "}
+                        {item.unite || "L"}
+                      </Text>
+                      <Text style={styles.stockQuantityEditIcon}>✎</Text>
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.deleteButton,
+                        pressed && { opacity: 0.6 },
+                      ]}
+                      onPress={() => handleRemove(item)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Supprimer ${item.secondaryName || item.nom} du stock`}
+                    >
+                      <Text style={styles.deleteButtonText}>✕</Text>
+                    </Pressable>
                   </View>
                 </View>
-                <View style={styles.stockCardActions}>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.stockQuantityButton,
-                      pressed && { opacity: 0.72 },
-                    ]}
-                    onPress={() => handleEditQuantity(item)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Modifier la quantité de ${item.secondaryName || item.nom}`}
-                    accessibilityHint="Ouvre la saisie de la quantité restante totale"
-                  >
-                    <Text style={styles.stockQuantityText}>
-                      Qté : {formatStockQuantity(item.quantite ?? 0)} {item.unite || "L"}
-                    </Text>
-                    <Text style={styles.stockQuantityEditIcon}>✎</Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.deleteButton,
-                      pressed && { opacity: 0.6 },
-                    ]}
-                    onPress={() => handleRemove(item)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Supprimer ${item.secondaryName || item.nom} du stock`}
-                  >
-                    <Text style={styles.deleteButtonText}>✕</Text>
-                  </Pressable>
-                </View>
-              </View>
               );
             })
           )}
@@ -849,7 +1048,9 @@ export default function StockScreen() {
 
       <QuantityModal
         visible={itemBeingEdited !== null}
-        productName={itemBeingEdited?.secondaryName || itemBeingEdited?.nom || "Produit"}
+        productName={
+          itemBeingEdited?.secondaryName || itemBeingEdited?.nom || "Produit"
+        }
         mode="edit"
         initialQuantity={itemBeingEdited?.quantite ?? 0}
         unit={itemBeingEdited?.unite ?? "L"}
@@ -948,6 +1149,19 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 16,
   },
+  compactFilterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 16,
+  },
+  filteredCountText: {
+    flex: 1,
+    color: "#475569",
+    fontSize: 15,
+    fontWeight: "700",
+  },
   exportButtonDisabled: {
     backgroundColor: "#E5E7EB",
     opacity: 0.6,
@@ -1026,6 +1240,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#687076",
     marginTop: 2,
+  },
+  stockCultureWarning: {
+    alignSelf: "stretch",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 7,
+    marginTop: 9,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: "#FFF7ED",
+    borderWidth: 1,
+    borderColor: "#FDBA74",
+  },
+  stockCultureWarningText: {
+    flex: 1,
+    color: "#9A3412",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "700",
   },
   stockCardBottom: {
     marginTop: 6,
