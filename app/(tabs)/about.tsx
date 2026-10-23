@@ -1,17 +1,32 @@
-import { ScrollView, Text, View, Pressable, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
+import {
+  ScrollView,
+  Text,
+  View,
+  Pressable,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
 import { router } from "expo-router";
 import Constants from "expo-constants";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useData } from "@/lib/data-context";
-import { clearDataCache, checkAndUpdateInBackground } from "@/lib/data-update-service";
+import {
+  clearDataCache,
+  checkAndUpdateInBackground,
+} from "@/lib/data-update-service";
 
 export default function AboutScreen() {
   const { products, updateDate } = useData();
   const appVersion = Constants.expoConfig?.version ?? "1.0.0";
   const [checking, setChecking] = useState(false);
-  const [checkStatus, setCheckStatus] = useState<"idle" | "uptodate" | "updated">("idle");
+  const [checkStatus, setCheckStatus] = useState<
+    "idle" | "uptodate" | "updated"
+  >("idle");
 
   const handleCheckUpdate = async () => {
     if (checking) return;
@@ -29,7 +44,7 @@ export default function AboutScreen() {
           Alert.alert(
             "Mise à jour appliquée",
             `Nouvelles données téléchargées (${manifest.products_count?.toLocaleString("fr-FR") ?? "?"} produits). Relancez l'application pour voir les changements.`,
-            [{ text: "OK" }]
+            [{ text: "OK" }],
           );
           resolve();
         });
@@ -40,7 +55,10 @@ export default function AboutScreen() {
         setCheckStatus("uptodate");
       }
     } catch {
-      Alert.alert("Erreur", "Impossible de vérifier les mises à jour. Vérifiez votre connexion internet.");
+      Alert.alert(
+        "Erreur",
+        "Impossible de vérifier les mises à jour. Vérifiez votre connexion internet.",
+      );
       setCheckStatus("idle");
     } finally {
       setChecking(false);
@@ -65,10 +83,30 @@ export default function AboutScreen() {
           {/* Version card */}
           <View style={styles.card}>
             <Text style={styles.cardLabel}>VERSION</Text>
-            <Text style={styles.versionText}>
-              Version {appVersion}
-            </Text>
+            <Text style={styles.versionText}>Version {appVersion}</Text>
           </View>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.farmCulturesShortcut,
+              pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+            ]}
+            onPress={() => router.push("/farm-cultures")}
+            accessibilityRole="button"
+            accessibilityLabel="Configurer les cultures de l’exploitation"
+            accessibilityHint="Ouvre la page Quelles cultures pratiquez-vous ?"
+          >
+            <MaterialIcons name="agriculture" size={24} color="#166534" />
+            <View style={styles.farmCulturesShortcutContent}>
+              <Text style={styles.farmCulturesShortcutTitle}>
+                Cultures de l’exploitation
+              </Text>
+              <Text style={styles.farmCulturesShortcutText}>
+                Quelles cultures pratiquez-vous ?
+              </Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={24} color="#166534" />
+          </Pressable>
 
           {/* Legal documents */}
           <Text style={styles.sectionTitle}>DOCUMENTS LÉGAUX</Text>
@@ -94,23 +132,28 @@ export default function AboutScreen() {
             onPress={() => router.push("/terms-of-service")}
           >
             <IconSymbol name="doc.text.fill" size={20} color="#FFFFFF" />
-            <Text style={styles.legalButtonText}>
-              Conditions d'Utilisation
-            </Text>
+            <Text style={styles.legalButtonText}>Conditions d'Utilisation</Text>
           </Pressable>
 
           {/* Regulatory data sources */}
           <View style={[styles.card, { marginTop: 24 }]}>
-            <Text style={styles.dbTitle}>Sources de données réglementaires</Text>
+            <Text style={styles.dbTitle}>
+              Sources de données réglementaires
+            </Text>
             <Text style={styles.dbText}>
-              Les données sur les produits, leurs autorisations, usages et phrases de risque proviennent du catalogue public E‑Phy de l&apos;Anses, mis à jour le {updateDate}.
+              Les données sur les produits, leurs autorisations, usages et
+              phrases de risque proviennent du catalogue public E‑Phy de
+              l&apos;Anses, mis à jour le {updateDate}.
             </Text>
             <Text style={styles.dbText}>
               {products.length.toLocaleString("fr-FR")} produits phytosanitaires
               référencés.
             </Text>
             <Text style={[styles.dbText, { marginTop: 12 }]}>
-              Les autorisations d&apos;urgence d&apos;une durée maximale de 120 jours (article 53) proviennent de la page officielle du ministère de l&apos;Agriculture et de la Souveraineté alimentaire. Elles sont affichées séparément des autorisations E‑Phy.
+              Les autorisations d&apos;urgence d&apos;une durée maximale de 120
+              jours (article 53) proviennent de la page officielle du ministère
+              de l&apos;Agriculture et de la Souveraineté alimentaire. Elles
+              sont affichées séparément des autorisations E‑Phy.
             </Text>
             <Text style={[styles.sourceText, { marginTop: 12 }]}>
               Sources : ephy.anses.fr · agriculture.gouv.fr
@@ -118,7 +161,10 @@ export default function AboutScreen() {
 
             {/* Bouton vérification mise à jour */}
             <TouchableOpacity
-              style={[styles.updateButton, checking && styles.updateButtonDisabled]}
+              style={[
+                styles.updateButton,
+                checking && styles.updateButtonDisabled,
+              ]}
               onPress={handleCheckUpdate}
               disabled={checking}
               activeOpacity={0.75}
@@ -126,22 +172,42 @@ export default function AboutScreen() {
               {checking ? (
                 <>
                   <ActivityIndicator size="small" color="#0a7ea5" />
-                  <Text style={styles.updateButtonText}>Vérification en cours...</Text>
+                  <Text style={styles.updateButtonText}>
+                    Vérification en cours...
+                  </Text>
                 </>
               ) : checkStatus === "uptodate" ? (
                 <>
-                  <IconSymbol name="checkmark.circle.fill" size={18} color="#22C55E" />
-                  <Text style={[styles.updateButtonText, { color: "#22C55E" }]}>Données à jour</Text>
+                  <IconSymbol
+                    name="checkmark.circle.fill"
+                    size={18}
+                    color="#22C55E"
+                  />
+                  <Text style={[styles.updateButtonText, { color: "#22C55E" }]}>
+                    Données à jour
+                  </Text>
                 </>
               ) : checkStatus === "updated" ? (
                 <>
-                  <IconSymbol name="checkmark.circle.fill" size={18} color="#22C55E" />
-                  <Text style={[styles.updateButtonText, { color: "#22C55E" }]}>Mise à jour appliquée</Text>
+                  <IconSymbol
+                    name="checkmark.circle.fill"
+                    size={18}
+                    color="#22C55E"
+                  />
+                  <Text style={[styles.updateButtonText, { color: "#22C55E" }]}>
+                    Mise à jour appliquée
+                  </Text>
                 </>
               ) : (
                 <>
-                  <IconSymbol name="arrow.clockwise" size={18} color="#0a7ea5" />
-                  <Text style={styles.updateButtonText}>Vérifier les mises à jour</Text>
+                  <IconSymbol
+                    name="arrow.clockwise"
+                    size={18}
+                    color="#0a7ea5"
+                  />
+                  <Text style={styles.updateButtonText}>
+                    Vérifier les mises à jour
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -156,7 +222,9 @@ export default function AboutScreen() {
               d'homologation de leurs produits phytosanitaires.
             </Text>
             <Text style={[styles.dbText, { marginTop: 8 }]}>
-              Sources réglementaires : catalogue E‑Phy de l&apos;Anses et page des autorisations d&apos;urgence du ministère de l&apos;Agriculture et de la Souveraineté alimentaire.
+              Sources réglementaires : catalogue E‑Phy de l&apos;Anses et page
+              des autorisations d&apos;urgence du ministère de
+              l&apos;Agriculture et de la Souveraineté alimentaire.
             </Text>
           </View>
         </ScrollView>
@@ -205,6 +273,32 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: "bold",
     color: "#1A1A1A",
+  },
+  farmCulturesShortcut: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: "#DCFCE7",
+    borderWidth: 1,
+    borderColor: "#86EFAC",
+  },
+  farmCulturesShortcutContent: {
+    flex: 1,
+  },
+  farmCulturesShortcutTitle: {
+    color: "#166534",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  farmCulturesShortcutText: {
+    color: "#15803D",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
   },
   sectionTitle: {
     fontSize: 14,

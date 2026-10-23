@@ -42,8 +42,8 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.3.1",
-  // Pas de restriction d'orientation pour compatibilité grand écran (Android 16+)
+  version: "1.3.2",
+  // Pas de restriction d'orientation pour compatibilitÃ© grand Ã©cran (Android 16+)
   orientation: "default",
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
@@ -65,9 +65,9 @@ const config: ExpoConfig = {
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
-    // edgeToEdgeEnabled retiré (obsolète dans Android 15)
-    // L'app utilise SafeAreaView pour gérer les zones sûres
-    // Les fenêtres de saisie restent visibles au-dessus du clavier Android.
+    // edgeToEdgeEnabled retirÃ© (obsolÃ¨te dans Android 15)
+    // L'app utilise SafeAreaView pour gÃ©rer les zones sÃ»res
+    // Les fenÃªtres de saisie restent visibles au-dessus du clavier Android.
     softwareKeyboardLayoutMode: "resize",
     predictiveBackGestureEnabled: false,
     package: env.androidPackage,
@@ -98,20 +98,20 @@ const config: ExpoConfig = {
       "expo-camera",
       {
         cameraPermission:
-          "Autoriser PhytoCheck à accéder à votre appareil photo pour scanner les étiquettes et inventorier votre stock.",
+          "Autoriser PhytoCheck Ã  accÃ©der Ã  votre appareil photo pour scanner les Ã©tiquettes et inventorier votre stock.",
       },
     ],
     [
       "expo-image-picker",
       {
         photosPermission:
-          "Autoriser PhytoCheck à accéder à vos photos pour identifier les produits et inventorier votre stock.",
+          "Autoriser PhytoCheck Ã  accÃ©der Ã  vos photos pour identifier les produits et inventorier votre stock.",
         cameraPermission:
-          "Autoriser PhytoCheck à prendre des photos pour scanner les étiquettes et inventorier votre stock.",
+          "Autoriser PhytoCheck Ã  prendre des photos pour scanner les Ã©tiquettes et inventorier votre stock.",
       },
     ],
-    // expo-audio et expo-video retirés : PhytoCheck n'utilise ni audio ni vidéo en arrière-plan
-    // Suppression nécessaire pour éviter UIBackgroundModes audio dans Info.plist (rejet Apple 2.5.4)
+    // expo-audio et expo-video retirÃ©s : PhytoCheck n'utilise ni audio ni vidÃ©o en arriÃ¨re-plan
+    // Suppression nÃ©cessaire pour Ã©viter UIBackgroundModes audio dans Info.plist (rejet Apple 2.5.4)
     [
       "expo-splash-screen",
       {

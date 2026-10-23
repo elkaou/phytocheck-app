@@ -27,7 +27,7 @@ describe("product-service", () => {
 
   describe("DB_UPDATE_DATE", () => {
     it("should return the correct date", () => {
-      expect(DB_UPDATE_DATE).toBe("08/04/2026");
+      expect(DB_UPDATE_DATE).toBe("22/10/2026");
     });
   });
 
