@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import {
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -31,6 +33,7 @@ export default function FarmCulturesScreen() {
   const [query, setQuery] = useState("");
   const [isReady, setIsReady] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const availableCultures = useMemo(
     () => getAvailableStockCultures(usages),
@@ -61,6 +64,11 @@ export default function FarmCulturesScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isReady) return;
+    void saveFarmCultures(selectedCultures);
+  }, [isReady, selectedCultures]);
+
   const toggleCulture = (culture: string) => {
     setSelectedCultures((current) =>
       current.includes(culture)
@@ -74,7 +82,10 @@ export default function FarmCulturesScreen() {
   const handleAddCulture = (culture: string) => {
     toggleCulture(culture);
     setQuery("");
-    requestAnimationFrame(() => searchInputRef.current?.focus());
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    });
   };
 
   const handleSave = async () => {
@@ -101,112 +112,125 @@ export default function FarmCulturesScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
       >
-        <Text style={styles.introTitle}>Quelles cultures pratiquez-vous ?</Text>
-        <Text style={styles.introText}>
-          Ajoutez les cultures de votre exploitation. Elles seront ensuite
-          proposées dans « Filtrer le stock ». Vous pourrez en sélectionner
-          aucune, certaines ou toutes.
-        </Text>
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.introTitle}>
+            Quelles cultures pratiquez-vous ?
+          </Text>
+          <Text style={styles.introText}>
+            Ajoutez les cultures de votre exploitation. Elles seront ensuite
+            proposées dans « Filtrer le stock ». Vous pourrez en sélectionner
+            aucune, certaines ou toutes.
+          </Text>
 
-        {selectedCultures.length > 0 ? (
-          <View style={styles.selectedCard}>
-            <View style={styles.selectedHeader}>
-              <Text style={styles.sectionTitle}>Cultures retenues</Text>
-              <Text style={styles.selectedCount}>
-                {selectedCultures.length}
+          {selectedCultures.length > 0 ? (
+            <View style={styles.selectedCard}>
+              <View style={styles.selectedHeader}>
+                <Text style={styles.sectionTitle}>Cultures retenues</Text>
+                <Text style={styles.selectedCount}>
+                  {selectedCultures.length}
+                </Text>
+              </View>
+              <View style={styles.chips}>
+                {selectedCultures.map((culture) => (
+                  <Pressable
+                    key={`selected-${culture}`}
+                    onPress={() => toggleCulture(culture)}
+                    style={({ pressed }) => [
+                      styles.selectedChip,
+                      pressed && { opacity: 0.7 },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Retirer ${culture}`}
+                  >
+                    <Text style={styles.selectedChipText}>{culture} ×</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.emptyCard}>
+              <MaterialIcons name="info-outline" size={22} color="#0A7EA4" />
+              <Text style={styles.emptyText}>
+                Aucune culture enregistrée : aucun filtre de culture ne sera
+                appliqué au stock.
               </Text>
             </View>
-            <View style={styles.chips}>
-              {selectedCultures.map((culture) => (
-                <Pressable
-                  key={`selected-${culture}`}
-                  onPress={() => toggleCulture(culture)}
-                  style={({ pressed }) => [
-                    styles.selectedChip,
-                    pressed && { opacity: 0.7 },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Retirer ${culture}`}
-                >
-                  <Text style={styles.selectedChipText}>{culture} ×</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        ) : (
-          <View style={styles.emptyCard}>
-            <MaterialIcons name="info-outline" size={22} color="#0A7EA4" />
-            <Text style={styles.emptyText}>
-              Aucune culture enregistrée : aucun filtre de culture ne sera
-              appliqué au stock.
-            </Text>
-          </View>
-        )}
+          )}
 
-        <TextInput
-          ref={searchInputRef}
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Rechercher une culture (ex. pommes de terre)"
-          placeholderTextColor="#94A3B8"
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
-          style={styles.searchInput}
-          accessibilityLabel="Rechercher une culture de l’exploitation"
-        />
+          <TextInput
+            ref={searchInputRef}
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Rechercher une culture (ex. pommes de terre)"
+            placeholderTextColor="#94A3B8"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            style={styles.searchInput}
+            accessibilityLabel="Rechercher une culture de l’exploitation"
+          />
 
-        <Text style={styles.resultsLabel}>
-          {normalizedQuery
-            ? `${matchingCultures.length} résultat${matchingCultures.length > 1 ? "s" : ""}`
-            : "Toutes les cultures disponibles"}
-        </Text>
-        <View style={styles.availableList}>
-          {matchingCultures.map((culture) => (
-            <Pressable
-              key={culture}
-              onPress={() => handleAddCulture(culture)}
-              style={({ pressed }) => [
-                styles.cultureRow,
-                pressed && { opacity: 0.65 },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={`Ajouter ${culture}`}
-            >
-              <MaterialIcons
-                name="add-circle-outline"
-                size={22}
-                color="#0A7EA4"
-              />
-              <Text style={styles.cultureText}>{culture}</Text>
-            </Pressable>
-          ))}
-        </View>
-        {matchingCultures.length === 0 ? (
-          <Text style={styles.noResultText}>
-            Aucune culture trouvée. Essayez un autre terme.
+          <Text style={styles.resultsLabel}>
+            {normalizedQuery
+              ? `${matchingCultures.length} résultat${matchingCultures.length > 1 ? "s" : ""}`
+              : "Toutes les cultures disponibles"}
           </Text>
-        ) : null}
-      </ScrollView>
+          <View style={styles.availableList}>
+            {matchingCultures.map((culture) => (
+              <Pressable
+                key={culture}
+                onPress={() => handleAddCulture(culture)}
+                style={({ pressed }) => [
+                  styles.cultureRow,
+                  pressed && { opacity: 0.65 },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`Ajouter ${culture}`}
+              >
+                <MaterialIcons
+                  name="add-circle-outline"
+                  size={22}
+                  color="#0A7EA4"
+                />
+                <Text style={styles.cultureText}>{culture}</Text>
+              </Pressable>
+            ))}
+          </View>
+          {matchingCultures.length === 0 ? (
+            <Text style={styles.noResultText}>
+              Aucune culture trouvée. Essayez un autre terme.
+            </Text>
+          ) : null}
+        </ScrollView>
 
-      <View style={styles.footer}>
-        <Pressable
-          onPress={handleSave}
-          style={({ pressed }) => [
-            styles.saveButton,
-            pressed && { opacity: 0.82 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Enregistrer les cultures de l’exploitation"
-        >
-          <Text style={styles.saveText}>Enregistrer</Text>
-        </Pressable>
-      </View>
+        <View style={styles.footer}>
+          <Text style={styles.autoSaveText}>
+            Enregistrement automatique activé
+          </Text>
+          <Pressable
+            onPress={handleSave}
+            style={({ pressed }) => [
+              styles.saveButton,
+              pressed && { opacity: 0.82 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Terminer la configuration des cultures"
+          >
+            <Text style={styles.saveText}>Terminer</Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
     </ScreenContainer>
   );
 }
@@ -228,7 +252,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   headerSpacer: { width: 42 },
-  content: { padding: 20, paddingBottom: 28 },
+  keyboardAvoidingView: { flex: 1 },
+  scrollView: { flex: 1 },
+  content: { padding: 20, paddingBottom: 32 },
   introTitle: {
     color: "#0F172A",
     fontSize: 22,
@@ -329,6 +355,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#E2E8F0",
     backgroundColor: "#FFFFFF",
+  },
+  autoSaveText: {
+    color: "#64748B",
+    fontSize: 11,
+    textAlign: "center",
+    marginBottom: 7,
   },
   saveButton: {
     minHeight: 50,

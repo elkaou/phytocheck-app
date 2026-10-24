@@ -1,6 +1,6 @@
 import type { ProductUsage } from "./data-context";
 import type { Product, ProductClassification } from "./product-service";
-import { cultureMatchesSearch } from "./culture-aliases";
+import { cultureMatchesSearch, getCultureSearchSet } from "./culture-aliases";
 
 export type StockFunctionFilter =
   | "Herbicide"
@@ -56,6 +56,25 @@ function productFunctions(product: Pick<Product, "fonctions">): string[] {
     .filter(Boolean);
 }
 
+const GENERIC_USAGE_CULTURES = new Set(["adjuvants"]);
+
+function usageMatchesFarmCulture(
+  usage: ProductUsage,
+  farmCulture: string,
+): boolean {
+  if (cultureMatchesSearch(usage.culture, farmCulture)) return true;
+
+  // Pour certaines rubriques génériques E-Phy, notamment « Adjuvants »,
+  // les cultures autorisées sont indiquées dans la condition réglementaire.
+  if (!GENERIC_USAGE_CULTURES.has(normalize(usage.culture))) return false;
+  if (!usage.condition?.trim()) return false;
+
+  const normalizedCondition = normalize(usage.condition);
+  return [...getCultureSearchSet(farmCulture)].some((candidate) =>
+    normalizedCondition.includes(normalize(candidate)),
+  );
+}
+
 export function getStockFunctionFilter(
   product: Pick<Product, "fonctions">,
 ): StockFunctionFilter[] {
@@ -100,7 +119,7 @@ export function isStockProductOutsideFarmCultures(
 
   return !farmCultures.some((farmCulture) =>
     productUsages.some((usage) =>
-      cultureMatchesSearch(usage.culture, farmCulture),
+      usageMatchesFarmCulture(usage, farmCulture),
     ),
   );
 }
@@ -149,7 +168,7 @@ export function stockProductMatchesFilters(
     const productUsages = usages[item.amm] ?? [];
     const matchesCulture = filters.cultures.some((culture) =>
       productUsages.some((usage) =>
-        cultureMatchesSearch(usage.culture, culture),
+        usageMatchesFarmCulture(usage, culture),
       ),
     );
     if (!matchesCulture) return false;
