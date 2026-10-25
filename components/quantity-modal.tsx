@@ -37,6 +37,7 @@ export function QuantityModal({
   onConfirm,
 }: QuantityModalProps) {
   const colors = useColors();
+  const resolvedUnit: StockUnit = unit === "Kg" ? "Kg" : "L";
   const [quantity, setQuantity] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +62,7 @@ export function QuantityModal({
       );
       return;
     }
-    onConfirm(qty, unit);
+    onConfirm(qty, resolvedUnit);
     setQuantity("");
   };
 
@@ -129,7 +130,7 @@ export function QuantityModal({
               UNITÉ AUTOMATIQUE
             </Text>
             <Text style={[styles.unitInfoText, { color: colors.foreground }]}>
-              {unit} — déterminée selon la formulation du produit
+              {resolvedUnit} — déterminée selon la formulation du produit
             </Text>
           </View>
 

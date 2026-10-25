@@ -31,7 +31,10 @@ const MAPPING = {
   "exclamationmark.triangle.fill": "warning",
   "doc.text.fill": "description",
   "leaf.fill": "eco",
-  molecule: "hub",
+  // `hub` n’est pas rendu de façon fiable par la police Material Icons sur iOS.
+  // `science` est disponible sur iOS et Android et évoque clairement une
+  // matière active / une molécule.
+  molecule: "science",
   "list.bullet": "format-list-bulleted",
   "chevron.down": "expand-more",
   "chevron.up": "expand-less",

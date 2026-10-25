@@ -9,6 +9,7 @@ import {
   Alert,
   Platform,
   TextInput,
+  Image,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Print from "expo-print";
@@ -440,6 +441,20 @@ export default function StockScreen() {
 
   const handleExportPDF = useCallback(async () => {
     try {
+      const logoUri = Image.resolveAssetSource(
+        require("../../assets/images/logo-phytocheck.jpg"),
+      )?.uri;
+      let logoSource = logoUri ?? "";
+      if (logoSource && !logoSource.startsWith("data:")) {
+        try {
+          const logoBase64 = await FileSystem.readAsStringAsync(logoSource, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          logoSource = `data:image/jpeg;base64,${logoBase64}`;
+        } catch {
+          // Sur le web, l’URI bundlée peut être directement utilisable dans le HTML.
+        }
+      }
       const exportDate = new Date().toLocaleDateString("fr-FR", {
         weekday: "long",
         year: "numeric",
@@ -486,11 +501,15 @@ export default function StockScreen() {
             }
             .brand { display: flex; align-items: center; gap: 16px; }
             .brand-icon {
-              width: 52px; height: 52px;
-              background: rgba(255,255,255,0.2);
+              width: 64px; height: 64px;
+              background: white;
               border-radius: 12px;
               display: flex; align-items: center; justify-content: center;
-              font-size: 28px;
+              overflow: hidden;
+            }
+            .brand-logo {
+              width: 64px; height: 64px;
+              object-fit: cover;
             }
             .brand-name { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
             .brand-tagline { font-size: 13px; opacity: 0.85; margin-top: 2px; }
@@ -549,8 +568,7 @@ export default function StockScreen() {
             .col-nom .secondary { font-size: 11px; color: #64748b; font-weight: 400; margin-top: 2px; }
             .col-amm { font-family: monospace; font-size: 12px; color: #475569; background: #f1f5f9; padding: 3px 8px; border-radius: 4px; display: inline-block; }
             .col-qty { font-weight: 600; color: #334155; }
-            .col-date { font-size: 11px; color: #94a3b8; }
-            .col-status { text-align: center; }
+            .col-status { text-align: center; width: 30%; }
 
             /* BADGES */
             .badge {
@@ -558,13 +576,14 @@ export default function StockScreen() {
               border-radius: 10px; font-size: 9px; font-weight: 700;
               letter-spacing: 0.1px; white-space: normal;
               word-break: break-word; text-align: center;
-              line-height: 1.4; max-width: 130px;
+              line-height: 1.4; max-width: 100%;
             }
             .badge-homologue { background: #dcfce7; color: #15803d; }
             .badge-retire { background: #fee2e2; color: #b91c1c; }
             .badge-cmr { background: #fef9c3; color: #a16207; }
             .badge-toxique { background: #ffedd5; color: #c2410c; }
             .badge-emergency { background: #dbeafe; color: #1d4ed8; }
+            .badge-culture { background: #fef3c7; color: #b45309; margin-top: 5px; }
 
             /* FOOTER */
             .page-footer {
@@ -593,7 +612,9 @@ export default function StockScreen() {
           <!-- EN-TÊTE -->
           <div class="page-header">
             <div class="brand">
-              <div class="brand-icon">🌿</div>
+              <div class="brand-icon">
+                ${logoSource ? `<img class="brand-logo" src="${logoSource}" alt="Logo PhytoCheck">` : ""}
+              </div>
               <div>
                 <div class="brand-name">PhytoCheck</div>
                 <div class="brand-tagline">Inventaire des produits phytosanitaires</div>
@@ -625,17 +646,16 @@ export default function StockScreen() {
                   : `<table>
                 <thead>
                   <tr>
-                    <th style="width:35%">Nom du produit</th>
-                    <th style="width:15%">N° AMM</th>
+                    <th style="width:30%">Nom du produit</th>
+                    <th style="width:13%">N° AMM</th>
                     <th style="width:12%">Quantité</th>
-                    <th style="width:13%">Titulaire</th>
-                    <th style="width:12%">Date ajout</th>
-                    <th style="width:18%">Statut</th>
+                    <th style="width:15%">Titulaire</th>
+                    <th style="width:30%">Statut</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${stock
-                    .map((item, index) => {
+                    .map((item) => {
                       const badgeClass =
                         {
                           homologue: "badge-homologue",
@@ -644,9 +664,15 @@ export default function StockScreen() {
                           homologue_toxique: "badge-toxique",
                           autorisation_urgence: "badge-emergency",
                         }[item.classification] ?? "badge-homologue";
-                      const dateAjout = item.dateAjout
-                        ? new Date(item.dateAjout).toLocaleDateString("fr-FR")
-                        : "—";
+                      const outsideFarmCultures = isStockProductOutsideFarmCultures(
+                        item.amm,
+                        farmCultures,
+                        usages,
+                      );
+                      const classificationLabel = getClassificationLabel(
+                        item.classification as ProductClassification,
+                        item.fonctions,
+                      );
                       const nomDisplay = item.secondaryName
                         ? `${item.secondaryName}<div class="secondary">${item.nom}</div>`
                         : item.nom;
@@ -656,8 +682,10 @@ export default function StockScreen() {
                       <td><span class="col-amm">${item.amm}</span></td>
                       <td class="col-qty">${item.quantite ?? 1} ${item.unite ?? "L"}</td>
                       <td style="font-size:11px;color:#475569">${item.titulaire ?? "—"}</td>
-                      <td class="col-date">${dateAjout}</td>
-                      <td class="col-status"><span class="badge ${badgeClass}">${getClassificationLabel(item.classification as ProductClassification, item.fonctions)}</span></td>
+                      <td class="col-status">
+                        <span class="badge ${badgeClass}">${classificationLabel}</span>
+                        ${outsideFarmCultures ? '<div><span class="badge badge-culture">Culture non déclarée sur l’exploitation</span></div>' : ""}
+                      </td>
                     </tr>`;
                     })
                     .join("")}

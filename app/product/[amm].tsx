@@ -27,16 +27,30 @@ import {
 } from "@/lib/emergency-authorizations";
 import { useApp } from "@/lib/app-context";
 import { useData, ProductUsage } from "@/lib/data-context";
+import { getProductQuantityUnit } from "@/lib/product-quantity-unit";
 
 export default function ProductDetailScreen() {
-  const params = useLocalSearchParams<{ amm: string | string[]; name?: string | string[]; culture?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    amm: string | string[];
+    name?: string | string[];
+    culture?: string | string[];
+  }>();
   // useLocalSearchParams peut retourner string | string[] selon la plateforme
   const amm = Array.isArray(params.amm) ? params.amm[0] : params.amm;
   const name = Array.isArray(params.name) ? params.name[0] : params.name;
   // Culture pré-sélectionnée depuis la recherche par culture (pour pré-filtrer les usages)
-  const initialCulture = Array.isArray(params.culture) ? params.culture[0] : params.culture;
+  const initialCulture = Array.isArray(params.culture)
+    ? params.culture[0]
+    : params.culture;
   const router = useRouter();
-  const { addProductToStock, isProductInStock, getProductQuantity, updateProductQuantity, isPremium, stock } = useApp();
+  const {
+    addProductToStock,
+    isProductInStock,
+    getProductQuantity,
+    updateProductQuantity,
+    isPremium,
+    stock,
+  } = useApp();
   const {
     products: dynamicProducts,
     riskPhrases: dynamicRiskPhrases,
@@ -46,6 +60,9 @@ export default function ProductDetailScreen() {
 
   const [product, setProduct] = useState<ClassifiedProduct | null>(null);
   const [showQuantityModal, setShowQuantityModal] = useState(false);
+  const [quantityModalMode, setQuantityModalMode] = useState<"add" | "edit">(
+    "add",
+  );
   const [showUsagesModal, setShowUsagesModal] = useState(false);
   const inStock = amm ? isProductInStock(amm) : false;
 
@@ -60,82 +77,155 @@ export default function ProductDetailScreen() {
 
   // Récupérer les usages pour ce produit (par numéro AMM) — exclure les usages retirés
   const productUsages: ProductUsage[] = amm
-    ? (dynamicUsages[amm] ?? []).filter((u) => u.etat?.toLowerCase() !== "retrait")
+    ? (dynamicUsages[amm] ?? []).filter(
+        (u) => u.etat?.toLowerCase() !== "retrait",
+      )
     : [];
   const hasUsages = productUsages.length > 0;
   const emergencyAuthorizationsForProduct = useMemo(
-    () => (amm ? getEmergencyAuthorizationsForAmm(emergencyAuthorizations, amm) : []),
+    () =>
+      amm ? getEmergencyAuthorizationsForAmm(emergencyAuthorizations, amm) : [],
     [amm, emergencyAuthorizations],
   );
   const emergencyStockProduct = useMemo(
-    () => emergencyAuthorizationsForProduct[0]
-      ? createEmergencyAuthorizationProduct(emergencyAuthorizationsForProduct[0])
-      : null,
+    () =>
+      emergencyAuthorizationsForProduct[0]
+        ? createEmergencyAuthorizationProduct(
+            emergencyAuthorizationsForProduct[0],
+          )
+        : null,
     [emergencyAuthorizationsForProduct],
   );
+  const quantityUnit =
+    stock.find((item) => item.amm === amm)?.unite ??
+    getProductQuantityUnit(
+      product ?? emergencyStockProduct ?? { formulation: "" },
+    );
 
   const openOfficialDecision = useCallback((url: string) => {
     void Linking.openURL(url).catch(() => {
-      Alert.alert("Lien indisponible", "La décision officielle ne peut pas être ouverte pour le moment.");
+      Alert.alert(
+        "Lien indisponible",
+        "La décision officielle ne peut pas être ouverte pour le moment.",
+      );
     });
   }, []);
 
   const handleAddToStock = useCallback(async () => {
     if (!product && !emergencyStockProduct) return;
+    setQuantityModalMode("add");
     setShowQuantityModal(true);
   }, [product, emergencyStockProduct]);
 
-  const handleQuantityConfirm = useCallback(async (quantity: number, unit: "L" | "Kg") => {
-    const productToStore = product ?? emergencyStockProduct;
-    if (!productToStore) return;
-    
-    setShowQuantityModal(false);
+  const handleEditStockQuantity = useCallback(() => {
+    if (!amm || !inStock) return;
+    setQuantityModalMode("edit");
+    setShowQuantityModal(true);
+  }, [amm, inStock]);
 
-    // Pass secondary name if the product was accessed via a secondary name
-    const secondaryName = product && name && name !== product.nom ? name : undefined;
-    const displayName = secondaryName || productToStore.nom;
-    const result = await addProductToStock(productToStore, quantity, unit, secondaryName);
-    if (result === "added") {
-      Alert.alert("Ajouté", `"${displayName}" a été ajouté à votre stock (${quantity} ${unit}).`, [
-        {
-          text: "OK",
-          onPress: () => router.push("/(tabs)/search"),
-        },
-      ]);
-    } else if (result === "incremented") {
-      Alert.alert("Quantité mise à jour", `Quantité de "${displayName}" augmentée (+${quantity} ${unit}).`, [
-        {
-          text: "OK",
-          onPress: () => router.push("/(tabs)/search"),
-        },
-      ]);
-    } else if (result === "limit") {
-      Alert.alert(
-        "Limite atteinte",
-        "Vous avez atteint la limite de 20 produits en stock. Passez à Premium pour un stock illimité."
+  const handleQuantityConfirm = useCallback(
+    async (quantity: number, unit: "L" | "Kg") => {
+      const productToStore = product ?? emergencyStockProduct;
+      if (!productToStore) return;
+
+      // Sécurité pour les anciennes données ou une valeur native absente :
+      // l’unité par défaut de l’application est le litre.
+      const resolvedUnit: "L" | "Kg" = unit === "Kg" ? "Kg" : quantityUnit;
+
+      setShowQuantityModal(false);
+
+      if (quantityModalMode === "edit") {
+        const updated = await updateProductQuantity(amm, quantity);
+        if (!updated) {
+          Alert.alert("Erreur", "La quantité n’a pas pu être mise à jour.");
+          return;
+        }
+        Alert.alert(
+          "Quantité mise à jour",
+          quantity === 0
+            ? `"${productToStore.nom}" a été retiré de votre stock.`
+            : `La quantité totale de "${productToStore.nom}" est maintenant de ${quantity} ${resolvedUnit}.`,
+        );
+        return;
+      }
+
+      // Pass secondary name if the product was accessed via a secondary name
+      const secondaryName =
+        product && name && name !== product.nom ? name : undefined;
+      const displayName = secondaryName || productToStore.nom;
+      const result = await addProductToStock(
+        productToStore,
+        quantity,
+        resolvedUnit,
+        secondaryName,
       );
-    } else if (result === "unit_mismatch") {
-      Alert.alert(
-        "Unités incompatibles",
-        `« ${displayName} » est déjà enregistré dans votre stock avec une autre unité. Modifiez d’abord la quantité existante dans l’onglet Stock, puis recommencez l’ajout.`,
-      );
-    }
-  }, [product, emergencyStockProduct, name, addProductToStock, router]);
+      if (result === "added") {
+        Alert.alert(
+          "Ajouté",
+          `"${displayName}" a été ajouté à votre stock (${quantity} ${resolvedUnit}).`,
+          [
+            {
+              text: "OK",
+              onPress: () => router.push("/(tabs)/search"),
+            },
+          ],
+        );
+      } else if (result === "incremented") {
+        Alert.alert(
+          "Quantité mise à jour",
+          `Quantité de "${displayName}" augmentée (+${quantity} ${resolvedUnit}).`,
+          [
+            {
+              text: "OK",
+              onPress: () => router.push("/(tabs)/search"),
+            },
+          ],
+        );
+      } else if (result === "limit") {
+        Alert.alert(
+          "Limite atteinte",
+          "Vous avez atteint la limite de 20 produits en stock. Passez à Premium pour un stock illimité.",
+        );
+      } else if (result === "unit_mismatch") {
+        Alert.alert(
+          "Unités incompatibles",
+          `« ${displayName} » est déjà enregistré dans votre stock avec une autre unité. Modifiez d’abord la quantité existante dans l’onglet Stock, puis recommencez l’ajout.`,
+        );
+      }
+    },
+    [
+      product,
+      emergencyStockProduct,
+      name,
+      addProductToStock,
+      router,
+      quantityUnit,
+      quantityModalMode,
+      updateProductQuantity,
+      amm,
+    ],
+  );
 
   if (!product) {
-    const emergencyProductName = emergencyAuthorizationsForProduct[0]?.productName ?? name ?? "Produit";
+    const emergencyProductName =
+      emergencyAuthorizationsForProduct[0]?.productName ?? name ?? "Produit";
     return (
       <View style={styles.container}>
         <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1 }}>
           <View style={styles.headerBar}>
             <Pressable
-              style={({ pressed }) => [{ padding: 10, margin: -10 }, pressed && { opacity: 0.6 }]}
+              style={({ pressed }) => [
+                { padding: 10, margin: -10 },
+                pressed && { opacity: 0.6 },
+              ]}
               onPress={() => router.back()}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
               <IconSymbol name="arrow.left" size={24} color="#FFFFFF" />
             </Pressable>
-            <Text style={styles.headerBarTitle} numberOfLines={1}>{emergencyProductName}</Text>
+            <Text style={styles.headerBarTitle} numberOfLines={1}>
+              {emergencyProductName}
+            </Text>
             <View style={{ width: 24 }} />
           </View>
           {emergencyAuthorizationsForProduct.length === 0 ? (
@@ -149,32 +239,56 @@ export default function ProductDetailScreen() {
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.emergencyFallbackCard}>
-                <Text style={styles.emergencyFallbackTitle}>Produit signalé dans une autorisation d’urgence</Text>
+                <Text style={styles.emergencyFallbackTitle}>
+                  Produit signalé dans une autorisation d’urgence
+                </Text>
                 <Text style={styles.emergencyFallbackText}>
-                  Cette AMM n’est pas présente dans le catalogue E‑Phy actuellement chargé. Consultez la décision ministérielle ci-dessous pour les conditions d’emploi applicables.
+                  Cette AMM n’est pas présente dans le catalogue E‑Phy
+                  actuellement chargé. Consultez la décision ministérielle
+                  ci-dessous pour les conditions d’emploi applicables.
                 </Text>
                 <Text style={styles.ammText}>AMM : {amm}</Text>
               </View>
               <View style={styles.emergencyCard}>
-                <Text style={styles.emergencyTitle}>Autorisations d’urgence — 120 jours</Text>
+                <Text style={styles.emergencyTitle}>
+                  Autorisations d’urgence — 120 jours
+                </Text>
                 {emergencyAuthorizationsForProduct.map((authorization) => (
                   <View key={authorization.id} style={styles.emergencyDecision}>
                     <View style={styles.emergencyExpiryBadge}>
                       <Text style={styles.emergencyExpiryText}>
-                        Valide jusqu’au {formatEmergencyAuthorizationDate(authorization.expiresAt)}
+                        Valide jusqu’au{" "}
+                        {formatEmergencyAuthorizationDate(
+                          authorization.expiresAt,
+                        )}
                       </Text>
                     </View>
-                    <Text style={styles.emergencyDecisionLabel}>Culture(s)</Text>
-                    <Text style={styles.emergencyDecisionValue}>{authorization.cultures}</Text>
-                    <Text style={styles.emergencyDecisionLabel}>Cible / effet recherché</Text>
-                    <Text style={styles.emergencyDecisionValue}>{authorization.purpose}</Text>
+                    <Text style={styles.emergencyDecisionLabel}>
+                      Culture(s)
+                    </Text>
+                    <Text style={styles.emergencyDecisionValue}>
+                      {authorization.cultures}
+                    </Text>
+                    <Text style={styles.emergencyDecisionLabel}>
+                      Cible / effet recherché
+                    </Text>
+                    <Text style={styles.emergencyDecisionValue}>
+                      {authorization.purpose}
+                    </Text>
                     <Pressable
-                      style={({ pressed }) => [styles.emergencyDecisionLink, pressed && { opacity: 0.72 }]}
-                      onPress={() => openOfficialDecision(authorization.decisionPdfUrl)}
+                      style={({ pressed }) => [
+                        styles.emergencyDecisionLink,
+                        pressed && { opacity: 0.72 },
+                      ]}
+                      onPress={() =>
+                        openOfficialDecision(authorization.decisionPdfUrl)
+                      }
                       accessibilityRole="link"
                       accessibilityLabel={`Consulter la décision officielle pour ${authorization.productName}`}
                     >
-                      <Text style={styles.emergencyDecisionLinkText}>Consulter la décision officielle (PDF)</Text>
+                      <Text style={styles.emergencyDecisionLinkText}>
+                        Consulter la décision officielle (PDF)
+                      </Text>
                     </Pressable>
                   </View>
                 ))}
@@ -182,18 +296,31 @@ export default function ProductDetailScreen() {
               <View style={styles.emergencyStockNotice}>
                 <IconSymbol name="info.circle.fill" size={19} color="#1D4ED8" />
                 <Text style={styles.emergencyStockNoticeText}>
-                  Vous pouvez enregistrer ce produit dans le stock. Il restera identifié comme une autorisation temporaire Article 53 jusqu’à sa présence éventuelle dans E‑Phy.
+                  Vous pouvez enregistrer ce produit dans le stock. Il restera
+                  identifié comme une autorisation temporaire Article 53 jusqu’à
+                  sa présence éventuelle dans E‑Phy.
                 </Text>
               </View>
               {inStock ? (
                 <View style={styles.stockSection}>
-                  <View style={[styles.inStockBadge, styles.emergencyInStockBadge]}>
-                    <IconSymbol name="checkmark.circle.fill" size={20} color="#1D4ED8" />
-                    <Text style={[styles.inStockText, styles.emergencyInStockText]}>
+                  <View
+                    style={[styles.inStockBadge, styles.emergencyInStockBadge]}
+                  >
+                    <IconSymbol
+                      name="checkmark.circle.fill"
+                      size={20}
+                      color="#1D4ED8"
+                    />
+                    <Text
+                      style={[styles.inStockText, styles.emergencyInStockText]}
+                    >
                       En stock (quantité : {currentQuantity})
                     </Text>
                   </View>
-                  <Text style={styles.stockEditNotice}>Pour modifier la quantité restante, ouvrez l’onglet Stock et touchez ce produit.</Text>
+                  <Text style={styles.stockEditNotice}>
+                    Pour modifier la quantité restante, ouvrez l’onglet Stock et
+                    touchez ce produit.
+                  </Text>
                 </View>
               ) : (
                 <Pressable
@@ -205,7 +332,11 @@ export default function ProductDetailScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`Ajouter ${emergencyProductName} au stock comme autorisation temporaire`}
                 >
-                  <IconSymbol name="plus.circle.fill" size={22} color="#FFFFFF" />
+                  <IconSymbol
+                    name="plus.circle.fill"
+                    size={22}
+                    color="#FFFFFF"
+                  />
                   <Text style={styles.addButtonText}>Ajouter au stock</Text>
                 </Pressable>
               )}
@@ -215,6 +346,11 @@ export default function ProductDetailScreen() {
         <QuantityModal
           visible={showQuantityModal}
           productName={emergencyProductName}
+          mode={quantityModalMode}
+          initialQuantity={
+            quantityModalMode === "edit" ? currentQuantity : undefined
+          }
+          unit={quantityUnit}
           onCancel={() => setShowQuantityModal(false)}
           onConfirm={handleQuantityConfirm}
         />
@@ -233,7 +369,10 @@ export default function ProductDetailScreen() {
         {/* Header bar */}
         <View style={styles.headerBar}>
           <Pressable
-            style={({ pressed }) => [{ padding: 10, margin: -10 }, pressed && { opacity: 0.6 }]}
+            style={({ pressed }) => [
+              { padding: 10, margin: -10 },
+              pressed && { opacity: 0.6 },
+            ]}
             onPress={() => router.back()}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
@@ -253,7 +392,10 @@ export default function ProductDetailScreen() {
           {/* Classification badge */}
           <View style={styles.classificationSection}>
             <View
-              style={[styles.classificationBadge, { backgroundColor: classBgColor, borderColor: classColor }]}
+              style={[
+                styles.classificationBadge,
+                { backgroundColor: classBgColor, borderColor: classColor },
+              ]}
             >
               <Text style={[styles.classificationText, { color: classColor }]}>
                 {classLabel}
@@ -261,7 +403,11 @@ export default function ProductDetailScreen() {
             </View>
             {product.isCMR && (
               <View style={styles.warningTag}>
-                <IconSymbol name="exclamationmark.triangle.fill" size={16} color="#D97706" />
+                <IconSymbol
+                  name="exclamationmark.triangle.fill"
+                  size={16}
+                  color="#D97706"
+                />
                 <Text style={styles.warningTagText}>
                   Produit CMR (Cancérogène, Mutagène ou Reprotoxique)
                 </Text>
@@ -269,7 +415,11 @@ export default function ProductDetailScreen() {
             )}
             {product.isToxique && !product.isCMR && (
               <View style={[styles.warningTag, { backgroundColor: "#FFF7ED" }]}>
-                <IconSymbol name="exclamationmark.triangle.fill" size={16} color="#C2410C" />
+                <IconSymbol
+                  name="exclamationmark.triangle.fill"
+                  size={16}
+                  color="#C2410C"
+                />
                 <Text style={[styles.warningTagText, { color: "#C2410C" }]}>
                   Produit à toxicité élevée
                 </Text>
@@ -348,7 +498,9 @@ export default function ProductDetailScreen() {
 
             {product.dateAutorisation ? (
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Date de première autorisation</Text>
+                <Text style={styles.infoLabel}>
+                  Date de première autorisation
+                </Text>
                 <Text style={styles.infoValue}>{product.dateAutorisation}</Text>
               </View>
             ) : null}
@@ -372,28 +524,47 @@ export default function ProductDetailScreen() {
 
           {emergencyAuthorizationsForProduct.length > 0 ? (
             <View style={styles.emergencyCard}>
-              <Text style={styles.emergencyTitle}>Autorisations d’urgence — 120 jours</Text>
+              <Text style={styles.emergencyTitle}>
+                Autorisations d’urgence — 120 jours
+              </Text>
               <Text style={styles.emergencyIntro}>
-                Valables uniquement dans le périmètre indiqué par chaque décision ministérielle.
+                Valables uniquement dans le périmètre indiqué par chaque
+                décision ministérielle.
               </Text>
               {emergencyAuthorizationsForProduct.map((authorization) => (
                 <View key={authorization.id} style={styles.emergencyDecision}>
                   <View style={styles.emergencyExpiryBadge}>
                     <Text style={styles.emergencyExpiryText}>
-                      Valide jusqu’au {formatEmergencyAuthorizationDate(authorization.expiresAt)}
+                      Valide jusqu’au{" "}
+                      {formatEmergencyAuthorizationDate(
+                        authorization.expiresAt,
+                      )}
                     </Text>
                   </View>
                   <Text style={styles.emergencyDecisionLabel}>Culture(s)</Text>
-                  <Text style={styles.emergencyDecisionValue}>{authorization.cultures}</Text>
-                  <Text style={styles.emergencyDecisionLabel}>Cible / effet recherché</Text>
-                  <Text style={styles.emergencyDecisionValue}>{authorization.purpose}</Text>
+                  <Text style={styles.emergencyDecisionValue}>
+                    {authorization.cultures}
+                  </Text>
+                  <Text style={styles.emergencyDecisionLabel}>
+                    Cible / effet recherché
+                  </Text>
+                  <Text style={styles.emergencyDecisionValue}>
+                    {authorization.purpose}
+                  </Text>
                   <Pressable
-                    style={({ pressed }) => [styles.emergencyDecisionLink, pressed && { opacity: 0.72 }]}
-                    onPress={() => openOfficialDecision(authorization.decisionPdfUrl)}
+                    style={({ pressed }) => [
+                      styles.emergencyDecisionLink,
+                      pressed && { opacity: 0.72 },
+                    ]}
+                    onPress={() =>
+                      openOfficialDecision(authorization.decisionPdfUrl)
+                    }
                     accessibilityRole="link"
                     accessibilityLabel={`Consulter la décision officielle pour ${authorization.productName}`}
                   >
-                    <Text style={styles.emergencyDecisionLinkText}>Consulter la décision officielle (PDF)</Text>
+                    <Text style={styles.emergencyDecisionLinkText}>
+                      Consulter la décision officielle (PDF)
+                    </Text>
                   </Pressable>
                 </View>
               ))}
@@ -435,11 +606,28 @@ export default function ProductDetailScreen() {
           {/* Stock section */}
           {inStock ? (
             <View style={styles.stockSection}>
-              <View style={styles.inStockBadge}>
-                <IconSymbol name="checkmark.circle.fill" size={20} color="#22C55E" />
-                <Text style={styles.inStockText}>En stock (quantité : {currentQuantity})</Text>
-              </View>
-              <Text style={styles.stockEditNotice}>Pour modifier la quantité restante, ouvrez l’onglet Stock et touchez ce produit.</Text>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.inStockBadge,
+                  pressed && { opacity: 0.72 },
+                ]}
+                onPress={handleEditStockQuantity}
+                accessibilityRole="button"
+                accessibilityLabel={`Modifier la quantité de ${product.nom}`}
+                accessibilityHint="Ouvre la saisie de la quantité totale présente en stock"
+              >
+                <IconSymbol
+                  name="checkmark.circle.fill"
+                  size={20}
+                  color="#22C55E"
+                />
+                <Text style={styles.inStockText}>
+                  En stock (quantité : {currentQuantity})
+                </Text>
+              </Pressable>
+              <Text style={styles.stockEditNotice}>
+                Touchez le cadre vert pour modifier la quantité totale.
+              </Text>
             </View>
           ) : (
             <Pressable
@@ -460,6 +648,11 @@ export default function ProductDetailScreen() {
       <QuantityModal
         visible={showQuantityModal}
         productName={name && name !== product.nom ? name : product.nom}
+        mode={quantityModalMode}
+        initialQuantity={
+          quantityModalMode === "edit" ? currentQuantity : undefined
+        }
+        unit={quantityUnit}
         onCancel={() => setShowQuantityModal(false)}
         onConfirm={handleQuantityConfirm}
       />
