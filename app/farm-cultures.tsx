@@ -88,6 +88,23 @@ export default function FarmCulturesScreen() {
     });
   };
 
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    // Android redimensionne l’écran quand le clavier apparaît, mais ne
+    // repositionne pas automatiquement le ScrollView sur les suggestions.
+    // Faire défiler après le rendu garde les résultats visibles au-dessus du
+    // clavier dès la première lettre saisie.
+    requestAnimationFrame(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    });
+  };
+
+  const handleSearchFocus = () => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 120);
+  };
+
   const handleSave = async () => {
     if (!isReady) return;
     await saveFarmCultures(selectedCultures);
@@ -114,7 +131,7 @@ export default function FarmCulturesScreen() {
 
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
       >
         <ScrollView
@@ -122,6 +139,7 @@ export default function FarmCulturesScreen() {
           style={styles.scrollView}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.introTitle}>
@@ -171,7 +189,8 @@ export default function FarmCulturesScreen() {
           <TextInput
             ref={searchInputRef}
             value={query}
-            onChangeText={setQuery}
+            onChangeText={handleQueryChange}
+            onFocus={handleSearchFocus}
             placeholder="Rechercher une culture (ex. pommes de terre)"
             placeholderTextColor="#94A3B8"
             autoCapitalize="none"
@@ -254,7 +273,7 @@ const styles = StyleSheet.create({
   headerSpacer: { width: 42 },
   keyboardAvoidingView: { flex: 1 },
   scrollView: { flex: 1 },
-  content: { padding: 20, paddingBottom: 32 },
+  content: { padding: 20, paddingBottom: 180 },
   introTitle: {
     color: "#0F172A",
     fontSize: 22,
