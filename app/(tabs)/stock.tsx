@@ -7,6 +7,7 @@ import {
   Pressable,
   StyleSheet,
   Alert,
+  InteractionManager,
   Platform,
   TextInput,
   Image,
@@ -212,61 +213,61 @@ export default function StockScreen() {
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-      if (isCheckingRegulatoryStatus.current)
-        return () => {
-          isActive = false;
-        };
+      const interactionTask = InteractionManager.runAfterInteractions(() => {
+        if (!isActive || isCheckingRegulatoryStatus.current) return;
 
-      isCheckingRegulatoryStatus.current = true;
-      void Promise.all([
-        checkStockRegulatoryStatus(products, riskPhrases),
-        checkStockEmergencyAuthorizations(emergencyAuthorizations),
-        getStockWithdrawalWarningState(),
-        getStock(),
-      ])
-        .then(
-          ([changes, emergencyChanges, withdrawalWarningState, storedStock]: [
-            StockRegulatoryChange[],
-            StockEmergencyAuthorizationChange[],
-            Awaited<ReturnType<typeof getStockWithdrawalWarningState>>,
-            StockItem[],
-          ]) => {
-            if (!isActive) return;
+        isCheckingRegulatoryStatus.current = true;
+        void Promise.all([
+          checkStockRegulatoryStatus(products, riskPhrases),
+          checkStockEmergencyAuthorizations(emergencyAuthorizations),
+          getStockWithdrawalWarningState(),
+          getStock(),
+        ])
+          .then(
+            ([changes, emergencyChanges, withdrawalWarningState, storedStock]: [
+              StockRegulatoryChange[],
+              StockEmergencyAuthorizationChange[],
+              Awaited<ReturnType<typeof getStockWithdrawalWarningState>>,
+              StockItem[],
+            ]) => {
+              if (!isActive) return;
 
-            const upcomingWithdrawalWarnings =
-              filterUnacknowledgedStockWithdrawalWarnings(
-                getUpcomingStockWithdrawalWarnings(storedStock, products),
-                withdrawalWarningState.acknowledgedWarningIds,
-              );
-            const showWithdrawalWarning = () => {
-              if (isActive && upcomingWithdrawalWarnings.length > 0) {
-                setWithdrawalWarnings(upcomingWithdrawalWarnings);
+              const upcomingWithdrawalWarnings =
+                filterUnacknowledgedStockWithdrawalWarnings(
+                  getUpcomingStockWithdrawalWarnings(storedStock, products),
+                  withdrawalWarningState.acknowledgedWarningIds,
+                );
+              const showWithdrawalWarning = () => {
+                if (isActive && upcomingWithdrawalWarnings.length > 0) {
+                  setWithdrawalWarnings(upcomingWithdrawalWarnings);
+                }
+              };
+
+              if (changes.length > 0 || emergencyChanges.length > 0) {
+                showRegulatoryAlert(
+                  changes,
+                  emergencyChanges,
+                  showWithdrawalWarning,
+                );
+              } else {
+                showWithdrawalWarning();
               }
-            };
-
-            if (changes.length > 0 || emergencyChanges.length > 0) {
-              showRegulatoryAlert(
-                changes,
-                emergencyChanges,
-                showWithdrawalWarning,
-              );
-            } else {
-              showWithdrawalWarning();
-            }
-          },
-        )
-        .catch((error: unknown) =>
-          console.warn(
-            "Vérification réglementaire du stock impossible:",
-            error,
-          ),
-        )
-        .finally(() => {
-          isCheckingRegulatoryStatus.current = false;
-        });
+            },
+          )
+          .catch((error: unknown) =>
+            console.warn(
+              "Vérification réglementaire du stock impossible:",
+              error,
+            ),
+          )
+          .finally(() => {
+            isCheckingRegulatoryStatus.current = false;
+          });
+      });
 
       return () => {
         isActive = false;
+        interactionTask.cancel();
       };
     }, [
       checkStockRegulatoryStatus,
