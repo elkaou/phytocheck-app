@@ -545,6 +545,15 @@ function getProductsByAmmIndex(dataProducts: Product[]): Map<string, Product[]> 
   return index;
 }
 
+/**
+ * Prépare l’index AMM hors d’un clic utilisateur. Ainsi, l’ouverture de la
+ * première fiche produit ne doit pas parcourir le catalogue E‑Phy complet au
+ * moment de la transition de navigation.
+ */
+export function warmProductsByAmmIndex(dynamicProducts?: Product[]): void {
+  getProductsByAmmIndex(dynamicProducts ?? products);
+}
+
 // Get product by AMM (optionally filter by name if multiple products share the same AMM).
 // L'index est mémorisé par tableau de données : ouvrir une fiche depuis Stock ne
 // rescane donc plus tout le catalogue E-Phy à chaque navigation.

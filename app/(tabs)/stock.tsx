@@ -43,6 +43,7 @@ import {
   getClassificationColor,
   getClassificationBgColor,
   ProductClassification,
+  warmProductsByAmmIndex,
 } from "@/lib/product-service";
 import { getStock, StockItem, FREE_STOCK_LIMIT } from "@/lib/store";
 import { stockItemMatchesSearch } from "@/lib/stock-search";
@@ -102,6 +103,16 @@ export default function StockScreen() {
   useEffect(() => {
     refreshStock();
   }, [refreshStock]);
+
+  // L’index AMM est nécessaire à la fiche produit. Le préparer après le
+  // premier rendu empêche le premier clic sur une carte Stock de bloquer la
+  // transition Android pendant la construction du catalogue.
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      warmProductsByAmmIndex(products);
+    });
+    return () => task.cancel();
+  }, [products]);
 
   useEffect(() => {
     void AsyncStorage.getItem(STOCK_FILTERS_STORAGE_KEY)

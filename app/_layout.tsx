@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
+import { enableFreeze } from "react-native-screens";
 import { Platform } from "react-native";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
@@ -30,6 +31,11 @@ const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
 export const unstable_settings = {
   anchor: "(tabs)",
 };
+
+// Rend effectif `freezeOnBlur` configuré sur l’onglet Stock. Sans cet appel,
+// React Navigation accepte l’option mais continue de laisser l’écran inactif
+// se recalculer sur Android pendant la transition vers un autre onglet.
+enableFreeze(true);
 
 /**
  * IAPBridge : composant interne qui connecte IAPProvider à AppProvider.
@@ -100,7 +106,14 @@ export default function RootLayout() {
             <DataProvider>
               <IAPBridge>
                 <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen
+                    name="(tabs)"
+                    // Lorsqu’une fiche est poussée au-dessus des onglets, le
+                    // Stock doit aussi être gelé au niveau de cette pile.
+                    // Cela évite qu’Android recalcule ses cartes pendant
+                    // l’animation Stock → fiche produit.
+                    options={{ freezeOnBlur: true }}
+                  />
                   <Stack.Screen
                     name="product/[amm]"
                     options={{ presentation: "card" }}
