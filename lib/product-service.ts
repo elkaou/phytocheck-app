@@ -5,6 +5,8 @@ import type { EmergencyAuthorization } from "./emergency-authorizations";
 // Types
 export interface Product {
   amm: string;
+  /** AMM française portant les usages pour un permis de commerce parallèle. */
+  referenceAmm?: string;
   nom: string;
   nomsSecondaires: string;
   titulaire: string;

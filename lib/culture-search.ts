@@ -6,6 +6,7 @@ import {
   type RiskPhrase,
 } from "./product-service";
 import { getCultureSearchSet, normalizeCultureName } from "./culture-aliases";
+import { getUsageAmm, isActiveProductUsage } from "./product-usages";
 
 export type CultureProductType = "Tous" | "Herbicide" | "Fongicide" | "Insecticide" | "Acaricide";
 
@@ -52,20 +53,27 @@ export function createCultureSearchIndex(
 ): CultureSearchIndex {
   const ammsByCulture = new Map<string, Set<string>>();
   const productsByAmm = new Map<string, Product[]>();
+  const productAmmsByUsageAmm = new Map<string, Set<string>>();
   const cultureLabels = new Map<string, string>();
 
   for (const product of products) {
     const entries = productsByAmm.get(product.amm) ?? [];
     entries.push(product);
     productsByAmm.set(product.amm, entries);
+    const usageAmm = getUsageAmm(product);
+    const productAmms = productAmmsByUsageAmm.get(usageAmm) ?? new Set<string>();
+    productAmms.add(product.amm);
+    productAmmsByUsageAmm.set(usageAmm, productAmms);
   }
 
   for (const [amm, productUsages] of Object.entries(usages)) {
     for (const usage of productUsages) {
-      if (!usage.culture) continue;
+      if (!usage.culture || !isActiveProductUsage(usage)) continue;
       const cultureKey = normalizeCultureName(usage.culture);
       const amms = ammsByCulture.get(cultureKey) ?? new Set<string>();
-      amms.add(amm);
+      for (const productAmm of productAmmsByUsageAmm.get(amm) ?? [amm]) {
+        amms.add(productAmm);
+      }
       ammsByCulture.set(cultureKey, amms);
       if (!cultureLabels.has(cultureKey)) cultureLabels.set(cultureKey, usage.culture);
     }
@@ -90,8 +98,11 @@ export function createCultureSearchIndex(
 
       for (const amm of matchingAmms) {
         const matchedCibles = new Set<string>();
-        for (const usage of usages[amm] ?? []) {
+        const productForAmm = productsByAmm.get(amm)?.[0];
+        const usageAmm = productForAmm ? getUsageAmm(productForAmm) : amm;
+        for (const usage of usages[usageAmm] ?? []) {
           if (
+            isActiveProductUsage(usage) &&
             normalizedCultureNames.has(normalizeCultureName(usage.culture)) &&
             usage.cible
           ) {

@@ -1,6 +1,7 @@
 import type { ProductUsage } from "./data-context";
 import type { Product, ProductClassification } from "./product-service";
 import { cultureMatchesSearch, getCultureSearchSet } from "./culture-aliases";
+import { getUsagesForProduct } from "./product-usages";
 
 export type StockFunctionFilter =
   | "Herbicide"
@@ -106,15 +107,16 @@ export function getAvailableStockCultures(
  * cultural est inconnu, et non nécessairement obsolète.
  */
 export function isStockProductOutsideFarmCultures(
-  amm: string,
+  productOrAmm: Product | string,
   farmCultures: string[],
   usages: Record<string, ProductUsage[]>,
 ): boolean {
   if (farmCultures.length === 0) return false;
 
-  const productUsages = (usages[amm] ?? []).filter((usage) =>
-    usage.culture?.trim(),
-  );
+  const productUsages = (typeof productOrAmm === "string"
+    ? usages[productOrAmm] ?? []
+    : getUsagesForProduct(productOrAmm, usages)
+  ).filter((usage) => usage.culture?.trim());
   if (productUsages.length === 0) return false;
 
   return !farmCultures.some((farmCulture) =>
@@ -165,7 +167,9 @@ export function stockProductMatchesFilters(
   }
 
   if (filters.cultures.length > 0) {
-    const productUsages = usages[item.amm] ?? [];
+    const productUsages = product
+      ? getUsagesForProduct(product, usages)
+      : usages[item.amm] ?? [];
     const matchesCulture = filters.cultures.some((culture) =>
       productUsages.some((usage) =>
         usageMatchesFarmCulture(usage, culture),

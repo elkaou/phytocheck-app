@@ -28,6 +28,7 @@ import {
 import { useApp } from "@/lib/app-context";
 import { useData, ProductUsage } from "@/lib/data-context";
 import { getProductQuantityUnit } from "@/lib/product-quantity-unit";
+import { getUsagesForProduct, isActiveProductUsage } from "@/lib/product-usages";
 
 export default function ProductDetailScreen() {
   const params = useLocalSearchParams<{
@@ -75,11 +76,9 @@ export default function ProductDetailScreen() {
 
   const currentQuantity = amm ? getProductQuantity(amm) : 0;
 
-  // Récupérer les usages pour ce produit (par numéro AMM) — exclure les usages retirés
-  const productUsages: ProductUsage[] = amm
-    ? (dynamicUsages[amm] ?? []).filter(
-        (u) => u.etat?.toLowerCase() !== "retrait",
-      )
+  // Les PCP portent leurs usages sur l'AMM française de référence.
+  const productUsages: ProductUsage[] = product
+    ? getUsagesForProduct(product, dynamicUsages).filter(isActiveProductUsage)
     : [];
   const hasUsages = productUsages.length > 0;
   const emergencyAuthorizationsForProduct = useMemo(

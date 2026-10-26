@@ -57,6 +57,20 @@ const products: Product[] = [
     dateRetrait: "01/01/2026",
     dateAutorisation: "01/01/2020",
   },
+  {
+    amm: "2150762",
+    referenceAmm: "9400052",
+    nom: "SELACTIO",
+    nomsSecondaires: "CENTURION 240 EC",
+    titulaire: "Test PCP",
+    gammeUsage: "Professionnel",
+    substancesActives: "Cléthodime 240 g/L",
+    fonctions: "Herbicide",
+    formulation: "EC",
+    etat: "AUTORISE",
+    dateRetrait: "",
+    dateAutorisation: "01/01/2026",
+  },
 ];
 
 const usages: Record<string, ProductUsage[]> = {
@@ -64,6 +78,7 @@ const usages: Record<string, ProductUsage[]> = {
   "1000002": [{ culture: "Céréales à paille", cible: "Oïdium" }],
   "1000003": [{ culture: "Haricots et pois non écossés frais", cible: "Pucerons" }],
   "1000004": [{ culture: "Orge", cible: "Adventices annuelles" }],
+  "9400052": [{ culture: "Haricots et pois non écossés frais", cible: "Graminées" }],
 };
 
 const risks: Record<string, RiskPhrase[]> = {
@@ -93,5 +108,12 @@ describe("indexed culture search", () => {
 
     expect(result.products.map((product) => product.nom)).toEqual(["ALTACOR TEST"]);
     expect(result.ciblesByAmm.get("1000003")).toEqual(["Pucerons"]);
+  });
+
+  it("retrouve les usages de l'AMM de référence pour un permis PCP", () => {
+    const result = index.search("Haricots", "Herbicide");
+
+    expect(result.products.map((product) => product.nom)).toContain("SELACTIO");
+    expect(result.ciblesByAmm.get("2150762")).toEqual(["Graminées"]);
   });
 });

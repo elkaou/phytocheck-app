@@ -33,7 +33,6 @@ export default function FarmCulturesScreen() {
   const [query, setQuery] = useState("");
   const [isReady, setIsReady] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
 
   const availableCultures = useMemo(
     () => getAvailableStockCultures(usages),
@@ -84,25 +83,7 @@ export default function FarmCulturesScreen() {
     setQuery("");
     requestAnimationFrame(() => {
       searchInputRef.current?.focus();
-      scrollViewRef.current?.scrollToEnd({ animated: true });
     });
-  };
-
-  const handleQueryChange = (value: string) => {
-    setQuery(value);
-    // Android redimensionne l’écran quand le clavier apparaît, mais ne
-    // repositionne pas automatiquement le ScrollView sur les suggestions.
-    // Faire défiler après le rendu garde les résultats visibles au-dessus du
-    // clavier dès la première lettre saisie.
-    requestAnimationFrame(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    });
-  };
-
-  const handleSearchFocus = () => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 120);
   };
 
   const handleSave = async () => {
@@ -131,15 +112,18 @@ export default function FarmCulturesScreen() {
 
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        // Sur Android, `height` provoquait un remesurage du ScrollView au
+        // moment où le clavier apparaissait : le défilement automatique
+        // annulait le focus du TextInput. Le redimensionnement natif Android
+        // conserve mieux le focus ; iOS garde son comportement inchangé.
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
       >
         <ScrollView
-          ref={scrollViewRef}
           style={styles.scrollView}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
           contentContainerStyle={styles.content}
-          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "none"}
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.introTitle}>
@@ -189,8 +173,7 @@ export default function FarmCulturesScreen() {
           <TextInput
             ref={searchInputRef}
             value={query}
-            onChangeText={handleQueryChange}
-            onFocus={handleSearchFocus}
+            onChangeText={setQuery}
             placeholder="Rechercher une culture (ex. pommes de terre)"
             placeholderTextColor="#94A3B8"
             autoCapitalize="none"
