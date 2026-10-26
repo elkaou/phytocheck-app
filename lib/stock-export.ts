@@ -10,8 +10,16 @@ const CLASSIFICATION_LABELS: Record<string, string> = {
   autorisation_urgence: "Autorisation d’urgence — Article 53",
 };
 
+export function sortStockItemsAlphabetically(stock: StockItem[]): StockItem[] {
+  return [...stock].sort((a, b) => {
+    const nameA = (a.secondaryName || a.nom).trim();
+    const nameB = (b.secondaryName || b.nom).trim();
+    return nameA.localeCompare(nameB, "fr", { sensitivity: "base" });
+  });
+}
+
 export function createStockWorkbook(stock: StockItem[]): XLSX.WorkBook {
-  const rows = stock.map((item) => ({
+  const rows = sortStockItemsAlphabetically(stock).map((item) => ({
     Produit: item.nom,
     "Nom secondaire": item.secondaryName ?? "",
     "N° AMM": item.amm,

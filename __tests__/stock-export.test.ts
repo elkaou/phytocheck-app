@@ -28,4 +28,20 @@ describe("createStockWorkbookBase64", () => {
     expect(sheet.D2.v).toBe(0.6);
     expect(sheet.F2.v).toBe("Homologué — CMR");
   });
+
+  it("range les produits par ordre alphabétique", () => {
+    const workbook = XLSX.read(
+      createStockWorkbookBase64([
+        { ...STOCK_ITEM, nom: "Zébulon", secondaryName: "" },
+        { ...STOCK_ITEM, nom: "alpha", secondaryName: "" },
+        { ...STOCK_ITEM, nom: "Bêta", secondaryName: "" },
+      ]),
+      { type: "base64" },
+    );
+    const sheet = workbook.Sheets.Inventaire;
+
+    expect(sheet.A2.v).toBe("alpha");
+    expect(sheet.A3.v).toBe("Bêta");
+    expect(sheet.A4.v).toBe("Zébulon");
+  });
 });

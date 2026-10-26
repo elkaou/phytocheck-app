@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ScrollView,
   Text,
@@ -59,20 +59,19 @@ export default function ProductDetailScreen() {
     emergencyAuthorizations,
   } = useData();
 
-  const [product, setProduct] = useState<ClassifiedProduct | null>(null);
+  const product = useMemo(
+    () =>
+      amm
+        ? getProductByAMM(amm, name, dynamicProducts, dynamicRiskPhrases)
+        : null,
+    [amm, name, dynamicProducts, dynamicRiskPhrases],
+  );
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [quantityModalMode, setQuantityModalMode] = useState<"add" | "edit">(
     "add",
   );
   const [showUsagesModal, setShowUsagesModal] = useState(false);
   const inStock = amm ? isProductInStock(amm) : false;
-
-  useEffect(() => {
-    if (amm) {
-      const p = getProductByAMM(amm, name, dynamicProducts, dynamicRiskPhrases);
-      setProduct(p);
-    }
-  }, [amm, name, dynamicProducts, dynamicRiskPhrases]);
 
   const currentQuantity = amm ? getProductQuantity(amm) : 0;
 

@@ -149,7 +149,7 @@ const riskPhrases: Record<string, RiskPhrase[]> = riskPhrasesData as Record<
 
 // Total count
 export const TOTAL_PRODUCTS = products.length;
-export const DB_UPDATE_DATE = "22/10/2026";
+export const DB_UPDATE_DATE = "08/04/2026";
 
 // Détermine si un produit est retiré, en se basant sur le champ etat
 // OU sur la dateRetrait si etat est vide (cas du CSV E-Phy où la colonne peut être absente)
@@ -526,7 +526,28 @@ export function classifyProductWithData(
   return { ...product, classification, riskPhrases: phrases, isCMR, isToxique };
 }
 
-// Get product by AMM (optionally filter by name if multiple products share the same AMM)
+const productIndexCache = new WeakMap<
+  Product[],
+  Map<string, Product[]>
+>();
+
+function getProductsByAmmIndex(dataProducts: Product[]): Map<string, Product[]> {
+  const cached = productIndexCache.get(dataProducts);
+  if (cached) return cached;
+
+  const index = new Map<string, Product[]>();
+  for (const product of dataProducts) {
+    const matches = index.get(product.amm);
+    if (matches) matches.push(product);
+    else index.set(product.amm, [product]);
+  }
+  productIndexCache.set(dataProducts, index);
+  return index;
+}
+
+// Get product by AMM (optionally filter by name if multiple products share the same AMM).
+// L'index est mémorisé par tableau de données : ouvrir une fiche depuis Stock ne
+// rescane donc plus tout le catalogue E-Phy à chaque navigation.
 export function getProductByAMM(
   amm: string,
   preferredName?: string,
@@ -535,7 +556,7 @@ export function getProductByAMM(
 ): ClassifiedProduct | null {
   const dataProducts = dynamicProducts ?? products;
   const dataRiskPhrases = dynamicRiskPhrases ?? riskPhrases;
-  const matchingProducts = dataProducts.filter((p) => p.amm === amm);
+  const matchingProducts = getProductsByAmmIndex(dataProducts).get(amm) ?? [];
   if (matchingProducts.length === 0) return null;
 
   // If preferred name is provided, try to find exact match
@@ -585,6 +606,11 @@ export function getProductBadgeFunctions(fonctions?: string): string[] {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
+
+  // « Adjuvant pour bouillie herbicide » est une fonction d'adjuvant : le
+  // terme « herbicide » décrit la bouillie, pas la fonction du produit.
+  // Prioriser ce libellé évite donc un badge trompeur « Herbicide ».
+  if (/\badjuvants?\b/.test(normalized)) return ["Adjuvant"];
 
   const labels: string[] = [];
   for (const entry of BADGE_FUNCTIONS) {

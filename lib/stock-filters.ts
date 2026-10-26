@@ -57,7 +57,10 @@ function productFunctions(product: Pick<Product, "fonctions">): string[] {
     .filter(Boolean);
 }
 
-const GENERIC_USAGE_CULTURES = new Set(["adjuvants"]);
+// Ces valeurs décrivent une catégorie d'usage E-Phy, pas une culture de
+// l'exploitation. Les cultures éventuellement visées sont précisées dans la
+// condition réglementaire et restent gérées par usageMatchesFarmCulture.
+const GENERIC_USAGE_CULTURES = new Set(["adjuvant", "adjuvants"]);
 
 function usageMatchesFarmCulture(
   usage: ProductUsage,
@@ -92,7 +95,9 @@ export function getAvailableStockCultures(
   const values = new Set<string>();
   Object.values(usages).forEach((productUsages) => {
     productUsages.forEach((usage) => {
-      if (usage.culture?.trim()) values.add(usage.culture.trim());
+      const culture = usage.culture?.trim();
+      if (!culture || GENERIC_USAGE_CULTURES.has(normalize(culture))) return;
+      values.add(culture);
     });
   });
   return [...values].sort((a, b) =>

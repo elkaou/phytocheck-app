@@ -35,6 +35,7 @@ import { formatStockQuantity } from "@/lib/quantity";
 import {
   createStockWorkbook,
   createStockWorkbookBase64,
+  sortStockItemsAlphabetically,
 } from "@/lib/stock-export";
 import {
   getClassificationLabel,
@@ -441,6 +442,7 @@ export default function StockScreen() {
 
   const handleExportPDF = useCallback(async () => {
     try {
+      const exportStock = sortStockItemsAlphabetically(stock);
       const logoUri = Image.resolveAssetSource(
         require("../../assets/images/logo-phytocheck.jpg"),
       )?.uri;
@@ -641,7 +643,7 @@ export default function StockScreen() {
           <div class="main">
             <div class="table-wrapper">
               ${
-                stock.length === 0
+                    exportStock.length === 0
                   ? `<div class="empty-state">Aucun produit dans le stock</div>`
                   : `<table>
                 <thead>
@@ -654,7 +656,7 @@ export default function StockScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  ${stock
+                  ${exportStock
                     .map((item) => {
                       const badgeClass =
                         {

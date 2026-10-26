@@ -27,7 +27,7 @@ describe("product-service", () => {
 
   describe("DB_UPDATE_DATE", () => {
     it("should return the correct date", () => {
-      expect(DB_UPDATE_DATE).toBe("22/10/2026");
+      expect(DB_UPDATE_DATE).toBe("08/04/2026");
     });
   });
 
@@ -328,12 +328,18 @@ describe("product-service", () => {
       );
     });
 
-    it("retient uniquement les grandes fonctions phytosanitaires du badge", () => {
+    it("affiche Adjuvant plutôt que la fonction de la bouillie", () => {
       expect(
         getProductBadgeFunctions(
           "Fongicide | Adjuvant pour bouillie herbicide | Engrais",
         ),
-      ).toEqual(["Herbicide", "Fongicide"]);
+      ).toEqual(["Adjuvant"]);
+      expect(
+        getClassificationLabel(
+          "homologue",
+          "Adjuvant pour bouillie herbicide",
+        ),
+      ).toBe("Adjuvant non CMR, non toxique");
     });
   });
 

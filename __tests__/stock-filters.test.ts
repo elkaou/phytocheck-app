@@ -111,6 +111,21 @@ describe("stock-filters", () => {
     expect(available).toContain(selected[0]);
   });
 
+  it("n'affiche pas la catégorie Adjuvants comme une culture", () => {
+    expect(
+      getAvailableStockCultures({
+        fullMax: [
+          {
+            culture: "Adjuvants",
+            condition:
+              "Uniquement sur grandes cultures, cultures légumières et vigne.",
+          },
+        ],
+        herbicide: [{ culture: "Grandes cultures" }],
+      }),
+    ).toEqual(["Grandes cultures"]);
+  });
+
   it("normalise et déduplique les cultures de l’exploitation", () => {
     expect(
       normalizeFarmCultures([" Blé ", "blé", "Pommes de terre", "", 12]),
