@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
 
-import { createStockWorkbookBase64 } from "@/lib/stock-export";
+import { createStockWorkbookBase64 } from "@/lib/stock-excel-export";
 import type { StockItem } from "@/lib/store";
 
 const STOCK_ITEM: StockItem = {
@@ -19,7 +19,7 @@ const STOCK_ITEM: StockItem = {
 
 describe("createStockWorkbookBase64", () => {
   it("génère un fichier Excel lisible avec les colonnes d’inventaire", () => {
-    const base64 = createStockWorkbookBase64([STOCK_ITEM]);
+    const base64 = createStockWorkbookBase64(XLSX, [STOCK_ITEM]);
     const workbook = XLSX.read(base64, { type: "base64" });
     const sheet = workbook.Sheets.Inventaire;
 
@@ -31,7 +31,7 @@ describe("createStockWorkbookBase64", () => {
 
   it("range les produits par ordre alphabétique", () => {
     const workbook = XLSX.read(
-      createStockWorkbookBase64([
+      createStockWorkbookBase64(XLSX, [
         { ...STOCK_ITEM, nom: "Zébulon", secondaryName: "" },
         { ...STOCK_ITEM, nom: "alpha", secondaryName: "" },
         { ...STOCK_ITEM, nom: "Bêta", secondaryName: "" },

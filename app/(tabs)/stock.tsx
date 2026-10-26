@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-  ScrollView,
+  FlatList,
   Text,
   View,
   Pressable,
@@ -13,10 +13,6 @@ import {
   Image,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system/legacy";
-import * as XLSX from "xlsx";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { ScreenContainer } from "@/components/screen-container";
@@ -33,17 +29,12 @@ import {
   getEmergencyAuthorizationReminderForAmm,
 } from "@/lib/emergency-authorizations";
 import { formatStockQuantity } from "@/lib/quantity";
-import {
-  createStockWorkbook,
-  createStockWorkbookBase64,
-  sortStockItemsAlphabetically,
-} from "@/lib/stock-export";
+import { sortStockItemsAlphabetically } from "@/lib/stock-export";
 import {
   getClassificationLabel,
   getClassificationColor,
   getClassificationBgColor,
   ProductClassification,
-  warmProductsByAmmIndex,
 } from "@/lib/product-service";
 import { getStock, StockItem, FREE_STOCK_LIMIT } from "@/lib/store";
 import { stockItemMatchesSearch } from "@/lib/stock-search";
@@ -103,16 +94,6 @@ export default function StockScreen() {
   useEffect(() => {
     refreshStock();
   }, [refreshStock]);
-
-  // L’index AMM est nécessaire à la fiche produit. Le préparer après le
-  // premier rendu empêche le premier clic sur une carte Stock de bloquer la
-  // transition Android pendant la construction du catalogue.
-  useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(() => {
-      warmProductsByAmmIndex(products);
-    });
-    return () => task.cancel();
-  }, [products]);
 
   useEffect(() => {
     void AsyncStorage.getItem(STOCK_FILTERS_STORAGE_KEY)
@@ -457,6 +438,14 @@ export default function StockScreen() {
 
   const handleExportPDF = useCallback(async () => {
     try {
+      // Les modules PDF/fichiers ne sont utiles qu’au moment d’un export. Les
+      // charger au montage de Stock ralentissait toutes les interactions sur
+      // Android, même sans demander d’export.
+      const [Print, Sharing, FileSystem] = await Promise.all([
+        import("expo-print"),
+        import("expo-sharing"),
+        import("expo-file-system/legacy"),
+      ]);
       const exportStock = sortStockItemsAlphabetically(stock);
       const logoUri = Image.resolveAssetSource(
         require("../../assets/images/logo-phytocheck.jpg"),
@@ -758,14 +747,25 @@ export default function StockScreen() {
   const handleExportExcel = useCallback(async () => {
     try {
       const filename = `PhytoCheck-Stock-${new Date().toISOString().split("T")[0]}.xlsx`;
+      // xlsx est volumineux (plusieurs Mo). L’importer au montage de Stock
+      // rendait toute l’interface Android non réactive pendant plusieurs
+      // secondes, y compris Filtrer et l’ouverture des fiches. Son évaluation
+      // est donc volontairement différée au clic sur Export Excel.
+      const [XLSX, { createStockWorkbook, createStockWorkbookBase64 }, FileSystem, Sharing] =
+        await Promise.all([
+          import("xlsx"),
+          import("@/lib/stock-excel-export"),
+          import("expo-file-system/legacy"),
+          import("expo-sharing"),
+        ]);
 
       if (Platform.OS === "web") {
-        XLSX.writeFile(createStockWorkbook(stock), filename);
+        XLSX.writeFile(createStockWorkbook(XLSX, stock), filename);
         return;
       }
 
       const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-      const fileContents = createStockWorkbookBase64(stock);
+      const fileContents = createStockWorkbookBase64(XLSX, stock);
       await FileSystem.writeAsStringAsync(fileUri, fileContents, {
         encoding: FileSystem.EncodingType.Base64,
       });
@@ -792,6 +792,176 @@ export default function StockScreen() {
       );
     }
   }, [stock]);
+
+  const stockEmptyMessage = useMemo(() => {
+    if (stockSearchQuery.trim()) {
+      return "Aucun produit ne correspond à cette recherche";
+    }
+    const hasFilters =
+      filters.functions.length > 0 ||
+      filters.cultures.length > 0 ||
+      filters.nonCmr ||
+      filters.nonToxique ||
+      filters.withdrawalWithinThreeMonths ||
+      !filters.includeRetired;
+    return hasFilters
+      ? "Aucun produit ne correspond aux filtres sélectionnés"
+      : "Aucun produit dans le stock";
+  }, [filters, stockSearchQuery]);
+
+  const renderStockItem = useCallback(
+    ({ item }: { item: StockItem }) => {
+      const emergencyReminder = stockEmergencyReminders.get(item.amm);
+      const withdrawalReminder = stockWithdrawalReminders.get(item.amm);
+      const outsideFarmCultures = isStockProductOutsideFarmCultures(
+        item.amm,
+        farmCultures,
+        usages,
+      );
+      return (
+        <View style={styles.stockCard}>
+          <View style={styles.stockCardContent}>
+            <Pressable
+              onPress={() => handleOpenProduct(item)}
+              style={({ pressed }) => [
+                styles.stockNameButton,
+                pressed && { opacity: 0.65 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`Ouvrir la fiche de ${item.secondaryName || item.nom}`}
+              accessibilityHint="Affiche les informations détaillées du produit"
+            >
+              <Text style={styles.stockName} numberOfLines={1}>
+                {item.secondaryName
+                  ? `${item.secondaryName} (${item.nom})`
+                  : item.nom}
+              </Text>
+              <Text style={styles.stockNameChevron}>›</Text>
+            </Pressable>
+            <Text style={styles.stockAMM}>AMM : {item.amm}</Text>
+            {outsideFarmCultures ? (
+              <View style={styles.stockCultureWarning}>
+                <MaterialIcons
+                  name="agriculture"
+                  size={17}
+                  color="#9A3412"
+                />
+                <Text style={styles.stockCultureWarningText}>
+                  Culture non déclarée sur l’exploitation
+                </Text>
+              </View>
+            ) : null}
+            <View style={styles.stockCardBottom}>
+              <View
+                style={[
+                  styles.stockBadge,
+                  {
+                    backgroundColor: getClassificationBgColor(
+                      item.classification as ProductClassification,
+                    ),
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.stockBadgeText,
+                    {
+                      color: getClassificationColor(
+                        item.classification as ProductClassification,
+                      ),
+                    },
+                  ]}
+                >
+                  {getClassificationLabel(
+                    item.classification as ProductClassification,
+                    item.fonctions,
+                  )}
+                </Text>
+              </View>
+              {withdrawalReminder ? (
+                <View style={styles.stockWithdrawalReminder}>
+                  <MaterialIcons
+                    name="warning-amber"
+                    size={17}
+                    color="#B45309"
+                  />
+                  <Text style={styles.stockWithdrawalReminderText}>
+                    {formatStockWithdrawalRemainingDays(
+                      withdrawalReminder.daysRemaining,
+                    )}{" "}
+                    · {formatStockWithdrawalDate(withdrawalReminder.withdrawalDate)}
+                  </Text>
+                </View>
+              ) : null}
+              {emergencyReminder ? (
+                <View style={styles.stockEmergencyReminder}>
+                  <MaterialIcons
+                    name="schedule"
+                    size={18}
+                    color="#1D4ED8"
+                  />
+                  <View style={styles.stockEmergencyReminderContent}>
+                    <Text style={styles.stockEmergencyReminderTitle}>
+                      Autorisation d’urgence — Article 53
+                    </Text>
+                    <Text style={styles.stockEmergencyReminderText}>
+                      {formatEmergencyAuthorizationRemainingDays(
+                        emergencyReminder.daysRemaining,
+                      )}{" "}
+                      · jusqu’au{" "}
+                      {formatEmergencyAuthorizationDate(
+                        emergencyReminder.authorization.expiresAt,
+                      )}
+                      {emergencyReminder.activeDecisionCount > 1
+                        ? ` · +${emergencyReminder.activeDecisionCount - 1} autre décision`
+                        : ""}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+            </View>
+          </View>
+          <View style={styles.stockCardActions}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.stockQuantityButton,
+                pressed && { opacity: 0.72 },
+              ]}
+              onPress={() => handleEditQuantity(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`Modifier la quantité de ${item.secondaryName || item.nom}`}
+              accessibilityHint="Ouvre la saisie de la quantité restante totale"
+            >
+              <Text style={styles.stockQuantityText}>
+                Qté : {formatStockQuantity(item.quantite ?? 0)} {item.unite || "L"}
+              </Text>
+              <Text style={styles.stockQuantityEditIcon}>✎</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.deleteButton,
+                pressed && { opacity: 0.6 },
+              ]}
+              onPress={() => handleRemove(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`Supprimer ${item.secondaryName || item.nom} du stock`}
+            >
+              <Text style={styles.deleteButtonText}>✕</Text>
+            </Pressable>
+          </View>
+        </View>
+      );
+    },
+    [
+      farmCultures,
+      handleEditQuantity,
+      handleOpenProduct,
+      handleRemove,
+      stockEmergencyReminders,
+      stockWithdrawalReminders,
+      usages,
+    ],
+  );
 
   return (
     <ScreenContainer containerClassName="bg-primary">
@@ -920,175 +1090,23 @@ export default function StockScreen() {
           />
         </View>
 
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Stock list */}
-          {filteredStock.length === 0 ? (
+        <FlatList
+          data={filteredStock}
+          renderItem={renderStockItem}
+          keyExtractor={(item) => item.amm}
+          ListEmptyComponent={
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>
-                {stockSearchQuery.trim()
-                  ? "Aucun produit ne correspond à cette recherche"
-                  : filters.functions.length > 0 ||
-                      filters.cultures.length > 0 ||
-                      filters.nonCmr ||
-                      filters.nonToxique ||
-                      filters.withdrawalWithinThreeMonths ||
-                      !filters.includeRetired
-                    ? "Aucun produit ne correspond aux filtres sélectionnés"
-                    : "Aucun produit dans le stock"}
-              </Text>
+              <Text style={styles.emptyText}>{stockEmptyMessage}</Text>
             </View>
-          ) : (
-            filteredStock.map((item) => {
-              const emergencyReminder = stockEmergencyReminders.get(item.amm);
-              const withdrawalReminder = stockWithdrawalReminders.get(item.amm);
-              const outsideFarmCultures = isStockProductOutsideFarmCultures(
-                item.amm,
-                farmCultures,
-                usages,
-              );
-              return (
-                <View key={item.amm} style={styles.stockCard}>
-                  <View style={styles.stockCardContent}>
-                    <Pressable
-                      onPress={() => handleOpenProduct(item)}
-                      style={({ pressed }) => [
-                        styles.stockNameButton,
-                        pressed && { opacity: 0.65 },
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Ouvrir la fiche de ${item.secondaryName || item.nom}`}
-                      accessibilityHint="Affiche les informations détaillées du produit"
-                    >
-                      <Text style={styles.stockName} numberOfLines={1}>
-                        {item.secondaryName
-                          ? `${item.secondaryName} (${item.nom})`
-                          : item.nom}
-                      </Text>
-                      <Text style={styles.stockNameChevron}>›</Text>
-                    </Pressable>
-                    <Text style={styles.stockAMM}>AMM : {item.amm}</Text>
-                    {outsideFarmCultures ? (
-                      <View style={styles.stockCultureWarning}>
-                        <MaterialIcons
-                          name="agriculture"
-                          size={17}
-                          color="#9A3412"
-                        />
-                        <Text style={styles.stockCultureWarningText}>
-                          Culture non déclarée sur l’exploitation
-                        </Text>
-                      </View>
-                    ) : null}
-                    <View style={styles.stockCardBottom}>
-                      <View
-                        style={[
-                          styles.stockBadge,
-                          {
-                            backgroundColor: getClassificationBgColor(
-                              item.classification as ProductClassification,
-                            ),
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.stockBadgeText,
-                            {
-                              color: getClassificationColor(
-                                item.classification as ProductClassification,
-                              ),
-                            },
-                          ]}
-                        >
-                          {getClassificationLabel(
-                            item.classification as ProductClassification,
-                            item.fonctions,
-                          )}
-                        </Text>
-                      </View>
-                      {withdrawalReminder ? (
-                        <View style={styles.stockWithdrawalReminder}>
-                          <MaterialIcons
-                            name="warning-amber"
-                            size={17}
-                            color="#B45309"
-                          />
-                          <Text style={styles.stockWithdrawalReminderText}>
-                            {formatStockWithdrawalRemainingDays(
-                              withdrawalReminder.daysRemaining,
-                            )}{" "}
-                            ·{" "}
-                            {formatStockWithdrawalDate(
-                              withdrawalReminder.withdrawalDate,
-                            )}
-                          </Text>
-                        </View>
-                      ) : null}
-                      {emergencyReminder ? (
-                        <View style={styles.stockEmergencyReminder}>
-                          <MaterialIcons
-                            name="schedule"
-                            size={18}
-                            color="#1D4ED8"
-                          />
-                          <View style={styles.stockEmergencyReminderContent}>
-                            <Text style={styles.stockEmergencyReminderTitle}>
-                              Autorisation d’urgence — Article 53
-                            </Text>
-                            <Text style={styles.stockEmergencyReminderText}>
-                              {formatEmergencyAuthorizationRemainingDays(
-                                emergencyReminder.daysRemaining,
-                              )}{" "}
-                              · jusqu’au{" "}
-                              {formatEmergencyAuthorizationDate(
-                                emergencyReminder.authorization.expiresAt,
-                              )}
-                              {emergencyReminder.activeDecisionCount > 1
-                                ? ` · +${emergencyReminder.activeDecisionCount - 1} autre décision`
-                                : ""}
-                            </Text>
-                          </View>
-                        </View>
-                      ) : null}
-                    </View>
-                  </View>
-                  <View style={styles.stockCardActions}>
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.stockQuantityButton,
-                        pressed && { opacity: 0.72 },
-                      ]}
-                      onPress={() => handleEditQuantity(item)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Modifier la quantité de ${item.secondaryName || item.nom}`}
-                      accessibilityHint="Ouvre la saisie de la quantité restante totale"
-                    >
-                      <Text style={styles.stockQuantityText}>
-                        Qté : {formatStockQuantity(item.quantite ?? 0)}{" "}
-                        {item.unite || "L"}
-                      </Text>
-                      <Text style={styles.stockQuantityEditIcon}>✎</Text>
-                    </Pressable>
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.deleteButton,
-                        pressed && { opacity: 0.6 },
-                      ]}
-                      onPress={() => handleRemove(item)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Supprimer ${item.secondaryName || item.nom} du stock`}
-                    >
-                      <Text style={styles.deleteButtonText}>✕</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              );
-            })
-          )}
-        </ScrollView>
+          }
+          contentContainerStyle={styles.stockListContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          removeClippedSubviews={Platform.OS === "android"}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+        />
       </View>
 
       <QuantityModal
@@ -1253,6 +1271,10 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: "#687076",
+  },
+  stockListContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   stockCard: {
     backgroundColor: "#FFFFFF",
