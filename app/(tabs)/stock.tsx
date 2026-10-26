@@ -210,7 +210,10 @@ export default function StockScreen() {
     [updateDate],
   );
 
-  useFocusEffect(
+  // Ce contrôle peut parcourir une base E‑Phy volumineuse. Il ne doit pas être
+  // attaché à useFocusEffect : les onglets restent montés et chaque navigation
+  // Stock → Premium → Stock relancerait inutilement le traitement lourd.
+  useEffect(
     useCallback(() => {
       let isActive = true;
       const interactionTask = InteractionManager.runAfterInteractions(() => {

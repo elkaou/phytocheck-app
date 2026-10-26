@@ -50,6 +50,10 @@ export default function TabLayout() {
         name="stock"
         options={{
           title: "Stock",
+          // Android peut continuer à recalculer les cartes du stock pendant
+          // la transition vers un autre onglet. Le gel de l’écran inactif
+          // évite que ce rendu bloque l’ouverture de Premium ou Recherche.
+          freezeOnBlur: true,
           tabBarIcon: ({ color }) => (
             <IconSymbol size={26} name="archivebox.fill" color={color} />
           ),
