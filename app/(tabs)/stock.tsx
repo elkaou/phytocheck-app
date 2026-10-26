@@ -39,6 +39,7 @@ import {
 import { getStock, StockItem, FREE_STOCK_LIMIT } from "@/lib/store";
 import { stockItemMatchesSearch } from "@/lib/stock-search";
 import {
+  createStockCultureMatcher,
   EMPTY_STOCK_FILTERS,
   isStockProductOutsideFarmCultures,
   stockProductMatchesFilters,
@@ -354,16 +355,30 @@ export default function StockScreen() {
     );
   }, [stock, products]);
 
-  // Applique les filtres combinables puis trie le stock alphabétiquement.
-  const filteredStock = useMemo(() => {
-    const effectiveFilters: StockFilters = {
+  const effectiveFilters = useMemo<StockFilters>(
+    () => ({
       ...filters,
       // Sans cultures configurées pour l’exploitation, aucun filtre culturel
       // résiduel ne doit modifier la liste du stock.
       cultures: farmCultures.length
         ? filters.cultures.filter((culture) => farmCultures.includes(culture))
         : [],
-    };
+    }),
+    [filters, farmCultures],
+  );
+
+  const cultureMatcher = useMemo(
+    () => createStockCultureMatcher(effectiveFilters.cultures),
+    [effectiveFilters.cultures],
+  );
+
+  const withdrawalAmms = useMemo(
+    () => new Set(stockWithdrawalReminders.keys()),
+    [stockWithdrawalReminders],
+  );
+
+  // Applique les filtres combinables puis trie le stock alphabétiquement.
+  const filteredStock = useMemo(() => {
     const filtered = stock.filter((item) => {
       return (
         stockProductMatchesFilters(
@@ -371,7 +386,8 @@ export default function StockScreen() {
           effectiveFilters,
           productsByAmm,
           usages,
-          new Set(stockWithdrawalReminders.keys()),
+          withdrawalAmms,
+          cultureMatcher,
         ) && stockItemMatchesSearch(item, stockSearchQuery)
       );
     });
@@ -382,11 +398,11 @@ export default function StockScreen() {
     });
   }, [
     stock,
-    filters,
-    farmCultures,
+    effectiveFilters,
+    cultureMatcher,
     productsByAmm,
     usages,
-    stockWithdrawalReminders,
+    withdrawalAmms,
     stockSearchQuery,
   ]);
 

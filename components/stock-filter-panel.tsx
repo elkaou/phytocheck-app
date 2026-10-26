@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 
 import {
   countActiveStockFilters,
+  EMPTY_STOCK_FILTERS,
   STOCK_FUNCTION_OPTIONS,
   type StockFilters,
 } from "@/lib/stock-filters";
@@ -59,37 +60,64 @@ export function StockFilterPanel({
 }: StockFilterPanelProps) {
   const router = useRouter();
   const [visible, setVisible] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<StockFilters>(filters);
   const activeCount = countActiveStockFilters(filters);
   const selectedCultures = farmCultures.filter((culture) =>
-    filters.cultures.includes(culture),
+    draftFilters.cultures.includes(culture),
   );
 
+  const openPanel = () => {
+    // Les choix sont d’abord faits dans une copie locale. Ainsi, cocher une
+    // culture ne déclenche pas le recalcul de l’écran Stock derrière la modale.
+    setDraftFilters({
+      ...filters,
+      functions: [...filters.functions],
+      cultures: [...filters.cultures],
+    });
+    setVisible(true);
+  };
+
   const toggleFunction = (value: StockFilterFunction) => {
-    const functions = filters.functions.includes(value)
-      ? filters.functions.filter((item) => item !== value)
-      : [...filters.functions, value];
-    onChange({ ...filters, functions });
+    setDraftFilters((current) => {
+      const functions = current.functions.includes(value)
+        ? current.functions.filter((item) => item !== value)
+        : [...current.functions, value];
+      return { ...current, functions };
+    });
   };
 
   const toggleCulture = (value: string) => {
-    const selected = filters.cultures.includes(value);
-    onChange({
-      ...filters,
-      cultures: selected
-        ? filters.cultures.filter((culture) => culture !== value)
-        : [...filters.cultures, value],
+    setDraftFilters((current) => {
+      const selected = current.cultures.includes(value);
+      return {
+        ...current,
+        cultures: selected
+          ? current.cultures.filter((culture) => culture !== value)
+          : [...current.cultures, value],
+      };
     });
   };
 
   const selectAllCultures = () =>
-    onChange({ ...filters, cultures: [...farmCultures] });
-  const clearCultures = () => onChange({ ...filters, cultures: [] });
+    setDraftFilters((current) => ({ ...current, cultures: [...farmCultures] }));
+  const clearCultures = () =>
+    setDraftFilters((current) => ({ ...current, cultures: [] }));
+
+  const reset = () => {
+    setDraftFilters(EMPTY_STOCK_FILTERS);
+    onReset();
+  };
+
+  const apply = () => {
+    onChange(draftFilters);
+    setVisible(false);
+  };
 
   return (
     <>
       <Pressable
         style={({ pressed }) => [styles.trigger, pressed && { opacity: 0.72 }]}
-        onPress={() => setVisible(true)}
+        onPress={openPanel}
         accessibilityRole="button"
         accessibilityLabel="Filtrer le stock"
       >
@@ -128,11 +156,12 @@ export function StockFilterPanel({
             <ScrollView
               contentContainerStyle={styles.content}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
               <Text style={styles.sectionTitle}>Fonction du produit</Text>
               <View style={styles.chips}>
                 {STOCK_FUNCTION_OPTIONS.map((option) => {
-                  const selected = filters.functions.includes(option);
+                  const selected = draftFilters.functions.includes(option);
                   return (
                     <Pressable
                       key={option}
@@ -157,37 +186,43 @@ export function StockFilterPanel({
               <Text style={styles.sectionTitle}>Statut et danger</Text>
               <ToggleRow
                 label="Inclure les produits retirés / PPNU"
-                selected={filters.includeRetired}
+                selected={draftFilters.includeRetired}
                 onPress={() =>
-                  onChange({
-                    ...filters,
-                    includeRetired: !filters.includeRetired,
-                  })
+                  setDraftFilters((current) => ({
+                    ...current,
+                    includeRetired: !current.includeRetired,
+                  }))
                 }
               />
               <ToggleRow
                 label="Uniquement non CMR"
-                selected={filters.nonCmr}
+                selected={draftFilters.nonCmr}
                 onPress={() =>
-                  onChange({ ...filters, nonCmr: !filters.nonCmr })
+                  setDraftFilters((current) => ({
+                    ...current,
+                    nonCmr: !current.nonCmr,
+                  }))
                 }
               />
               <ToggleRow
                 label="Uniquement non toxiques"
-                selected={filters.nonToxique}
+                selected={draftFilters.nonToxique}
                 onPress={() =>
-                  onChange({ ...filters, nonToxique: !filters.nonToxique })
+                  setDraftFilters((current) => ({
+                    ...current,
+                    nonToxique: !current.nonToxique,
+                  }))
                 }
               />
               <ToggleRow
                 label="Retrait prévu sous 3 mois"
-                selected={filters.withdrawalWithinThreeMonths}
+                selected={draftFilters.withdrawalWithinThreeMonths}
                 onPress={() =>
-                  onChange({
-                    ...filters,
+                  setDraftFilters((current) => ({
+                    ...current,
                     withdrawalWithinThreeMonths:
-                      !filters.withdrawalWithinThreeMonths,
-                  })
+                      !current.withdrawalWithinThreeMonths,
+                  }))
                 }
               />
 
@@ -248,7 +283,7 @@ export function StockFilterPanel({
                   </Text>
                   <View style={styles.chips}>
                     {farmCultures.map((culture) => {
-                      const selected = filters.cultures.includes(culture);
+                      const selected = draftFilters.cultures.includes(culture);
                       return (
                         <Pressable
                           key={culture}
@@ -274,13 +309,10 @@ export function StockFilterPanel({
             </ScrollView>
 
             <View style={styles.footer}>
-              <Pressable style={styles.resetButton} onPress={onReset}>
+              <Pressable style={styles.resetButton} onPress={reset}>
                 <Text style={styles.resetText}>Réinitialiser</Text>
               </Pressable>
-              <Pressable
-                style={styles.applyButton}
-                onPress={() => setVisible(false)}
-              >
+              <Pressable style={styles.applyButton} onPress={apply}>
                 <Text style={styles.applyText}>Afficher les résultats</Text>
               </Pressable>
             </View>

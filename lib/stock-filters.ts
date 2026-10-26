@@ -79,6 +79,43 @@ function usageMatchesFarmCulture(
   );
 }
 
+/**
+ * Ensemble normalisé des cultures et alias à vérifier pendant un filtrage du
+ * stock. Il est construit une seule fois pour toute la liste, au lieu de
+ * reconstruire les alias (Blé → Céréales → Grandes cultures) pour chaque
+ * usage de chaque produit.
+ */
+export interface StockCultureMatcher {
+  normalizedCultures: ReadonlySet<string>;
+}
+
+export function createStockCultureMatcher(
+  farmCultures: string[],
+): StockCultureMatcher {
+  const normalizedCultures = new Set<string>();
+  farmCultures.forEach((farmCulture) => {
+    getCultureSearchSet(farmCulture).forEach((candidate) => {
+      normalizedCultures.add(normalize(candidate));
+    });
+  });
+  return { normalizedCultures };
+}
+
+function usageMatchesCultureMatcher(
+  usage: ProductUsage,
+  matcher: StockCultureMatcher,
+): boolean {
+  if (matcher.normalizedCultures.has(normalize(usage.culture))) return true;
+
+  if (!GENERIC_USAGE_CULTURES.has(normalize(usage.culture))) return false;
+  if (!usage.condition?.trim()) return false;
+
+  const normalizedCondition = normalize(usage.condition);
+  return [...matcher.normalizedCultures].some((culture) =>
+    normalizedCondition.includes(culture),
+  );
+}
+
 export function getStockFunctionFilter(
   product: Pick<Product, "fonctions">,
 ): StockFunctionFilter[] {
@@ -146,6 +183,7 @@ export function stockProductMatchesFilters(
   productsByAmm: ReadonlyMap<string, Product>,
   usages: Record<string, ProductUsage[]>,
   withdrawalAmms: ReadonlySet<string>,
+  cultureMatcher?: StockCultureMatcher,
 ): boolean {
   const product = item.product ?? productsByAmm.get(item.amm);
   const isRetired = item.classification === "retire";
@@ -175,11 +213,15 @@ export function stockProductMatchesFilters(
     const productUsages = product
       ? getUsagesForProduct(product, usages)
       : usages[item.amm] ?? [];
-    const matchesCulture = filters.cultures.some((culture) =>
-      productUsages.some((usage) =>
-        usageMatchesFarmCulture(usage, culture),
-      ),
-    );
+    const matchesCulture = cultureMatcher
+      ? productUsages.some((usage) =>
+          usageMatchesCultureMatcher(usage, cultureMatcher),
+        )
+      : filters.cultures.some((culture) =>
+          productUsages.some((usage) =>
+            usageMatchesFarmCulture(usage, culture),
+          ),
+        );
     if (!matchesCulture) return false;
   }
 

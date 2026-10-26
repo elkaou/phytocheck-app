@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   countActiveStockFilters,
+  createStockCultureMatcher,
   EMPTY_STOCK_FILTERS,
   getAvailableStockCultures,
   isStockProductOutsideFarmCultures,
@@ -61,6 +62,25 @@ describe("stock-filters", () => {
       }),
     ).toBe(true);
     expect(matches({ functions: ["Fongicide"] })).toBe(false);
+  });
+
+  it("réutilise un index d’alias pour le filtre culturel", () => {
+    const matcher = createStockCultureMatcher(["Blé"]);
+    expect(
+      stockProductMatchesFilters(
+        {
+          amm: "1234567",
+          classification: "homologue",
+          fonctions: "Herbicide",
+          product,
+        },
+        { ...EMPTY_STOCK_FILTERS, cultures: ["Blé"] },
+        new Map([[product.amm, product]]),
+        usages,
+        new Set(),
+        matcher,
+      ),
+    ).toBe(true);
   });
 
   it("exclut les produits retirés quand l’option est désactivée", () => {
