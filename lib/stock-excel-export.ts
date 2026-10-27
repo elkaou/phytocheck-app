@@ -23,15 +23,14 @@ export function createStockWorkbook(
     Produit: item.nom,
     "Nom secondaire": item.secondaryName ?? "",
     "N° AMM": item.amm,
-    Quantité: Number.isFinite(item.quantite) ? Number(item.quantite.toFixed(4)) : 0,
+    Quantité: Number.isFinite(item.quantite)
+      ? Number(item.quantite.toFixed(4))
+      : 0,
     Unité: item.unite,
     Statut: CLASSIFICATION_LABELS[item.classification] ?? item.classification,
     Titulaire: item.titulaire ?? "",
     Fonction: item.fonctions ?? "",
     "État d’autorisation": item.etat ?? "",
-    "Date d’ajout": item.dateAjout
-      ? new Date(item.dateAjout).toLocaleDateString("fr-FR")
-      : "",
   }));
 
   const worksheet = xlsx.utils.json_to_sheet(rows);
@@ -45,7 +44,6 @@ export function createStockWorkbook(
     { wch: 28 },
     { wch: 20 },
     { wch: 22 },
-    { wch: 14 },
   ];
 
   const workbook = xlsx.utils.book_new();

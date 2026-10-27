@@ -47,7 +47,9 @@ import {
 } from "@/lib/stock-filters";
 import { loadFarmCultures } from "@/lib/farm-cultures";
 
-const STOCK_FILTERS_STORAGE_KEY = "phytocheck_stock_filters_v1";
+// v2 évite de réappliquer le format d’anciens interrupteurs aux nouveaux
+// boutons de statut indépendants.
+const STOCK_FILTERS_STORAGE_KEY = "phytocheck_stock_filters_v2";
 import {
   acknowledgeStockWithdrawalWarnings,
   filterUnacknowledgedStockWithdrawalWarnings,
@@ -462,7 +464,9 @@ export default function StockScreen() {
         import("expo-sharing"),
         import("expo-file-system/legacy"),
       ]);
-      const exportStock = sortStockItemsAlphabetically(stock);
+      // Les exports reflètent strictement la liste visible : recherche saisie
+      // et filtres Fonction, Cultures ou Statut inclus.
+      const exportStock = sortStockItemsAlphabetically(filteredStock);
       const logoUri = Image.resolveAssetSource(
         require("../../assets/images/logo-phytocheck.jpg"),
       )?.uri;
@@ -488,16 +492,16 @@ export default function StockScreen() {
         minute: "2-digit",
       });
 
-      const statsHomologue = stock.filter(
+      const statsHomologue = exportStock.filter(
         (i) => i.classification === "homologue",
       ).length;
-      const statsPPNU = stock.filter(
+      const statsPPNU = exportStock.filter(
         (i) => i.classification === "retire",
       ).length;
-      const statsCMR = stock.filter(
+      const statsCMR = exportStock.filter(
         (i) => i.classification === "homologue_cmr",
       ).length;
-      const statsToxique = stock.filter(
+      const statsToxique = exportStock.filter(
         (i) => i.classification === "homologue_toxique",
       ).length;
 
@@ -651,19 +655,19 @@ export default function StockScreen() {
 
           <!-- BANDE DE RÉSUMÉ -->
           <div class="summary-strip">
-            <span class="summary-title">Résumé du stock</span>
+            <span class="summary-title">Résumé des produits affichés</span>
             <span class="stat-pill"><span class="stat-dot dot-green"></span>${statsHomologue} Homologué${statsHomologue > 1 ? "s" : ""}</span>
             <span class="stat-pill"><span class="stat-dot dot-red"></span>${statsPPNU} PPNU</span>
             <span class="stat-pill"><span class="stat-dot dot-amber"></span>${statsCMR} CMR</span>
             <span class="stat-pill"><span class="stat-dot dot-orange"></span>${statsToxique} Toxique${statsToxique > 1 ? "s" : ""}</span>
-            <span class="stat-total">${stock.length} produit${stock.length > 1 ? "s" : ""}</span>
+            <span class="stat-total">${exportStock.length} produit${exportStock.length > 1 ? "s" : ""}</span>
           </div>
 
           <!-- TABLEAU PRINCIPAL -->
           <div class="main">
             <div class="table-wrapper">
               ${
-                    exportStock.length === 0
+                exportStock.length === 0
                   ? `<div class="empty-state">Aucun produit dans le stock</div>`
                   : `<table>
                 <thead>
@@ -686,11 +690,12 @@ export default function StockScreen() {
                           homologue_toxique: "badge-toxique",
                           autorisation_urgence: "badge-emergency",
                         }[item.classification] ?? "badge-homologue";
-                      const outsideFarmCultures = isStockProductOutsideFarmCultures(
-                        item.amm,
-                        farmCultures,
-                        usages,
-                      );
+                      const outsideFarmCultures =
+                        isStockProductOutsideFarmCultures(
+                          item.amm,
+                          farmCultures,
+                          usages,
+                        );
                       const classificationLabel = getClassificationLabel(
                         item.classification as ProductClassification,
                         item.fonctions,
@@ -758,7 +763,7 @@ export default function StockScreen() {
         "Une erreur est survenue lors de l'export du PDF. Veuillez réessayer.",
       );
     }
-  }, [stock]);
+  }, [filteredStock, farmCultures, usages]);
 
   const handleExportExcel = useCallback(async () => {
     try {
@@ -767,21 +772,25 @@ export default function StockScreen() {
       // rendait toute l’interface Android non réactive pendant plusieurs
       // secondes, y compris Filtrer et l’ouverture des fiches. Son évaluation
       // est donc volontairement différée au clic sur Export Excel.
-      const [XLSX, { createStockWorkbook, createStockWorkbookBase64 }, FileSystem, Sharing] =
-        await Promise.all([
-          import("xlsx"),
-          import("@/lib/stock-excel-export"),
-          import("expo-file-system/legacy"),
-          import("expo-sharing"),
-        ]);
+      const [
+        XLSX,
+        { createStockWorkbook, createStockWorkbookBase64 },
+        FileSystem,
+        Sharing,
+      ] = await Promise.all([
+        import("xlsx"),
+        import("@/lib/stock-excel-export"),
+        import("expo-file-system/legacy"),
+        import("expo-sharing"),
+      ]);
 
       if (Platform.OS === "web") {
-        XLSX.writeFile(createStockWorkbook(XLSX, stock), filename);
+        XLSX.writeFile(createStockWorkbook(XLSX, filteredStock), filename);
         return;
       }
 
       const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-      const fileContents = createStockWorkbookBase64(XLSX, stock);
+      const fileContents = createStockWorkbookBase64(XLSX, filteredStock);
       await FileSystem.writeAsStringAsync(fileUri, fileContents, {
         encoding: FileSystem.EncodingType.Base64,
       });
@@ -807,7 +816,7 @@ export default function StockScreen() {
         "Une erreur est survenue lors de l’export Excel. Veuillez réessayer.",
       );
     }
-  }, [stock]);
+  }, [filteredStock]);
 
   const stockEmptyMessage = useMemo(() => {
     if (stockSearchQuery.trim()) {
@@ -816,10 +825,7 @@ export default function StockScreen() {
     const hasFilters =
       filters.functions.length > 0 ||
       filters.cultures.length > 0 ||
-      filters.nonCmr ||
-      filters.nonToxique ||
-      filters.withdrawalWithinThreeMonths ||
-      !filters.includeRetired;
+      filters.statuses.length > 0;
     return hasFilters
       ? "Aucun produit ne correspond aux filtres sélectionnés"
       : "Aucun produit dans le stock";
@@ -857,11 +863,7 @@ export default function StockScreen() {
             <Text style={styles.stockAMM}>AMM : {item.amm}</Text>
             {outsideFarmCultures ? (
               <View style={styles.stockCultureWarning}>
-                <MaterialIcons
-                  name="agriculture"
-                  size={17}
-                  color="#9A3412"
-                />
+                <MaterialIcons name="agriculture" size={17} color="#9A3412" />
                 <Text style={styles.stockCultureWarningText}>
                   Culture non déclarée sur l’exploitation
                 </Text>
@@ -905,17 +907,16 @@ export default function StockScreen() {
                     {formatStockWithdrawalRemainingDays(
                       withdrawalReminder.daysRemaining,
                     )}{" "}
-                    · {formatStockWithdrawalDate(withdrawalReminder.withdrawalDate)}
+                    ·{" "}
+                    {formatStockWithdrawalDate(
+                      withdrawalReminder.withdrawalDate,
+                    )}
                   </Text>
                 </View>
               ) : null}
               {emergencyReminder ? (
                 <View style={styles.stockEmergencyReminder}>
-                  <MaterialIcons
-                    name="schedule"
-                    size={18}
-                    color="#1D4ED8"
-                  />
+                  <MaterialIcons name="schedule" size={18} color="#1D4ED8" />
                   <View style={styles.stockEmergencyReminderContent}>
                     <Text style={styles.stockEmergencyReminderTitle}>
                       Autorisation d’urgence — Article 53
@@ -949,7 +950,8 @@ export default function StockScreen() {
               accessibilityHint="Ouvre la saisie de la quantité restante totale"
             >
               <Text style={styles.stockQuantityText}>
-                Qté : {formatStockQuantity(item.quantite ?? 0)} {item.unite || "L"}
+                Qté : {formatStockQuantity(item.quantite ?? 0)}{" "}
+                {item.unite || "L"}
               </Text>
               <Text style={styles.stockQuantityEditIcon}>✎</Text>
             </Pressable>

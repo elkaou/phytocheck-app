@@ -76,9 +76,13 @@ const products: Product[] = [
 const usages: Record<string, ProductUsage[]> = {
   "1000001": [{ culture: "Orge", cible: "Adventices annuelles" }],
   "1000002": [{ culture: "Céréales à paille", cible: "Oïdium" }],
-  "1000003": [{ culture: "Haricots et pois non écossés frais", cible: "Pucerons" }],
+  "1000003": [
+    { culture: "Haricots et pois non écossés frais", cible: "Pucerons" },
+  ],
   "1000004": [{ culture: "Orge", cible: "Adventices annuelles" }],
-  "9400052": [{ culture: "Haricots et pois non écossés frais", cible: "Graminées" }],
+  "9400052": [
+    { culture: "Haricots et pois non écossés frais", cible: "Graminées" },
+  ],
 };
 
 const risks: Record<string, RiskPhrase[]> = {
@@ -91,22 +95,39 @@ describe("indexed culture search", () => {
   it("inclut les alias d'Orge, exclut les retraits et conserve les risques dynamiques", () => {
     const result = index.search("Orge", "Tous");
 
-    expect(result.products.map((product) => product.amm)).toEqual(["1000001", "1000002", "1000001"]);
-    expect(result.products.find((product) => product.amm === "1000001")?.classification).toBe("homologue_cmr");
+    expect(result.products.map((product) => product.amm)).toEqual([
+      "1000001",
+      "1000002",
+      "1000001",
+    ]);
+    expect(
+      result.products.find((product) => product.amm === "1000001")
+        ?.classification,
+    ).toBe("homologue_cmr");
     expect(result.ciblesByAmm.get("1000002")).toEqual(["Oïdium"]);
   });
 
   it("applique le filtre de type au premier calcul", () => {
     const herbicideResults = index.search("Orge", "Herbicide").products;
-    expect(herbicideResults.map((product) => product.amm)).toEqual(["1000001", "1000001"]);
-    expect(herbicideResults.map((product) => product.matchedName)).toEqual(["ALIAS HERBI", undefined]);
-    expect(index.search("Orge", "Fongicide").products.map((product) => product.amm)).toEqual(["1000002"]);
+    expect(herbicideResults.map((product) => product.amm)).toEqual([
+      "1000001",
+      "1000001",
+    ]);
+    expect(herbicideResults.map((product) => product.matchedName)).toEqual([
+      "ALIAS HERBI",
+      undefined,
+    ]);
+    expect(
+      index.search("Orge", "Fongicide").products.map((product) => product.amm),
+    ).toEqual(["1000002"]);
   });
 
   it("inclut ALTACOR pour Haricots grâce à l'alias de culture", () => {
     const result = index.search("Haricots", "Insecticide");
 
-    expect(result.products.map((product) => product.nom)).toEqual(["ALTACOR TEST"]);
+    expect(result.products.map((product) => product.nom)).toEqual([
+      "ALTACOR TEST",
+    ]);
     expect(result.ciblesByAmm.get("1000003")).toEqual(["Pucerons"]);
   });
 
@@ -115,5 +136,24 @@ describe("indexed culture search", () => {
 
     expect(result.products.map((product) => product.nom)).toContain("SELACTIO");
     expect(result.ciblesByAmm.get("2150762")).toEqual(["Graminées"]);
+  });
+
+  it("préserve les usages d'un PCP si un cache distant omet sa référence", () => {
+    const remoteProductsWithoutReference = products.map((product) =>
+      product.amm === "2150762"
+        ? { ...product, referenceAmm: undefined }
+        : product,
+    );
+    const remoteIndex = createCultureSearchIndex(
+      remoteProductsWithoutReference,
+      risks,
+      usages,
+    );
+
+    expect(
+      remoteIndex
+        .search("Haricots", "Herbicide")
+        .products.map((product) => product.nom),
+    ).toContain("SELACTIO");
   });
 });

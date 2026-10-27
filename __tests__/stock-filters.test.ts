@@ -4,6 +4,7 @@ import {
   createStockCultureMatcher,
   EMPTY_STOCK_FILTERS,
   getAvailableStockCultures,
+  getStockFunctionFilter,
   isStockProductOutsideFarmCultures,
   stockProductMatchesFilters,
   type StockFilters,
@@ -56,8 +57,7 @@ describe("stock-filters", () => {
     expect(
       matches({
         functions: ["Herbicide"],
-        nonCmr: true,
-        nonToxique: true,
+        statuses: ["Homologués non CMR, non toxiques"],
         cultures: ["Blé"],
       }),
     ).toBe(true);
@@ -83,21 +83,31 @@ describe("stock-filters", () => {
     ).toBe(true);
   });
 
-  it("exclut les produits retirés quand l’option est désactivée", () => {
+  it("filtre les statuts réglementaires sélectionnés", () => {
     expect(
-      matches({ includeRetired: false }, { classification: "retire" }),
-    ).toBe(false);
-    expect(
-      matches({ includeRetired: true }, { classification: "retire" }),
+      matches({ statuses: ["Retirés / PPNU"] }, { classification: "retire" }),
     ).toBe(true);
+    expect(matches({ statuses: ["CMR"] })).toBe(false);
+    expect(
+      matches({ statuses: ["CMR"] }, { classification: "homologue_cmr" }),
+    ).toBe(true);
+    expect(
+      matches(
+        { statuses: ["Toxiques"] },
+        { classification: "homologue_toxique" },
+      ),
+    ).toBe(true);
+    expect(matches({ statuses: ["Homologués non CMR, non toxiques"] })).toBe(
+      true,
+    );
   });
 
   it("filtre les produits dont le retrait est prévu sous trois mois", () => {
     expect(
-      matches({ withdrawalWithinThreeMonths: true }, { withdrawal: true }),
+      matches({ statuses: ["Retrait sous 3 mois"] }, { withdrawal: true }),
     ).toBe(true);
     expect(
-      matches({ withdrawalWithinThreeMonths: true }, { withdrawal: false }),
+      matches({ statuses: ["Retrait sous 3 mois"] }, { withdrawal: false }),
     ).toBe(false);
   });
 
@@ -107,10 +117,25 @@ describe("stock-filters", () => {
       countActiveStockFilters({
         ...EMPTY_STOCK_FILTERS,
         functions: ["Herbicide", "Fongicide"],
-        nonCmr: true,
+        statuses: ["CMR"],
         cultures: ["Blé"],
       }),
     ).toBe(4);
+  });
+
+  it("regroupe les nématicides et rodenticides dans Autre", () => {
+    expect(
+      getStockFunctionFilter({ ...product, fonctions: "Nématicide" }),
+    ).toEqual(["Autre"]);
+    expect(
+      getStockFunctionFilter({ ...product, fonctions: "Rodenticide" }),
+    ).toEqual(["Autre"]);
+    expect(
+      getStockFunctionFilter({
+        ...product,
+        fonctions: "Herbicide | Nématicide",
+      }),
+    ).toEqual(["Herbicide", "Autre"]);
   });
 
   it("déduit les cultures disponibles sans doublons", () => {
@@ -198,11 +223,7 @@ describe("stock-filters", () => {
       isStockProductOutsideFarmCultures("2140227", ["Blé"], fullMaxUsages),
     ).toBe(false);
     expect(
-      isStockProductOutsideFarmCultures(
-        "2140227",
-        ["Prairies"],
-        fullMaxUsages,
-      ),
+      isStockProductOutsideFarmCultures("2140227", ["Prairies"], fullMaxUsages),
     ).toBe(true);
   });
 });

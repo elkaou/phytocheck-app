@@ -8,16 +8,18 @@ import {
   View,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 
 import {
   countActiveStockFilters,
   EMPTY_STOCK_FILTERS,
   STOCK_FUNCTION_OPTIONS,
+  STOCK_STATUS_OPTIONS,
   type StockFilters,
+  type StockFunctionFilter,
+  type StockStatusFilter,
 } from "@/lib/stock-filters";
-
-type StockFilterFunction = (typeof STOCK_FUNCTION_OPTIONS)[number];
 
 interface StockFilterPanelProps {
   filters: StockFilters;
@@ -26,7 +28,7 @@ interface StockFilterPanelProps {
   onReset: () => void;
 }
 
-function ToggleRow({
+function FilterChip({
   label,
   selected,
   onPress,
@@ -37,17 +39,18 @@ function ToggleRow({
 }) {
   return (
     <Pressable
-      style={({ pressed }) => [styles.optionRow, pressed && { opacity: 0.65 }]}
+      style={({ pressed }) => [
+        styles.chip,
+        selected && styles.chipSelected,
+        pressed && styles.chipPressed,
+      ]}
       onPress={onPress}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: selected }}
     >
-      <MaterialIcons
-        name={selected ? "check-box" : "check-box-outline-blank"}
-        size={22}
-        color={selected ? "#0A7EA4" : "#64748B"}
-      />
-      <Text style={styles.optionLabel}>{label}</Text>
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -66,23 +69,39 @@ export function StockFilterPanel({
     draftFilters.cultures.includes(culture),
   );
 
+  const pressFeedback = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {
+      // Le retour visuel reste disponible si les vibrations sont désactivées.
+    });
+  };
+
   const openPanel = () => {
-    // Les choix sont d’abord faits dans une copie locale. Ainsi, cocher une
-    // culture ne déclenche pas le recalcul de l’écran Stock derrière la modale.
+    // Les choix sont locaux à la fenêtre. Aucun recalcul de la liste Stock ne
+    // s’exécute pendant que l’utilisateur coche les critères.
     setDraftFilters({
       ...filters,
       functions: [...filters.functions],
+      statuses: [...filters.statuses],
       cultures: [...filters.cultures],
     });
     setVisible(true);
   };
 
-  const toggleFunction = (value: StockFilterFunction) => {
+  const toggleFunction = (value: StockFunctionFilter) => {
     setDraftFilters((current) => {
       const functions = current.functions.includes(value)
         ? current.functions.filter((item) => item !== value)
         : [...current.functions, value];
       return { ...current, functions };
+    });
+  };
+
+  const toggleStatus = (value: StockStatusFilter) => {
+    setDraftFilters((current) => {
+      const statuses = current.statuses.includes(value)
+        ? current.statuses.filter((item) => item !== value)
+        : [...current.statuses, value];
+      return { ...current, statuses };
     });
   };
 
@@ -104,11 +123,13 @@ export function StockFilterPanel({
     setDraftFilters((current) => ({ ...current, cultures: [] }));
 
   const reset = () => {
+    pressFeedback();
     setDraftFilters(EMPTY_STOCK_FILTERS);
     onReset();
   };
 
   const apply = () => {
+    pressFeedback();
     onChange(draftFilters);
     setVisible(false);
   };
@@ -116,7 +137,10 @@ export function StockFilterPanel({
   return (
     <>
       <Pressable
-        style={({ pressed }) => [styles.trigger, pressed && { opacity: 0.72 }]}
+        style={({ pressed }) => [
+          styles.trigger,
+          pressed && styles.buttonPressed,
+        ]}
         onPress={openPanel}
         accessibilityRole="button"
         accessibilityLabel="Filtrer le stock"
@@ -142,12 +166,13 @@ export function StockFilterPanel({
               <View>
                 <Text style={styles.title}>Filtrer le stock</Text>
                 <Text style={styles.subtitle}>
-                  Les critères d’un même groupe se cumulent en OU.
+                  Dans chaque rubrique, plusieurs choix se cumulent.
                 </Text>
               </View>
               <Pressable
                 onPress={() => setVisible(false)}
                 accessibilityLabel="Fermer les filtres"
+                style={({ pressed }) => pressed && { opacity: 0.62 }}
               >
                 <MaterialIcons name="close" size={26} color="#475569" />
               </Pressable>
@@ -158,81 +183,23 @@ export function StockFilterPanel({
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              <Text style={styles.sectionTitle}>Fonction du produit</Text>
+              <Text style={styles.sectionTitle}>1. Fonction du produit</Text>
               <View style={styles.chips}>
-                {STOCK_FUNCTION_OPTIONS.map((option) => {
-                  const selected = draftFilters.functions.includes(option);
-                  return (
-                    <Pressable
-                      key={option}
-                      style={[styles.chip, selected && styles.chipSelected]}
-                      onPress={() => toggleFunction(option)}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: selected }}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          selected && styles.chipTextSelected,
-                        ]}
-                      >
-                        {option}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+                {STOCK_FUNCTION_OPTIONS.map((option) => (
+                  <FilterChip
+                    key={option}
+                    label={option}
+                    selected={draftFilters.functions.includes(option)}
+                    onPress={() => toggleFunction(option)}
+                  />
+                ))}
               </View>
 
-              <Text style={styles.sectionTitle}>Statut et danger</Text>
-              <ToggleRow
-                label="Inclure les produits retirés / PPNU"
-                selected={draftFilters.includeRetired}
-                onPress={() =>
-                  setDraftFilters((current) => ({
-                    ...current,
-                    includeRetired: !current.includeRetired,
-                  }))
-                }
-              />
-              <ToggleRow
-                label="Uniquement non CMR"
-                selected={draftFilters.nonCmr}
-                onPress={() =>
-                  setDraftFilters((current) => ({
-                    ...current,
-                    nonCmr: !current.nonCmr,
-                  }))
-                }
-              />
-              <ToggleRow
-                label="Uniquement non toxiques"
-                selected={draftFilters.nonToxique}
-                onPress={() =>
-                  setDraftFilters((current) => ({
-                    ...current,
-                    nonToxique: !current.nonToxique,
-                  }))
-                }
-              />
-              <ToggleRow
-                label="Retrait prévu sous 3 mois"
-                selected={draftFilters.withdrawalWithinThreeMonths}
-                onPress={() =>
-                  setDraftFilters((current) => ({
-                    ...current,
-                    withdrawalWithinThreeMonths:
-                      !current.withdrawalWithinThreeMonths,
-                  }))
-                }
-              />
-
-              <Text style={styles.sectionTitle}>
-                Cultures de l’exploitation
-              </Text>
+              <Text style={styles.sectionTitle}>2. Cultures</Text>
               <Pressable
                 style={({ pressed }) => [
                   styles.manageCulturesButton,
-                  pressed && { opacity: 0.72 },
+                  pressed && styles.buttonPressed,
                 ]}
                 onPress={() => {
                   setVisible(false);
@@ -265,12 +232,14 @@ export function StockFilterPanel({
                       <Pressable
                         onPress={selectAllCultures}
                         accessibilityRole="button"
+                        style={({ pressed }) => pressed && { opacity: 0.62 }}
                       >
                         <Text style={styles.actionText}>Toutes</Text>
                       </Pressable>
                       <Pressable
                         onPress={clearCultures}
                         accessibilityRole="button"
+                        style={({ pressed }) => pressed && { opacity: 0.62 }}
                       >
                         <Text style={styles.actionText}>Aucune</Text>
                       </Pressable>
@@ -278,41 +247,57 @@ export function StockFilterPanel({
                   </View>
                   <Text style={styles.helperText}>
                     {selectedCultures.length === 0
-                      ? "Aucune sélection : toutes les cultures de l’exploitation sont ignorées pour ce filtre."
+                      ? "Aucune sélection : le filtre ne tient pas compte des cultures."
                       : `${selectedCultures.length} culture${selectedCultures.length > 1 ? "s" : ""} sélectionnée${selectedCultures.length > 1 ? "s" : ""}.`}
                   </Text>
                   <View style={styles.chips}>
-                    {farmCultures.map((culture) => {
-                      const selected = draftFilters.cultures.includes(culture);
-                      return (
-                        <Pressable
-                          key={culture}
-                          style={[styles.chip, selected && styles.chipSelected]}
-                          onPress={() => toggleCulture(culture)}
-                          accessibilityRole="checkbox"
-                          accessibilityState={{ checked: selected }}
-                        >
-                          <Text
-                            style={[
-                              styles.chipText,
-                              selected && styles.chipTextSelected,
-                            ]}
-                          >
-                            {culture}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
+                    {farmCultures.map((culture) => (
+                      <FilterChip
+                        key={culture}
+                        label={culture}
+                        selected={draftFilters.cultures.includes(culture)}
+                        onPress={() => toggleCulture(culture)}
+                      />
+                    ))}
                   </View>
                 </>
               ) : null}
+
+              <Text style={styles.sectionTitle}>3. Statut et danger</Text>
+              <Text style={styles.helperText}>
+                Sélectionnez le ou les statuts à afficher.
+              </Text>
+              <View style={styles.chips}>
+                {STOCK_STATUS_OPTIONS.map((status) => (
+                  <FilterChip
+                    key={status}
+                    label={status}
+                    selected={draftFilters.statuses.includes(status)}
+                    onPress={() => toggleStatus(status)}
+                  />
+                ))}
+              </View>
             </ScrollView>
 
             <View style={styles.footer}>
-              <Pressable style={styles.resetButton} onPress={reset}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.resetButton,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={reset}
+                accessibilityRole="button"
+              >
                 <Text style={styles.resetText}>Réinitialiser</Text>
               </Pressable>
-              <Pressable style={styles.applyButton} onPress={apply}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.applyButton,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={apply}
+                accessibilityRole="button"
+              >
                 <Text style={styles.applyText}>Afficher les résultats</Text>
               </Pressable>
             </View>
@@ -344,7 +329,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#E2E8F0",
   },
   title: { color: "#0F172A", fontSize: 21, fontWeight: "800" },
-  subtitle: { color: "#64748B", fontSize: 12, marginTop: 4, maxWidth: 280 },
+  subtitle: { color: "#64748B", fontSize: 12, marginTop: 4, maxWidth: 290 },
   content: { padding: 20, paddingBottom: 12 },
   sectionTitle: {
     color: "#0F172A",
@@ -393,15 +378,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
   },
   chipSelected: { borderColor: "#0A7EA4", backgroundColor: "#E0F2FE" },
+  chipPressed: { opacity: 0.72, transform: [{ scale: 0.97 }] },
   chipText: { color: "#475569", fontSize: 13, fontWeight: "600" },
   chipTextSelected: { color: "#075985" },
-  optionRow: {
-    minHeight: 44,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  optionLabel: { flex: 1, color: "#334155", fontSize: 14 },
   footer: {
     flexDirection: "row",
     gap: 10,
@@ -427,6 +406,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0A7EA4",
   },
   applyText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
+  buttonPressed: { opacity: 0.78, transform: [{ scale: 0.97 }] },
   trigger: {
     minHeight: 42,
     flexDirection: "row",

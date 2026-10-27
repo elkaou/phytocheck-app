@@ -1,7 +1,7 @@
 import type { ProductUsage } from "./data-context";
 import type { Product, ProductClassification } from "./product-service";
 import { cultureMatchesSearch, getCultureSearchSet } from "./culture-aliases";
-import { getUsagesForProduct } from "./product-usages";
+import { getUsagesForAmm, getUsagesForProduct } from "./product-usages";
 
 export type StockFunctionFilter =
   | "Herbicide"
@@ -9,25 +9,25 @@ export type StockFunctionFilter =
   | "Insecticide"
   | "Acaricide"
   | "Molluscicide"
-  | "Nématicide"
-  | "Rodenticide"
+  | "Régulateur de croissance"
   | "Autre";
+
+export type StockStatusFilter =
+  | "Retirés / PPNU"
+  | "CMR"
+  | "Toxiques"
+  | "Retrait sous 3 mois"
+  | "Homologués non CMR, non toxiques";
 
 export interface StockFilters {
   functions: StockFunctionFilter[];
-  nonCmr: boolean;
-  nonToxique: boolean;
-  includeRetired: boolean;
-  withdrawalWithinThreeMonths: boolean;
+  statuses: StockStatusFilter[];
   cultures: string[];
 }
 
 export const EMPTY_STOCK_FILTERS: StockFilters = {
   functions: [],
-  nonCmr: false,
-  nonToxique: false,
-  includeRetired: true,
-  withdrawalWithinThreeMonths: false,
+  statuses: [],
   cultures: [],
 };
 
@@ -37,9 +37,16 @@ export const STOCK_FUNCTION_OPTIONS: StockFunctionFilter[] = [
   "Insecticide",
   "Acaricide",
   "Molluscicide",
-  "Nématicide",
-  "Rodenticide",
+  "Régulateur de croissance",
   "Autre",
+];
+
+export const STOCK_STATUS_OPTIONS: StockStatusFilter[] = [
+  "Retirés / PPNU",
+  "CMR",
+  "Toxiques",
+  "Retrait sous 3 mois",
+  "Homologués non CMR, non toxiques",
 ];
 
 function normalize(value: string | undefined): string {
@@ -120,10 +127,41 @@ export function getStockFunctionFilter(
   product: Pick<Product, "fonctions">,
 ): StockFunctionFilter[] {
   const functions = productFunctions(product).map(normalize);
-  const known = STOCK_FUNCTION_OPTIONS.filter((option) =>
-    functions.some((value) => value.includes(normalize(option))),
+  const matchingFilters = STOCK_FUNCTION_OPTIONS.filter((option) => {
+    if (option === "Autre") return false;
+    if (option === "Régulateur de croissance") {
+      return functions.some(
+        (value) =>
+          value.includes("regulateur de croissance") ||
+          value.includes("subst. croiss") ||
+          value.includes("substance de croissance"),
+      );
+    }
+    return functions.some((value) => value.includes(normalize(option)));
+  });
+
+  // Nématicides, rodenticides et toutes les fonctions non listées dans les
+  // cinq familles principales sont volontairement regroupés sous « Autre ».
+  const hasOtherFunction = functions.some(
+    (value) =>
+      value.includes("nematicide") ||
+      value.includes("rodenticide") ||
+      !STOCK_FUNCTION_OPTIONS.some((option) => {
+        if (option === "Autre") return false;
+        if (option === "Régulateur de croissance") {
+          return (
+            value.includes("regulateur de croissance") ||
+            value.includes("subst. croiss") ||
+            value.includes("substance de croissance")
+          );
+        }
+        return value.includes(normalize(option));
+      }),
   );
-  return known.length > 0 ? known : ["Autre"];
+
+  return hasOtherFunction || matchingFilters.length === 0
+    ? [...matchingFilters, "Autre"]
+    : matchingFilters;
 }
 
 export function getAvailableStockCultures(
@@ -155,16 +193,15 @@ export function isStockProductOutsideFarmCultures(
 ): boolean {
   if (farmCultures.length === 0) return false;
 
-  const productUsages = (typeof productOrAmm === "string"
-    ? usages[productOrAmm] ?? []
-    : getUsagesForProduct(productOrAmm, usages)
+  const productUsages = (
+    typeof productOrAmm === "string"
+      ? getUsagesForAmm(productOrAmm, usages)
+      : getUsagesForProduct(productOrAmm, usages)
   ).filter((usage) => usage.culture?.trim());
   if (productUsages.length === 0) return false;
 
   return !farmCultures.some((farmCulture) =>
-    productUsages.some((usage) =>
-      usageMatchesFarmCulture(usage, farmCulture),
-    ),
+    productUsages.some((usage) => usageMatchesFarmCulture(usage, farmCulture)),
   );
 }
 
@@ -187,16 +224,24 @@ export function stockProductMatchesFilters(
 ): boolean {
   const product = item.product ?? productsByAmm.get(item.amm);
   const isRetired = item.classification === "retire";
-  if (!filters.includeRetired && isRetired) return false;
-  if (filters.nonCmr && (item.isCMR ?? item.classification === "homologue_cmr"))
-    return false;
-  if (
-    filters.nonToxique &&
-    (item.isToxique ?? item.classification === "homologue_toxique")
-  )
-    return false;
-  if (filters.withdrawalWithinThreeMonths && !withdrawalAmms.has(item.amm))
-    return false;
+
+  if (filters.statuses.length > 0) {
+    const matchesStatus = filters.statuses.some((status) => {
+      switch (status) {
+        case "Retirés / PPNU":
+          return isRetired;
+        case "CMR":
+          return item.isCMR ?? item.classification === "homologue_cmr";
+        case "Toxiques":
+          return item.isToxique ?? item.classification === "homologue_toxique";
+        case "Retrait sous 3 mois":
+          return withdrawalAmms.has(item.amm);
+        case "Homologués non CMR, non toxiques":
+          return item.classification === "homologue";
+      }
+    });
+    if (!matchesStatus) return false;
+  }
 
   if (filters.functions.length > 0) {
     if (
@@ -212,7 +257,7 @@ export function stockProductMatchesFilters(
   if (filters.cultures.length > 0) {
     const productUsages = product
       ? getUsagesForProduct(product, usages)
-      : usages[item.amm] ?? [];
+      : getUsagesForAmm(item.amm, usages);
     const matchesCulture = cultureMatcher
       ? productUsages.some((usage) =>
           usageMatchesCultureMatcher(usage, cultureMatcher),
@@ -230,11 +275,6 @@ export function stockProductMatchesFilters(
 
 export function countActiveStockFilters(filters: StockFilters): number {
   return (
-    filters.functions.length +
-    Number(filters.nonCmr) +
-    Number(filters.nonToxique) +
-    Number(!filters.includeRetired) +
-    Number(filters.withdrawalWithinThreeMonths) +
-    filters.cultures.length
+    filters.functions.length + filters.statuses.length + filters.cultures.length
   );
 }
