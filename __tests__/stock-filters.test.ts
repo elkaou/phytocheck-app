@@ -111,6 +111,45 @@ describe("stock-filters", () => {
     ).toBe(false);
   });
 
+  it("retrouve BORAVI WG avec ses usages retirés sur crucifères oléagineuses", () => {
+    const boravi: Product = {
+      ...product,
+      amm: "2140040",
+      nom: "BORAVI WG",
+      fonctions: "Insecticide",
+      etat: "RETIRE",
+    };
+    const boraviUsages: Record<string, ProductUsage[]> = {
+      "2140040": [
+        {
+          culture: "Crucifères oléagineuses",
+          cible: "Coléoptères phytophages",
+          etat: "Retrait",
+        },
+      ],
+    };
+
+    expect(
+      stockProductMatchesFilters(
+        {
+          amm: boravi.amm,
+          classification: "retire",
+          fonctions: boravi.fonctions,
+          product: boravi,
+        },
+        {
+          ...EMPTY_STOCK_FILTERS,
+          functions: ["Insecticide"],
+          statuses: ["Retirés / PPNU"],
+          cultures: ["Crucifères oléagineuses"],
+        },
+        new Map([[boravi.amm, boravi]]),
+        boraviUsages,
+        new Set(),
+      ),
+    ).toBe(true);
+  });
+
   it("compte les critères actifs", () => {
     expect(countActiveStockFilters(EMPTY_STOCK_FILTERS)).toBe(0);
     expect(

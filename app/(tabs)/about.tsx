@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
@@ -28,6 +29,17 @@ export default function AboutScreen() {
   const [checkStatus, setCheckStatus] = useState<
     "idle" | "uptodate" | "updated"
   >("idle");
+
+  const openOfficialSource = async (url: string) => {
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert(
+        "Lien indisponible",
+        "La source officielle ne peut pas être ouverte pour le moment. Vérifiez votre connexion internet.",
+      );
+    }
+  };
 
   const handleCheckUpdate = async () => {
     if (checking) return;
@@ -156,9 +168,51 @@ export default function AboutScreen() {
               de l&apos;Agriculture et de la Souveraineté alimentaire. Elles
               sont affichées séparément des autorisations E‑Phy.
             </Text>
-            <Text style={[styles.sourceText, { marginTop: 12 }]}>
-              Sources : ephy.anses.fr · agriculture.gouv.fr
+            <Text style={[styles.disclaimerText, { marginTop: 14 }]}>
+              PhytoCheck est une application indépendante. Elle n&apos;est pas
+              affiliée au gouvernement français, à l&apos;Anses ni au ministère
+              de l&apos;Agriculture. Elle reproduit et organise des informations
+              publiques à titre informatif et ne remplace pas les décisions
+              officielles, les étiquettes ou les conditions d&apos;emploi.
             </Text>
+
+            <Text style={[styles.sourceHeading, { marginTop: 14 }]}>
+              Consulter les sources officielles
+            </Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.sourceLink,
+                pressed && { opacity: 0.65 },
+              ]}
+              onPress={() =>
+                void openOfficialSource("https://ephy.anses.fr/")
+              }
+              accessibilityRole="link"
+              accessibilityLabel="Ouvrir le catalogue officiel E-Phy de l’Anses"
+            >
+              <MaterialIcons name="open-in-new" size={17} color="#075985" />
+              <Text style={styles.sourceLinkText}>
+                Catalogue officiel E‑Phy — ephy.anses.fr
+              </Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.sourceLink,
+                pressed && { opacity: 0.65 },
+              ]}
+              onPress={() =>
+                void openOfficialSource(
+                  "https://agriculture.gouv.fr/produits-phytopharmaceutiques-autorisations-de-mise-sur-le-marche-dune-duree-maximale-de-120-jours",
+                )
+              }
+              accessibilityRole="link"
+              accessibilityLabel="Ouvrir la page officielle du ministère sur les autorisations de 120 jours"
+            >
+              <MaterialIcons name="open-in-new" size={17} color="#075985" />
+              <Text style={styles.sourceLinkText}>
+                Ministère — autorisations Article 53 de 120 jours
+              </Text>
+            </Pressable>
 
             {/* Bouton vérification mise à jour */}
             <TouchableOpacity
@@ -340,6 +394,35 @@ const styles = StyleSheet.create({
     color: "#475569",
     fontWeight: "600",
     lineHeight: 20,
+  },
+  disclaimerText: {
+    fontSize: 13,
+    color: "#334155",
+    lineHeight: 19,
+    backgroundColor: "#FFF7ED",
+    borderLeftWidth: 3,
+    borderLeftColor: "#F59E0B",
+    padding: 10,
+  },
+  sourceHeading: {
+    fontSize: 14,
+    color: "#1A1A1A",
+    fontWeight: "700",
+    lineHeight: 20,
+  },
+  sourceLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingVertical: 9,
+  },
+  sourceLinkText: {
+    flex: 1,
+    color: "#075985",
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 20,
+    textDecorationLine: "underline",
   },
   updateButton: {
     marginTop: 16,

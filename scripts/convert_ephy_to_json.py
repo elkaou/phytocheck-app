@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 convert_ephy_to_json.py
 =======================
@@ -41,7 +41,10 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 DEFAULT_PRODUCTS_CSV = PROJECT_ROOT / "produits_utf8.csv"
 DEFAULT_RISKS_CSV = PROJECT_ROOT / "produits_phrases_de_risque_utf8.csv"
 DEFAULT_PCP_CSV = PROJECT_ROOT / "permis_de_commerce_parallele_utf8.csv"
-DEFAULT_USAGES_CSV = PROJECT_ROOT / "usages_des_produits_autorises_utf8.csv"
+# Le fichier détaillé contient l'identifiant usage, l'état, la dose et les
+# cultures. Le fichier usages_des_produits_autorises_utf8.csv décrit les
+# produits autorisés mais ne contient pas ces lignes d'usages détaillées.
+DEFAULT_USAGES_CSV = PROJECT_ROOT / "produits_usages_utf8.csv"
 OUT_DIR = PROJECT_ROOT / "assets" / "data"
 PRODUCT_SERVICE = PROJECT_ROOT / "lib" / "product-service.ts"
 TERMS_OF_SERVICE = PROJECT_ROOT / "TERMS_OF_SERVICE.md"
@@ -362,9 +365,10 @@ def convert_usages(csv_path):
             cible = parts[2] if len(parts) > 2 else ""
 
             etat = row.get("etat usage", row.get("etat", row.get("Etat", ""))).strip()
-            # Ignorer les usages retirés (plus homologués, pas de dose disponible)
-            if etat and "retrait" in etat.lower():
-                continue
+            # Conserver aussi les usages retirés. Ils ne sont pas affichés dans
+            # « Usages autorisés » et ne servent pas à la recherche par culture,
+            # mais restent indispensables aux filtres Stock « Retirés / PPNU »
+            # (ex. BORAVI WG sur crucifères oléagineuses).
             dose = row.get("dose retenue", row.get("dose", row.get("Dose", ""))).strip()
             unite = row.get("dose retenue unite", row.get("unite", row.get("Unité", row.get("unite dose", "")))).strip()
             nb_max = row.get("nombre max d'application", row.get("nombre max d'applications", row.get("nb max appli", ""))).strip()
