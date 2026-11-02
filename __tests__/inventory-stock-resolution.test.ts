@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parseInventoryOcrResponse } from "../server/inventory-ocr";
 import { resolveInventoryDetections } from "../lib/inventory-stock-resolution";
 import type { Product, RiskPhrase } from "../lib/product-service";
+import bundledProducts from "../assets/data/products.json";
 
 const products: Product[] = [
   {
@@ -185,9 +186,13 @@ describe("parseInventoryOcrResponse", () => {
 
   it("écarte les AMM qui ne contiennent pas exactement sept chiffres", () => {
     const parsed = parseInventoryOcrResponse(
-      JSON.stringify({ containers: [{ productName: "ALPHA PRO", amm: "1234" }] }),
+      JSON.stringify({
+        containers: [{ productName: "ALPHA PRO", amm: "1234" }],
+      }),
     );
-    expect(parsed).toEqual([{ containerIndex: 1, productName: "ALPHA PRO", amm: "" }]);
+    expect(parsed).toEqual([
+      { containerIndex: 1, productName: "ALPHA PRO", amm: "" },
+    ]);
   });
 });
 
@@ -225,15 +230,37 @@ describe("resolveInventoryDetections", () => {
     expect(resolved.reason).toBe("not_found");
   });
 
+  it("signale les AMM concurrentes quand un nom exact est principal sur une fiche et secondaire sur une autre", () => {
+    const [resolved] = resolveInventoryDetections(
+      [{ containerIndex: 1, productName: "FOLY R", amm: "2000380" }],
+      (bundledProducts as Product[]).filter((product) =>
+        ["9900115", "2000380"].includes(product.amm),
+      ),
+      {},
+    );
+
+    expect(resolved.product).toBeNull();
+    expect(resolved.reason).toBe("ambiguous_name");
+    expect(resolved.ambiguousProducts?.map((product) => product.amm)).toEqual([
+      "2000380",
+      "9900115",
+    ]);
+  });
+
   it.each([
-    ["SWITCH", "9600095", "9500568", "SWITCH"],
     ["NIMROD", "7500585", "7600008", "NIMROD"],
     ["POOL", "9600095", "9200383", "KARATE XPRESS"],
   ])(
     "privilégie le nom commercial certain %s face à l’AMM OCR contradictoire",
     (detectedName, contradictoryAmm, expectedAmm, expectedName) => {
       const [resolved] = resolveInventoryDetections(
-        [{ containerIndex: 1, productName: detectedName, amm: contradictoryAmm }],
+        [
+          {
+            containerIndex: 1,
+            productName: detectedName,
+            amm: contradictoryAmm,
+          },
+        ],
         products,
         riskPhrases,
       );
@@ -244,29 +271,36 @@ describe("resolveInventoryDetections", () => {
     },
   );
 
-  it("privilégie SWITCH comme nom commercial principal devant un nom secondaire homonyme", () => {
+  it("signale SWITCH lorsque le nom principal et un nom secondaire homonyme ont deux AMM", () => {
     const [resolved] = resolveInventoryDetections(
       [{ containerIndex: 1, productName: "SWITCH", amm: "" }],
       products,
       riskPhrases,
     );
 
-    expect(resolved.product?.amm).toBe("9500568");
-    expect(resolved.product?.nom).toBe("SWITCH");
+    expect(resolved.product).toBeNull();
+    expect(resolved.reason).toBe("ambiguous_name");
+    expect(resolved.ambiguousProducts?.map((product) => product.amm)).toEqual([
+      "2100169",
+      "9500568",
+    ]);
   });
 
   it.each([
     ["CLOMATE", "2140042"],
     ["SPOTLIGHT PLUS", "2000327"],
-  ])("retient %s quand son nom commercial est lisible sans AMM", (detectedName, amm) => {
-    const [resolved] = resolveInventoryDetections(
-      [{ containerIndex: 1, productName: detectedName, amm: "" }],
-      products,
-      riskPhrases,
-    );
+  ])(
+    "retient %s quand son nom commercial est lisible sans AMM",
+    (detectedName, amm) => {
+      const [resolved] = resolveInventoryDetections(
+        [{ containerIndex: 1, productName: detectedName, amm: "" }],
+        products,
+        riskPhrases,
+      );
 
-    expect(resolved.product?.amm).toBe(amm);
-  });
+      expect(resolved.product?.amm).toBe(amm);
+    },
+  );
 
   it("ne propose aucune fiche quand une AMM contredit une étiquette non exploitable", () => {
     const [resolved] = resolveInventoryDetections(

@@ -30,7 +30,9 @@ export interface ResolvedInventoryDetection {
   /** Produit choisi explicitement par l’utilisateur après une détection incertaine. */
   manuallyCorrected?: boolean;
   /** Une AMM lue contredisait le nom commercial et a donc été écartée. */
-  reason?: "not_found" | "identity_conflict";
+  reason?: "not_found" | "identity_conflict" | "ambiguous_name";
+  /** Fiches à choisir lorsque le nom commercial exact correspond à plusieurs AMM. */
+  ambiguousProducts?: ClassifiedProduct[];
 }
 
 function normalize(value: string): string {
@@ -83,18 +85,45 @@ function getNameMatchScore(product: Product, detectedName: string): number {
   if (secondaryNames.some((name) => name === detected)) return 110;
 
   let score = 0;
-  if (primaryName.length >= 4 && detected.includes(primaryName)) score = Math.max(score, 94);
-  else if (detected.length >= 4 && primaryName.includes(detected)) score = Math.max(score, 88);
+  if (primaryName.length >= 4 && detected.includes(primaryName))
+    score = Math.max(score, 94);
+  else if (detected.length >= 4 && primaryName.includes(detected))
+    score = Math.max(score, 88);
 
   for (const name of secondaryNames) {
-    if (name.length >= 4 && detected.includes(name)) score = Math.max(score, 84);
-    else if (detected.length >= 4 && name.includes(detected)) score = Math.max(score, 80);
+    if (name.length >= 4 && detected.includes(name))
+      score = Math.max(score, 84);
+    else if (detected.length >= 4 && name.includes(detected))
+      score = Math.max(score, 80);
   }
   return score;
 }
 
-function hasSufficientNameMatch(product: Product, detectedName: string): boolean {
+function hasSufficientNameMatch(
+  product: Product,
+  detectedName: string,
+): boolean {
   return getNameMatchScore(product, detectedName) >= 80;
+}
+
+function getExactNameProducts(
+  detectedName: string,
+  products: Product[],
+  riskPhrases: Record<string, RiskPhrase[]>,
+): ClassifiedProduct[] {
+  const normalizedDetectedName = normalize(detectedName);
+  if (!normalizedDetectedName) return [];
+
+  return products
+    .filter((product) => {
+      const names = [
+        product.nom,
+        ...product.nomsSecondaires.split("|").map((name) => name.trim()),
+      ];
+      return names.some((name) => normalize(name) === normalizedDetectedName);
+    })
+    .map((product) => classifyProductWithData(product, riskPhrases))
+    .sort((left, right) => left.amm.localeCompare(right.amm));
 }
 
 function getSingleBestProduct(
@@ -112,9 +141,16 @@ function getSingleBestProduct(
   }
 
   const matches = Array.from(candidatesByAmm.values())
-    .map((product) => ({ product, score: getNameMatchScore(product, detectedName) }))
+    .map((product) => ({
+      product,
+      score: getNameMatchScore(product, detectedName),
+    }))
     .filter(({ score }) => score >= 80)
-    .sort((left, right) => right.score - left.score || left.product.nom.localeCompare(right.product.nom, "fr"));
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        left.product.nom.localeCompare(right.product.nom, "fr"),
+    );
 
   const bestMatch = matches[0];
   if (!bestMatch) return null;
@@ -123,7 +159,11 @@ function getSingleBestProduct(
   // être départagées arbitrairement : le bidon restera « non identifié ».
   const isAmbiguous = matches
     .slice(1)
-    .some((match) => match.score === bestMatch.score && match.product.amm !== bestMatch.product.amm);
+    .some(
+      (match) =>
+        match.score === bestMatch.score &&
+        match.product.amm !== bestMatch.product.amm,
+    );
   return isAmbiguous ? null : bestMatch.product;
 }
 
@@ -138,7 +178,10 @@ function getSingleTrustedNameProduct(
   products: Product[],
   riskPhrases: Record<string, RiskPhrase[]>,
 ): ClassifiedProduct | null {
-  const candidatesByAmm = new Map<string, { product: ClassifiedProduct; score: number }>();
+  const candidatesByAmm = new Map<
+    string,
+    { product: ClassifiedProduct; score: number }
+  >();
 
   for (const term of getSearchTerms(detectedName)) {
     for (const candidate of searchProducts(term, 50, products, riskPhrases)) {
@@ -153,14 +196,20 @@ function getSingleTrustedNameProduct(
   }
 
   const matches = Array.from(candidatesByAmm.values()).sort(
-    (left, right) => right.score - left.score || left.product.nom.localeCompare(right.product.nom, "fr"),
+    (left, right) =>
+      right.score - left.score ||
+      left.product.nom.localeCompare(right.product.nom, "fr"),
   );
   const bestMatch = matches[0];
   if (!bestMatch) return null;
 
   const isAmbiguous = matches
     .slice(1)
-    .some((match) => match.score === bestMatch.score && match.product.amm !== bestMatch.product.amm);
+    .some(
+      (match) =>
+        match.score === bestMatch.score &&
+        match.product.amm !== bestMatch.product.amm,
+    );
   return isAmbiguous ? null : bestMatch.product;
 }
 
@@ -183,13 +232,33 @@ export function resolveInventoryDetections(
       ? products.find((product) => product.amm === amm)
       : undefined;
 
+    const exactNameProducts = getExactNameProducts(
+      detection.productName,
+      products,
+      riskPhrases,
+    );
+    const distinctExactNameProducts = exactNameProducts.filter(
+      (product, index, all) =>
+        all.findIndex((candidate) => candidate.amm === product.amm) === index,
+    );
+    if (distinctExactNameProducts.length > 1) {
+      return {
+        containerIndex: detection.containerIndex,
+        detectedName: detection.productName,
+        detectedAmm: amm,
+        product: null,
+        reason: "ambiguous_name" as const,
+        ambiguousProducts: distinctExactNameProducts,
+      };
+    }
+
     // Une AMM ne peut être utilisée que si elle est lue sur la même étiquette
     // que le nom commercial. Si une AMM voisine est mélangée au bon nom, un nom
     // commercial exact et non ambigu reste plus fiable que ce numéro isolé.
     const ammContradictsName = Boolean(
       exactAmmProduct &&
-        detection.productName.trim() &&
-        !hasSufficientNameMatch(exactAmmProduct, detection.productName),
+      detection.productName.trim() &&
+      !hasSufficientNameMatch(exactAmmProduct, detection.productName),
     );
     if (ammContradictsName) {
       const trustedNameProduct = getSingleTrustedNameProduct(
@@ -247,7 +316,11 @@ export function resolveInventoryDetections(
 
     const emergency = amm
       ? searchEmergencyAuthorizations(authorizations, amm, now)[0]
-      : searchEmergencyAuthorizations(authorizations, detection.productName, now)[0];
+      : searchEmergencyAuthorizations(
+          authorizations,
+          detection.productName,
+          now,
+        )[0];
 
     if (emergency) {
       return {
