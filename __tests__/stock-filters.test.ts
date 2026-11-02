@@ -271,7 +271,7 @@ describe("stock-filters", () => {
     ["Petits fruits", undefined, false],
     ["Fraisier", undefined, true],
     ["Cultures légumières", undefined, true],
-    ["Traitements généraux", undefined, true],
+    ["Traitements généraux", undefined, false],
     ["Cultures légumières", "Sauf fraisier.", false],
     ["Traitements généraux", "Uniquement sur vigne.", false],
     ["Adjuvants", "Uniquement sur petits fruits.", false],

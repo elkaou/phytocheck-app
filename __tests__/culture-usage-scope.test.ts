@@ -18,7 +18,25 @@ describe("portée réglementaire des usages E-Phy du fraisier", () => {
     ]);
   });
 
-  it.each(["Fraisier", "Cultures légumières", "Traitements généraux"])(
+  it.each([
+    "Blé",
+    "Tomate - Aubergine",
+    "Pomme de terre",
+    "Pommier",
+    "Framboisier",
+    "Vigne",
+  ])("ne généralise pas la portée Traitements généraux à %s", (culture) => {
+    expect(getEphyCultureSearchSet(culture)).not.toContain(
+      "Traitements généraux",
+    );
+    expect(
+      createEphyCultureMatcher(culture).matches({
+        culture: "Traitements généraux",
+      }),
+    ).toBe(false);
+  });
+
+  it.each(["Fraisier", "Cultures légumières"])(
     "accepte la portée %s sans restriction de culture",
     (culture) => expect(matcher.matches({ culture })).toBe(true),
   );
@@ -43,6 +61,7 @@ describe("portée réglementaire des usages E-Phy du fraisier", () => {
     "Uniquement sur 'tomate', 'poivron' et 'concombre'.",
     "Pomme de terre: - En plein sur la parcelle traitée.",
     "Arbres fruitiers et vigne: uniquement en inter-rang.",
+    "Intervalle minimum entre les applications : 5 jours.",
   ])("rejette une restriction incompatible : %s", (condition) => {
     expect(
       matcher.matches({ culture: "Traitements généraux", condition }),
@@ -55,7 +74,6 @@ describe("portée réglementaire des usages E-Phy du fraisier", () => {
     "Fraise: - Culture sous abri ou en plein champ.",
     "Uniquement sur 'vigne', fraisier, framboisier. Également sous abri sur fraisier.",
     "Uniquement sur agrumes. Uniquement autorisé sur fraisier sous abri.",
-    "Intervalle minimum entre les applications : 5 jours.",
   ])(
     "conserve la condition compatible sans en changer le contenu : %s",
     (condition) => {
@@ -78,20 +96,11 @@ describe("portée réglementaire des usages E-Phy du fraisier", () => {
     ).toBe(false);
   });
 
-  it("retrouve pour BELOUKHA / EUDICATCH SEVIGNEA le désherbage général et ses conditions propres", () => {
+  it("n'assimile pas le désherbage général de BELOUKHA / EUDICATCH SEVIGNEA à une homologation Fraisier", () => {
     const selected = bundledUsages["2140255"].filter(matcher.matches);
-    const installed = selected.find(
-      (row) =>
-        row.culture === "Traitements généraux" &&
-        row.cible?.includes("Installées"),
+    expect(selected.some((row) => row.culture === "Traitements généraux")).toBe(
+      false,
     );
-    expect(installed).toMatchObject({
-      dose: "16.0",
-      unite: "L/ha",
-      nb_max_appli: "2",
-      dar: "3",
-    });
-    expect(installed?.condition).toContain("5 jours");
     expect(selected.some((row) => row.culture === "Cultures fruitières")).toBe(
       false,
     );

@@ -210,7 +210,6 @@ describe("recherche Fraisier conforme à la portée des usages", () => {
     const result = index.search("Fraisier", "Herbicide");
     expect(result.products.map((p) => p.amm).sort()).toEqual([
       "direct",
-      "general",
       "mixed",
       "vegetables",
     ]);
@@ -223,7 +222,7 @@ describe("recherche Fraisier conforme à la portée des usages", () => {
     expect(index.search("Fraisier", "Fongicide").products).toEqual([]);
   });
 
-  it("retrouve NATUR’NET et EUDICATCH SEVIGNEA par leurs usages légumiers ou généraux, y compris si le cache du PCP omet sa référence", () => {
+  it("retrouve NATUR’NET par son usage légumier mais exclut EUDICATCH SEVIGNEA dont l’usage général n'est pas une homologation Fraisier", () => {
     const selected = (bundledProducts as Product[])
       .filter((p) => ["2140121", "2180075"].includes(p.amm))
       .map((p) => ({ ...p, referenceAmm: undefined }));
@@ -236,7 +235,9 @@ describe("recherche Fraisier conforme à la portée des usages", () => {
     expect(result.products.map((p) => p.matchedName || p.nom)).toContain(
       "NATUR'NET",
     );
-    expect(result.products.map((p) => p.nom)).toContain("EUDICATCH SEVIGNEA");
+    expect(result.products.map((p) => p.nom)).not.toContain(
+      "EUDICATCH SEVIGNEA",
+    );
     expect(realIndex.search("Fraisier", "Fongicide").products).toEqual([]);
   });
 

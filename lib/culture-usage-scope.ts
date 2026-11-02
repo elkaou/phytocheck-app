@@ -14,8 +14,10 @@ export interface CultureScopedUsage {
 /**
  * Portées E-Phy vérifiées : arrêté du 12/04/2021, annexe 1 modifiée en 2025.
  * https://www.legifrance.gouv.fr/loda/id/JORFTEXT000043401456/
- * Fraisier relève des Cultures légumières. Traitements généraux couvre toutes
- * cultures, sous réserve des restrictions de CHAQUE ligne d'usage.
+ * Fraisier relève des Cultures légumières. Une ligne « Traitements généraux »
+ * n'est pas une homologation automatique pour chaque culture : elle doit être
+ * accompagnée d'une portée culturelle explicite lorsqu'elle est utilisée pour
+ * rattacher un usage à une culture précise.
  *
  * Ne pas utiliser cet élargissement pour les décisions temporaires Article 53 :
  * leur propre liste de cultures et leurs conditions doivent rester déterminantes.
@@ -129,6 +131,20 @@ function conditionAllowsStrawberry(usage: CultureScopedUsage): boolean {
   if (header) appendCropScope(header[1]);
 
   if (cropScopes.length > 0 && !cropScopes.some(includesStrawberryScope)) {
+    allowed = false;
+  }
+
+  // « Traitements généraux » n'est pas, à lui seul, une homologation sur
+  // chaque culture. Certaines lignes décrivent seulement une cible générale
+  // (« Cult. installées » ou « Intercultures ») sans préciser le périmètre
+  // cultural. Pour Fraisier, ces lignes doivent être écartées ; seules une
+  // condition explicite (« sur fraisier », « cultures légumières », « toutes
+  // cultures » compatible) peut les rattacher à la culture recherchée.
+  if (
+    normalizeCultureName(usage.culture) ===
+      normalizeCultureName("Traitements généraux") &&
+    cropScopes.length === 0
+  ) {
     allowed = false;
   }
 
