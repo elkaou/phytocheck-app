@@ -805,7 +805,15 @@ export default function SearchScreen() {
                           setCultureQuery(text);
                           setShowCultureSuggestions(true);
                         }}
-                        onFocus={() => void prepareCultureSearch()}
+                        // Les suggestions utilisent immédiatement les libellés légers des
+                        // usages. Ne pas construire ici l'index complet (produits + risques
+                        // + usages) : sur Android, ce calcul bloque le clavier plusieurs
+                        // secondes avant la première proposition.
+                        onFocus={() =>
+                          setShowCultureSuggestions(
+                            Boolean(cultureQuery.trim()),
+                          )
+                        }
                         returnKeyType="search"
                         onSubmitEditing={() => handleCultureSearch()}
                         autoCorrect={false}

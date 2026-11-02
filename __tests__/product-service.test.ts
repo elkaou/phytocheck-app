@@ -26,8 +26,10 @@ describe("product-service", () => {
   });
 
   describe("DB_UPDATE_DATE", () => {
-    it("should return the correct date", () => {
-      expect(DB_UPDATE_DATE).toBe("08/04/2026");
+    it("expose une date de mise à jour au format français", () => {
+      // La date change lors de chaque import E-Phy : ne pas figer ici une
+      // ancienne valeur qui empêcherait de valider les données actualisées.
+      expect(DB_UPDATE_DATE).toMatch(/^\d{2}\/\d{2}\/\d{4}$/);
     });
   });
 
@@ -335,10 +337,7 @@ describe("product-service", () => {
         ),
       ).toEqual(["Adjuvant"]);
       expect(
-        getClassificationLabel(
-          "homologue",
-          "Adjuvant pour bouillie herbicide",
-        ),
+        getClassificationLabel("homologue", "Adjuvant pour bouillie herbicide"),
       ).toBe("Adjuvant non CMR, non toxique");
     });
   });
