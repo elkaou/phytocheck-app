@@ -233,9 +233,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   /**
-   * Vérifie si une recherche est autorisée et incrémente le compteur.
-   * Côté serveur : si le serveur dit "non autorisé", bloque même si le local dit oui.
-   * Mode dégradé (pas de réseau) : se rabat sur le compteur local.
+   * Vérifie la limite locale puis synchronise le décompte avec le serveur.
+   * Une recherche ne doit jamais attendre le réseau : Render ou une connexion
+   * mobile lente ne doivent pas bloquer l'affichage des résultats E-Phy.
    */
   const performSearch = useCallback(async (amount: number = 1): Promise<boolean> => {
     const increment = Number.isFinite(amount) ? Math.max(1, Math.floor(amount)) : 1;
@@ -252,32 +252,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    // Vérification côté serveur (source de vérité)
-    if (deviceId) {
-      try {
-        const result = await incrementSearchMutation.mutateAsync({ deviceId, isPremium, amount: increment });
-        if (!result.allowed) {
-          // Le serveur dit non : bloquer même si le local dit oui
-          setSearchCount(FREE_SEARCH_LIMIT); // Mettre à jour l'affichage local
-          return false;
-        }
-        // Mettre à jour le compteur local avec la valeur serveur
-        if (result.searchCount >= 0) {
-          setSearchCount(result.searchCount);
-          await incrementSearchCount(increment); // Synchroniser local aussi
-        }
-        return true;
-      } catch {
-        // Serveur inaccessible : utiliser la logique locale
-        const newCount = await incrementSearchCount(increment);
-        setSearchCount(newCount);
-        return true;
-      }
-    }
-
-    // Pas de deviceId (web) : logique locale uniquement
+    // Le compteur local est la réponse immédiate pour garder la recherche
+    // réactive. Le serveur reste synchronisé sans être sur le chemin critique.
     const newCount = await incrementSearchCount(increment);
     setSearchCount(newCount);
+
+    if (deviceId) {
+      void incrementSearchMutation
+        .mutateAsync({ deviceId, isPremium, amount: increment })
+        .then((result) => {
+          // Si le serveur possède un compteur déjà plus élevé, afficher la
+          // limite afin que la prochaine recherche respecte sa source de vérité.
+          if (!result.allowed) setSearchCount(FREE_SEARCH_LIMIT);
+        })
+        .catch(() => {
+          // Hors ligne ou serveur temporairement indisponible : le compteur
+          // local a déjà été enregistré, aucune action visible n'est requise.
+        });
+    }
+
     return true;
   }, [isPremium, searchCount, deviceId, incrementSearchMutation]);
 

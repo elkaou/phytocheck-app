@@ -57,7 +57,10 @@ const TYPE_FILTERS = [
   "Acaricide",
 ] as const;
 type TypeFilter = (typeof TYPE_FILTERS)[number];
-const CULTURE_RESULT_PAGE_SIZE = 50;
+// Vingt cartes couvrent largement le premier écran et évitent à Android de
+// créer cinquante vues détaillées avant d'afficher les résultats. Les suivants
+// restent disponibles immédiatement avec « Afficher les produits suivants ».
+const CULTURE_RESULT_PAGE_SIZE = 20;
 
 export default function SearchScreen() {
   const router = useRouter();
