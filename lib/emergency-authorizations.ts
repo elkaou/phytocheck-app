@@ -1,4 +1,5 @@
 import { getCultureSearchSet } from "./culture-aliases";
+import { cultureConditionAllowsSearch } from "./culture-usage-scope";
 
 /**
  * Décision temporaire du ministère délivrée au titre de l'article 53
@@ -24,11 +25,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Les filtres proposés dans la recherche par culture. */
 export type EmergencyAuthorizationOperation =
-  | "Tous"
-  | "Herbicide"
-  | "Fongicide"
-  | "Insecticide"
-  | "Acaricide";
+  "Tous" | "Herbicide" | "Fongicide" | "Insecticide" | "Acaricide";
 
 /**
  * Les décisions ministérielles Article 53 décrivent une finalité (ex. « Mildiou »)
@@ -73,7 +70,11 @@ const PURPOSE_KEYWORDS_BY_OPERATION: Record<
 function parseIsoDay(value: string): Date | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return null;
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const date = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+  );
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -94,15 +95,23 @@ function phraseMatches(source: string, candidate: string): boolean {
   const sourceNormalized = normalize(source);
   const candidateNormalized = normalize(candidate);
   if (!sourceNormalized || !candidateNormalized) return false;
-  if (sourceNormalized.includes(candidateNormalized) || candidateNormalized.includes(sourceNormalized)) {
+  if (
+    sourceNormalized.includes(candidateNormalized) ||
+    candidateNormalized.includes(sourceNormalized)
+  ) {
     return true;
   }
 
   // Les intitulés ministériels regroupent souvent plusieurs cultures séparées par
   // des virgules. Une correspondance par mots significatifs reste plus fiable
   // qu'une comparaison exacte pour « Pêcher - Abricotier » ou « Céréales à paille ».
-  const significantTokens = candidateNormalized.split(" ").filter((token) => token.length >= 4);
-  return significantTokens.length > 0 && significantTokens.every((token) => sourceNormalized.includes(token));
+  const significantTokens = candidateNormalized
+    .split(" ")
+    .filter((token) => token.length >= 4);
+  return (
+    significantTokens.length > 0 &&
+    significantTokens.every((token) => sourceNormalized.includes(token))
+  );
 }
 
 /** Vérifie que la finalité libre d'une décision correspond au filtre demandé. */
@@ -138,13 +147,19 @@ export function getEmergencyAuthorizationDaysRemaining(
 ): number | null {
   const expiresAt = parseIsoDay(authorization.expiresAt);
   if (!expiresAt) return null;
-  return Math.round((expiresAt.getTime() - startOfLocalDay(now).getTime()) / DAY_MS);
+  return Math.round(
+    (expiresAt.getTime() - startOfLocalDay(now).getTime()) / DAY_MS,
+  );
 }
 
 export function formatEmergencyAuthorizationDate(value: string): string {
   const date = parseIsoDay(value);
   return date
-    ? date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })
+    ? date.toLocaleDateString("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
     : value;
 }
 
@@ -154,7 +169,11 @@ export function getEmergencyAuthorizationsForAmm(
   now: Date = new Date(),
 ): EmergencyAuthorization[] {
   return authorizations
-    .filter((authorization) => authorization.amm === amm && isEmergencyAuthorizationActive(authorization, now))
+    .filter(
+      (authorization) =>
+        authorization.amm === amm &&
+        isEmergencyAuthorizationActive(authorization, now),
+    )
     .sort((left, right) => left.expiresAt.localeCompare(right.expiresAt));
 }
 
@@ -179,7 +198,9 @@ export function searchEmergencyAuthorizations(
           normalize(authorization.amm).includes(normalizedQuery)),
     )
     .sort((left, right) => {
-      const byName = left.productName.localeCompare(right.productName, "fr", { sensitivity: "base" });
+      const byName = left.productName.localeCompare(right.productName, "fr", {
+        sensitivity: "base",
+      });
       return byName || left.expiresAt.localeCompare(right.expiresAt);
     });
 }
@@ -200,12 +221,17 @@ export function getEmergencyAuthorizationReminderForAmm(
   const authorization = active[0];
   if (!authorization) return null;
 
-  const daysRemaining = getEmergencyAuthorizationDaysRemaining(authorization, now);
+  const daysRemaining = getEmergencyAuthorizationDaysRemaining(
+    authorization,
+    now,
+  );
   if (daysRemaining === null || daysRemaining < 0) return null;
   return { authorization, daysRemaining, activeDecisionCount: active.length };
 }
 
-export function formatEmergencyAuthorizationRemainingDays(daysRemaining: number): string {
+export function formatEmergencyAuthorizationRemainingDays(
+  daysRemaining: number,
+): string {
   if (daysRemaining <= 0) return "Expire aujourd’hui";
   if (daysRemaining === 1) return "Expire demain";
   return `Expire dans ${daysRemaining} jours`;
@@ -231,7 +257,10 @@ export function getEmergencyAuthorizationsForCulture(
       (authorization) =>
         isEmergencyAuthorizationActive(authorization, referenceDate) &&
         emergencyAuthorizationMatchesOperation(authorization, operation) &&
-        candidates.some((candidate) => phraseMatches(authorization.cultures, candidate)),
+        cultureConditionAllowsSearch(authorization.cultures, culture) &&
+        candidates.some((candidate) =>
+          phraseMatches(authorization.cultures, candidate),
+        ),
     )
     .sort((left, right) => left.expiresAt.localeCompare(right.expiresAt));
 }

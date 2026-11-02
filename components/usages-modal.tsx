@@ -12,11 +12,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ProductUsage } from "@/lib/data-context";
-import {
-  cultureMatchesSearch,
-  getCultureSearchSet,
-  CULTURE_ALIASES,
-} from "@/lib/culture-aliases";
+import { CULTURE_ALIASES, normalizeCultureName } from "@/lib/culture-aliases";
+import { createEphyCultureMatcher } from "@/lib/culture-usage-scope";
 
 interface UsagesModalProps {
   visible: boolean;
@@ -27,16 +24,22 @@ interface UsagesModalProps {
   initialCulture?: string;
 }
 
-export function UsagesModal({ visible, productName, usages, onClose, initialCulture }: UsagesModalProps) {
+export function UsagesModal({
+  visible,
+  productName,
+  usages,
+  onClose,
+  initialCulture,
+}: UsagesModalProps) {
   const [search, setSearch] = useState("");
   const [selectedCible, setSelectedCible] = useState<string | null>(null);
 
   // Usages filtrés par la culture initiale (si fournie)
-  // On utilise getCultureSearchSet pour inclure les alias génériques E-Phy
-  // Ex: "Blé" → cherche aussi "Céréales à paille", "Céréales", "Grandes cultures"
+  // Même portée directionnelle et mêmes restrictions que dans la recherche.
   const cultureFilteredUsages = useMemo(() => {
     if (!initialCulture) return usages;
-    return usages.filter((u) => cultureMatchesSearch(u.culture, initialCulture));
+    const matcher = createEphyCultureMatcher(initialCulture);
+    return usages.filter(matcher.matches);
   }, [usages, initialCulture]);
 
   // Liste des cibles disponibles pour les usages de la culture filtrée
@@ -61,23 +64,17 @@ export function UsagesModal({ visible, productName, usages, onClose, initialCult
     // Si la saisie correspond à une culture connue, on cherche aussi ses alias génériques
     // Ex: taper "Blé" affiche aussi les usages sur "Céréales à paille"
     if (search.trim()) {
-      const q = search.toLowerCase().trim();
-      // Construire l'ensemble des cultures à matcher : la saisie + ses alias
-      // On cherche si la saisie correspond (en partie) à une clé de CULTURE_ALIASES
-      const matchedCultureSet = new Set<string>();
-      Object.entries(CULTURE_ALIASES).forEach(([key, aliases]) => {
-        if (key.toLowerCase().includes(q)) {
-          // La saisie matche une culture connue : inclure la culture et ses alias
-          matchedCultureSet.add(key.toLowerCase());
-          aliases.forEach((a) => matchedCultureSet.add(a.toLowerCase()));
-        }
-      });
+      const q = normalizeCultureName(search);
+      const cultureMatchers = Object.keys(CULTURE_ALIASES)
+        .filter((key) => normalizeCultureName(key).includes(q))
+        .map(createEphyCultureMatcher);
+      cultureMatchers.push(createEphyCultureMatcher(search));
       list = list.filter(
         (u) =>
-          u.culture.toLowerCase().includes(q) ||
-          matchedCultureSet.has(u.culture.toLowerCase().trim()) ||
-          (u.cible ?? "").toLowerCase().includes(q) ||
-          (u.application ?? "").toLowerCase().includes(q)
+          normalizeCultureName(u.culture).includes(q) ||
+          cultureMatchers.some((matcher) => matcher.matches(u)) ||
+          normalizeCultureName(u.cible ?? "").includes(q) ||
+          normalizeCultureName(u.application ?? "").includes(q),
       );
     }
 
@@ -106,7 +103,9 @@ export function UsagesModal({ visible, productName, usages, onClose, initialCult
         {item.dose && item.unite ? (
           <View style={styles.detailChip}>
             <Text style={styles.detailLabel}>Dose</Text>
-            <Text style={styles.detailValue}>{item.dose} {item.unite}</Text>
+            <Text style={styles.detailValue}>
+              {item.dose} {item.unite}
+            </Text>
           </View>
         ) : null}
         {item.dar ? (
@@ -124,7 +123,9 @@ export function UsagesModal({ visible, productName, usages, onClose, initialCult
         {item.znt_aqua ? (
           <View style={[styles.detailChip, styles.zntChip]}>
             <Text style={styles.detailLabel}>ZNT</Text>
-            <Text style={[styles.detailValue, { color: "#0a7ea5" }]}>{item.znt_aqua} m</Text>
+            <Text style={[styles.detailValue, { color: "#0a7ea5" }]}>
+              {item.znt_aqua} m
+            </Text>
           </View>
         ) : null}
       </View>
@@ -157,7 +158,10 @@ export function UsagesModal({ visible, productName, usages, onClose, initialCult
               </Text>
             </View>
             <Pressable
-              style={({ pressed }) => [styles.closeButton, pressed && { opacity: 0.6 }]}
+              style={({ pressed }) => [
+                styles.closeButton,
+                pressed && { opacity: 0.6 },
+              ]}
               onPress={onClose}
             >
               <IconSymbol name="xmark.circle.fill" size={28} color="#687076" />
@@ -173,20 +177,38 @@ export function UsagesModal({ visible, productName, usages, onClose, initialCult
               contentContainerStyle={styles.ciblesContent}
             >
               <Pressable
-                style={[styles.cibleChip, selectedCible === null && styles.cibleChipActive]}
+                style={[
+                  styles.cibleChip,
+                  selectedCible === null && styles.cibleChipActive,
+                ]}
                 onPress={() => setSelectedCible(null)}
               >
-                <Text style={[styles.cibleChipText, selectedCible === null && styles.cibleChipTextActive]}>
+                <Text
+                  style={[
+                    styles.cibleChipText,
+                    selectedCible === null && styles.cibleChipTextActive,
+                  ]}
+                >
                   Toutes
                 </Text>
               </Pressable>
               {availableCibles.map((cible) => (
                 <Pressable
                   key={cible}
-                  style={[styles.cibleChip, selectedCible === cible && styles.cibleChipActive]}
-                  onPress={() => setSelectedCible(selectedCible === cible ? null : cible)}
+                  style={[
+                    styles.cibleChip,
+                    selectedCible === cible && styles.cibleChipActive,
+                  ]}
+                  onPress={() =>
+                    setSelectedCible(selectedCible === cible ? null : cible)
+                  }
                 >
-                  <Text style={[styles.cibleChipText, selectedCible === cible && styles.cibleChipTextActive]}>
+                  <Text
+                    style={[
+                      styles.cibleChipText,
+                      selectedCible === cible && styles.cibleChipTextActive,
+                    ]}
+                  >
                     {cible}
                   </Text>
                 </Pressable>
@@ -210,7 +232,9 @@ export function UsagesModal({ visible, productName, usages, onClose, initialCult
 
           <Text style={styles.counter}>
             {filtered.length} usage{filtered.length > 1 ? "s" : ""}
-            {(search.trim() || selectedCible) ? ` sur ${cultureFilteredUsages.length}` : ""}
+            {search.trim() || selectedCible
+              ? ` sur ${cultureFilteredUsages.length}`
+              : ""}
           </Text>
 
           {/* Liste des usages */}
@@ -221,7 +245,9 @@ export function UsagesModal({ visible, productName, usages, onClose, initialCult
           ) : (
             <FlatList
               data={filtered}
-              keyExtractor={(item, index) => `${item.usage ?? item.culture}-${index}`}
+              keyExtractor={(item, index) =>
+                `${item.usage ?? item.culture}-${index}`
+              }
               renderItem={renderItem}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}

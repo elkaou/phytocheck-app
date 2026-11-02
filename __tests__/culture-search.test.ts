@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { createCultureSearchIndex } from "@/lib/culture-search";
 import type { Product, RiskPhrase } from "@/lib/product-service";
 import type { ProductUsage } from "@/lib/data-context";
+import bundledProducts from "@/assets/data/products.json";
+import bundledUsages from "@/assets/data/usages.json";
 
 const products: Product[] = [
   {
@@ -108,7 +110,8 @@ describe("indexed culture search", () => {
   });
 
   it("applique le filtre de type au premier calcul", () => {
-    const herbicideResults = index.search("Orge", "Herbicide").products;
+    const herbicideSearch = index.search("Orge", "Herbicide");
+    const herbicideResults = herbicideSearch.products;
     expect(herbicideResults.map((product) => product.amm)).toEqual([
       "1000001",
       "1000001",
@@ -120,6 +123,12 @@ describe("indexed culture search", () => {
     expect(
       index.search("Orge", "Fongicide").products.map((product) => product.amm),
     ).toEqual(["1000002"]);
+    // Les cibles sont préparées uniquement pour les AMM effectivement
+    // retournées, ce qui évite des calculs inutiles sur les autres opérations.
+    expect(herbicideSearch.ciblesByAmm.has("1000002")).toBe(false);
+    expect(herbicideSearch.ciblesByAmm.get("1000001")).toEqual([
+      "Adventices annuelles",
+    ]);
   });
 
   it("inclut ALTACOR pour Haricots grâce à l'alias de culture", () => {
@@ -155,5 +164,99 @@ describe("indexed culture search", () => {
         .search("Haricots", "Herbicide")
         .products.map((product) => product.nom),
     ).toContain("SELACTIO");
+  });
+});
+
+describe("recherche Fraisier conforme à la portée des usages", () => {
+  const cropRows: Record<string, ProductUsage[]> = {
+    direct: [{ culture: "Fraisier", cible: "Cible fraisier" }],
+    vegetables: [{ culture: "Cultures légumières", cible: "Cible légumière" }],
+    fruit: [{ culture: "Cultures fruitières", cible: "Cible fruitière" }],
+    berries: [{ culture: "Petits fruits", cible: "Cible petits fruits" }],
+    general: [{ culture: "Traitements généraux", cible: "Cult. Installées" }],
+    restricted: [
+      {
+        culture: "Cultures légumières",
+        cible: "Cible exclue",
+        condition: "Toutes cultures sauf fraisier.",
+      },
+    ],
+    retired: [
+      {
+        culture: "Cultures légumières",
+        cible: "Ancienne cible",
+        etat: "Retrait",
+      },
+    ],
+    mixed: [
+      { culture: "Cultures fruitières", cible: "Fruit exclu" },
+      {
+        culture: "Traitements généraux",
+        cible: "Vigne exclue",
+        condition: "Uniquement sur vigne.",
+      },
+      { culture: "Cultures légumières", cible: "Cible conservée" },
+    ],
+  };
+  const cropProducts: Product[] = Object.keys(cropRows).map((amm) => ({
+    ...products[0],
+    amm,
+    nom: amm,
+    nomsSecondaires: "",
+  }));
+  const index = createCultureSearchIndex(cropProducts, {}, cropRows);
+
+  it("ne conserve que les portées pertinentes et leurs propres cibles", () => {
+    const result = index.search("Fraisier", "Herbicide");
+    expect(result.products.map((p) => p.amm).sort()).toEqual([
+      "direct",
+      "general",
+      "mixed",
+      "vegetables",
+    ]);
+    expect(result.ciblesByAmm.get("mixed")).toEqual(["Cible conservée"]);
+    expect(result.ciblesByAmm.has("restricted")).toBe(false);
+    expect(result.ciblesByAmm.has("retired")).toBe(false);
+  });
+
+  it("ne change pas la fonction : les herbicides ne deviennent pas fongicides", () => {
+    expect(index.search("Fraisier", "Fongicide").products).toEqual([]);
+  });
+
+  it("retrouve NATUR’NET et EUDICATCH SEVIGNEA par leurs usages légumiers ou généraux, y compris si le cache du PCP omet sa référence", () => {
+    const selected = (bundledProducts as Product[])
+      .filter((p) => ["2140121", "2180075"].includes(p.amm))
+      .map((p) => ({ ...p, referenceAmm: undefined }));
+    const realIndex = createCultureSearchIndex(
+      selected,
+      {},
+      bundledUsages as Record<string, ProductUsage[]>,
+    );
+    const result = realIndex.search("Fraisier", "Herbicide");
+    expect(result.products.map((p) => p.matchedName || p.nom)).toContain(
+      "NATUR'NET",
+    );
+    expect(result.products.map((p) => p.nom)).toContain("EUDICATCH SEVIGNEA");
+    expect(realIndex.search("Fraisier", "Fongicide").products).toEqual([]);
+  });
+
+  it("conserve CIDELY TOP et LITTOVIR mais pas les restrictions CL/TG de TRICO et CENTIUM", () => {
+    const expectedAmms = ["2140201", "2160706"];
+    const excludedAmms = ["2120057", "2000299"];
+    const selected = (bundledProducts as Product[]).filter((p) =>
+      [...expectedAmms, ...excludedAmms].includes(p.amm),
+    );
+    const realIndex = createCultureSearchIndex(
+      selected,
+      {},
+      bundledUsages as Record<string, ProductUsage[]>,
+    );
+    const result = realIndex.search("Fraisier", "Tous");
+    expect([...new Set(result.products.map((p) => p.amm))].sort()).toEqual(
+      expectedAmms,
+    );
+    for (const amm of excludedAmms) {
+      expect(result.ciblesByAmm.has(amm)).toBe(false);
+    }
   });
 });

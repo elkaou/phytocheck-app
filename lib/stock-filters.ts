@@ -1,6 +1,9 @@
 import type { ProductUsage } from "./data-context";
 import type { Product, ProductClassification } from "./product-service";
-import { cultureMatchesSearch, getCultureSearchSet } from "./culture-aliases";
+import {
+  createEphyCultureMatcher,
+  type EphyCultureMatcher,
+} from "./culture-usage-scope";
 import { getUsagesForAmm, getUsagesForProduct } from "./product-usages";
 
 export type StockFunctionFilter =
@@ -73,16 +76,9 @@ function usageMatchesFarmCulture(
   usage: ProductUsage,
   farmCulture: string,
 ): boolean {
-  if (cultureMatchesSearch(usage.culture, farmCulture)) return true;
-
-  // Pour certaines rubriques génériques E-Phy, notamment « Adjuvants »,
-  // les cultures autorisées sont indiquées dans la condition réglementaire.
-  if (!GENERIC_USAGE_CULTURES.has(normalize(usage.culture))) return false;
-  if (!usage.condition?.trim()) return false;
-
-  const normalizedCondition = normalize(usage.condition);
-  return [...getCultureSearchSet(farmCulture)].some((candidate) =>
-    normalizedCondition.includes(normalize(candidate)),
+  return usageMatchesCultureMatcher(
+    usage,
+    createStockCultureMatcher([farmCulture]),
   );
 }
 
@@ -94,32 +90,44 @@ function usageMatchesFarmCulture(
  */
 export interface StockCultureMatcher {
   normalizedCultures: ReadonlySet<string>;
+  usageMatchers: readonly EphyCultureMatcher[];
 }
 
 export function createStockCultureMatcher(
   farmCultures: string[],
 ): StockCultureMatcher {
   const normalizedCultures = new Set<string>();
-  farmCultures.forEach((farmCulture) => {
-    getCultureSearchSet(farmCulture).forEach((candidate) => {
-      normalizedCultures.add(normalize(candidate));
+  const usageMatchers = farmCultures.map(createEphyCultureMatcher);
+  usageMatchers.forEach((matcher) => {
+    matcher.normalizedCultures.forEach((candidate) => {
+      normalizedCultures.add(candidate);
     });
   });
-  return { normalizedCultures };
+  return { normalizedCultures, usageMatchers };
 }
 
 function usageMatchesCultureMatcher(
   usage: ProductUsage,
   matcher: StockCultureMatcher,
 ): boolean {
-  if (matcher.normalizedCultures.has(normalize(usage.culture))) return true;
+  if (
+    matcher.normalizedCultures.has(normalize(usage.culture)) &&
+    matcher.usageMatchers.some((cultureMatcher) =>
+      cultureMatcher.matches(usage),
+    )
+  )
+    return true;
 
   if (!GENERIC_USAGE_CULTURES.has(normalize(usage.culture))) return false;
   if (!usage.condition?.trim()) return false;
 
   const normalizedCondition = normalize(usage.condition);
-  return [...matcher.normalizedCultures].some((culture) =>
-    normalizedCondition.includes(culture),
+  return matcher.usageMatchers.some(
+    (cultureMatcher) =>
+      cultureMatcher.allowsCondition(usage) &&
+      [...cultureMatcher.normalizedCultures].some((culture) =>
+        normalizedCondition.includes(culture),
+      ),
   );
 }
 
@@ -200,8 +208,9 @@ export function isStockProductOutsideFarmCultures(
   ).filter((usage) => usage.culture?.trim());
   if (productUsages.length === 0) return false;
 
-  return !farmCultures.some((farmCulture) =>
-    productUsages.some((usage) => usageMatchesFarmCulture(usage, farmCulture)),
+  const matcher = createStockCultureMatcher(farmCultures);
+  return !productUsages.some((usage) =>
+    usageMatchesCultureMatcher(usage, matcher),
   );
 }
 

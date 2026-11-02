@@ -265,4 +265,68 @@ describe("stock-filters", () => {
       isStockProductOutsideFarmCultures("2140227", ["Prairies"], fullMaxUsages),
     ).toBe(true);
   });
+
+  it.each([
+    ["Cultures fruitières", undefined, false],
+    ["Petits fruits", undefined, false],
+    ["Fraisier", undefined, true],
+    ["Cultures légumières", undefined, true],
+    ["Traitements généraux", undefined, true],
+    ["Cultures légumières", "Sauf fraisier.", false],
+    ["Traitements généraux", "Uniquement sur vigne.", false],
+    ["Adjuvants", "Uniquement sur petits fruits.", false],
+    ["Adjuvants", "Uniquement sur cultures légumières.", true],
+    ["Adjuvants", "Uniquement sur cultures légumières, sauf fraisier.", false],
+  ] as const)(
+    "applique la même portée Fraisier dans le stock, les alertes et l’index : %s / %s",
+    (culture, condition, expected) => {
+      const scopedUsages = { [product.amm]: [{ culture, condition }] };
+      const filters = { ...EMPTY_STOCK_FILTERS, cultures: ["Fraisier"] };
+      const item = {
+        amm: product.amm,
+        classification: "homologue",
+        fonctions: "Herbicide",
+        product,
+      };
+      const map = new Map([[product.amm, product]]);
+      expect(
+        stockProductMatchesFilters(item, filters, map, scopedUsages, new Set()),
+      ).toBe(expected);
+      expect(
+        stockProductMatchesFilters(
+          item,
+          filters,
+          map,
+          scopedUsages,
+          new Set(),
+          createStockCultureMatcher(filters.cultures),
+        ),
+      ).toBe(expected);
+      expect(
+        isStockProductOutsideFarmCultures(product, ["Fraisier"], scopedUsages),
+      ).toBe(!expected);
+    },
+  );
+
+  it("n'exclut pas un produit de l'exploitation si son usage correspond à une autre culture déclarée", () => {
+    const scopedUsages = {
+      [product.amm]: [
+        { culture: "Traitements généraux", condition: "Uniquement sur vigne." },
+      ],
+    };
+    // Le comportement des autres cultures n'est pas élargi à Traitements généraux.
+    const vineyardUsages = {
+      [product.amm]: [
+        ...scopedUsages[product.amm],
+        { culture: "Vigne", condition: "" },
+      ],
+    };
+    expect(
+      isStockProductOutsideFarmCultures(
+        product,
+        ["Fraisier", "Vigne"],
+        vineyardUsages,
+      ),
+    ).toBe(false);
+  });
 });

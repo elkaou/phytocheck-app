@@ -41,70 +41,161 @@ const altacorAuthorization: EmergencyAuthorization = {
 
 describe("emergency authorizations", () => {
   it("considère la délivrance et l'échéance comme des jours inclusifs", () => {
-    expect(isEmergencyAuthorizationActive(authorization, new Date(2026, 8, 22))).toBe(false);
-    expect(isEmergencyAuthorizationActive(authorization, new Date(2026, 8, 23))).toBe(true);
-    expect(isEmergencyAuthorizationActive(authorization, new Date(2027, 0, 21))).toBe(true);
-    expect(isEmergencyAuthorizationActive(authorization, new Date(2027, 0, 22))).toBe(false);
-    expect(getEmergencyAuthorizationDaysRemaining(authorization, new Date(2027, 0, 21))).toBe(0);
+    expect(
+      isEmergencyAuthorizationActive(authorization, new Date(2026, 8, 22)),
+    ).toBe(false);
+    expect(
+      isEmergencyAuthorizationActive(authorization, new Date(2026, 8, 23)),
+    ).toBe(true);
+    expect(
+      isEmergencyAuthorizationActive(authorization, new Date(2027, 0, 21)),
+    ).toBe(true);
+    expect(
+      isEmergencyAuthorizationActive(authorization, new Date(2027, 0, 22)),
+    ).toBe(false);
+    expect(
+      getEmergencyAuthorizationDaysRemaining(
+        authorization,
+        new Date(2027, 0, 21),
+      ),
+    ).toBe(0);
   });
 
   it("trouve une décision par AMM uniquement pendant sa période de validité", () => {
-    expect(getEmergencyAuthorizationsForAmm([authorization], "2260551", new Date(2026, 9, 2))).toEqual([
-      authorization,
-    ]);
-    expect(getEmergencyAuthorizationsForAmm([authorization], "2260551", new Date(2027, 1, 1))).toEqual([]);
+    expect(
+      getEmergencyAuthorizationsForAmm(
+        [authorization],
+        "2260551",
+        new Date(2026, 9, 2),
+      ),
+    ).toEqual([authorization]);
+    expect(
+      getEmergencyAuthorizationsForAmm(
+        [authorization],
+        "2260551",
+        new Date(2027, 1, 1),
+      ),
+    ).toEqual([]);
   });
 
   it("trouve AVADEX FACTOR par nom partiel ou AMM dans la recherche manuelle", () => {
     const now = new Date(2026, 9, 2);
 
-    expect(searchEmergencyAuthorizations([authorization], "avadex", now)).toEqual([authorization]);
-    expect(searchEmergencyAuthorizations([authorization], "factor", now)).toEqual([authorization]);
-    expect(searchEmergencyAuthorizations([authorization], "2260551", now)).toEqual([authorization]);
-    expect(searchEmergencyAuthorizations([authorization], "av", now)).toEqual([authorization]);
-    expect(searchEmergencyAuthorizations([authorization], "x", now)).toEqual([]);
+    expect(
+      searchEmergencyAuthorizations([authorization], "avadex", now),
+    ).toEqual([authorization]);
+    expect(
+      searchEmergencyAuthorizations([authorization], "factor", now),
+    ).toEqual([authorization]);
+    expect(
+      searchEmergencyAuthorizations([authorization], "2260551", now),
+    ).toEqual([authorization]);
+    expect(searchEmergencyAuthorizations([authorization], "av", now)).toEqual([
+      authorization,
+    ]);
+    expect(searchEmergencyAuthorizations([authorization], "x", now)).toEqual(
+      [],
+    );
   });
 
   it("n'affiche plus une décision retirée de la publication ministérielle", () => {
-    const historical = { ...authorization, sourceStatus: "historical" as const };
+    const historical = {
+      ...authorization,
+      sourceStatus: "historical" as const,
+    };
 
-    expect(isEmergencyAuthorizationActive(historical, new Date(2026, 9, 2))).toBe(false);
-    expect(getEmergencyAuthorizationsForAmm([historical], "2260551", new Date(2026, 9, 2))).toEqual([]);
+    expect(
+      isEmergencyAuthorizationActive(historical, new Date(2026, 9, 2)),
+    ).toBe(false);
+    expect(
+      getEmergencyAuthorizationsForAmm(
+        [historical],
+        "2260551",
+        new Date(2026, 9, 2),
+      ),
+    ).toEqual([]);
   });
 
   it("trouve les cultures détaillées et leurs alias E-Phy", () => {
-    expect(getEmergencyAuthorizationsForCulture([authorization], "Blé", new Date(2026, 9, 2))).toEqual([
-      authorization,
-    ]);
-    expect(getEmergencyAuthorizationsForCulture([authorization], "Orge", new Date(2026, 9, 2))).toEqual([
-      authorization,
-    ]);
-    expect(getEmergencyAuthorizationsForCulture([authorization], "Vigne", new Date(2026, 9, 2))).toEqual([]);
+    expect(
+      getEmergencyAuthorizationsForCulture(
+        [authorization],
+        "Blé",
+        new Date(2026, 9, 2),
+      ),
+    ).toEqual([authorization]);
+    expect(
+      getEmergencyAuthorizationsForCulture(
+        [authorization],
+        "Orge",
+        new Date(2026, 9, 2),
+      ),
+    ).toEqual([authorization]);
+    expect(
+      getEmergencyAuthorizationsForCulture(
+        [authorization],
+        "Vigne",
+        new Date(2026, 9, 2),
+      ),
+    ).toEqual([]);
   });
 
   it("applique le filtre d’opération aux décisions Article 53", () => {
     const now = new Date(2026, 9, 2);
 
-    expect(getEmergencyAuthorizationsForCulture([authorization], "Orge", "Herbicide", now)).toEqual([
-      authorization,
-    ]);
-    expect(getEmergencyAuthorizationsForCulture([authorization], "Orge", "Fongicide", now)).toEqual([]);
-    expect(getEmergencyAuthorizationsForCulture([authorization], "Orge", "Insecticide", now)).toEqual([]);
+    expect(
+      getEmergencyAuthorizationsForCulture(
+        [authorization],
+        "Orge",
+        "Herbicide",
+        now,
+      ),
+    ).toEqual([authorization]);
+    expect(
+      getEmergencyAuthorizationsForCulture(
+        [authorization],
+        "Orge",
+        "Fongicide",
+        now,
+      ),
+    ).toEqual([]);
+    expect(
+      getEmergencyAuthorizationsForCulture(
+        [authorization],
+        "Orge",
+        "Insecticide",
+        now,
+      ),
+    ).toEqual([]);
   });
 
   it("reconnaît ALTACOR pour Haricots puis Insecticide", () => {
     const now = new Date(2026, 9, 2);
 
     expect(
-      getEmergencyAuthorizationsForCulture([altacorAuthorization], "Haricots", "Insecticide", now),
+      getEmergencyAuthorizationsForCulture(
+        [altacorAuthorization],
+        "Haricots",
+        "Insecticide",
+        now,
+      ),
     ).toEqual([altacorAuthorization]);
     expect(
-      getEmergencyAuthorizationsForCulture([altacorAuthorization], "Haricots", "Fongicide", now),
+      getEmergencyAuthorizationsForCulture(
+        [altacorAuthorization],
+        "Haricots",
+        "Fongicide",
+        now,
+      ),
     ).toEqual([]);
   });
 
   it("fournit un rappel permanent avec l’échéance la plus proche", () => {
-    const later = { ...authorization, id: "article53-test-later", expiresAt: "2027-01-30" };
+    const later = {
+      ...authorization,
+      id: "article53-test-later",
+      expiresAt: "2027-01-30",
+    };
     const reminder = getEmergencyAuthorizationReminderForAmm(
       [later, authorization],
       "2260551",
@@ -116,8 +207,37 @@ describe("emergency authorizations", () => {
       daysRemaining: 1,
       activeDecisionCount: 2,
     });
-    expect(formatEmergencyAuthorizationRemainingDays(reminder!.daysRemaining)).toBe("Expire demain");
-    expect(formatEmergencyAuthorizationRemainingDays(0)).toBe("Expire aujourd’hui");
-    expect(formatEmergencyAuthorizationRemainingDays(12)).toBe("Expire dans 12 jours");
+    expect(
+      formatEmergencyAuthorizationRemainingDays(reminder!.daysRemaining),
+    ).toBe("Expire demain");
+    expect(formatEmergencyAuthorizationRemainingDays(0)).toBe(
+      "Expire aujourd’hui",
+    );
+    expect(formatEmergencyAuthorizationRemainingDays(12)).toBe(
+      "Expire dans 12 jours",
+    );
   });
+
+  it.each([
+    ["Fraisier", true],
+    ["Cultures légumières", true],
+    ["Petits fruits", false],
+    ["Cultures fruitières", false],
+    ["Cultures légumières sauf fraisier", false],
+    ["Petits fruits et fraisier", true],
+    ["Traitements généraux", false],
+  ])(
+    "ne déduit pas une décision Fraisier d’un mauvais groupe : %s",
+    (cultures, expected) => {
+      const decision = { ...authorization, cultures };
+      expect(
+        getEmergencyAuthorizationsForCulture(
+          [decision],
+          "Fraisier",
+          "Herbicide",
+          new Date(2026, 9, 2),
+        ).length > 0,
+      ).toBe(expected);
+    },
+  );
 });
