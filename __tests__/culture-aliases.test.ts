@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   cultureMatchesSearch,
   getCultureSearchSet,
+  getCultureSuggestions,
   normalizeCultureName,
 } from "@/lib/culture-aliases";
 
@@ -52,5 +53,27 @@ describe("culture aliases", () => {
     expect(cultureMatchesSearch("Petits fruits", "Framboisier")).toBe(true);
     expect(cultureMatchesSearch("Petits fruits", "Cassissier")).toBe(true);
     expect(cultureMatchesSearch("Cultures fruitières", "Pommier")).toBe(true);
+  });
+
+  it("propose Groseille via Cassissier et Pissenlit via les Chicorées à chicons", () => {
+    const cultures = [
+      "Cassissier",
+      "Chicorées - Production de chicons",
+      "Cultures fruitières",
+    ];
+
+    expect(getCultureSuggestions("groseille", cultures)).toContainEqual({
+      value: "Cassissier",
+      label: "Groseille → Cassissier",
+    });
+    expect(getCultureSuggestions("pissenlit", cultures)).toContainEqual({
+      value: "Chicorées - Production de chicons",
+      label: "Pissenlit → Chicorées - Production de chicons",
+    });
+  });
+
+  it("ne rattache pas Groseillier ou Pissenlit au Fraisier", () => {
+    expect(cultureMatchesSearch("Fraisier", "Groseillier")).toBe(false);
+    expect(cultureMatchesSearch("Fraisier", "Pissenlit")).toBe(false);
   });
 });
