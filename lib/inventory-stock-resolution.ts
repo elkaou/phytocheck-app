@@ -106,22 +106,37 @@ function hasSufficientNameMatch(
   return getNameMatchScore(product, detectedName) >= 80;
 }
 
+type ExactNameIndex = Map<string, Product[]>;
+
+function createExactNameIndex(products: Product[]): ExactNameIndex {
+  const index: ExactNameIndex = new Map();
+  for (const product of products) {
+    const names = [
+      product.nom,
+      ...product.nomsSecondaires.split("|").map((name) => name.trim()),
+    ];
+    for (const name of names) {
+      const normalizedName = normalize(name);
+      if (!normalizedName) continue;
+      const matches = index.get(normalizedName) ?? [];
+      if (!matches.some((candidate) => candidate.amm === product.amm)) {
+        matches.push(product);
+        index.set(normalizedName, matches);
+      }
+    }
+  }
+  return index;
+}
+
 function getExactNameProducts(
   detectedName: string,
-  products: Product[],
+  exactNameIndex: ExactNameIndex,
   riskPhrases: Record<string, RiskPhrase[]>,
 ): ClassifiedProduct[] {
   const normalizedDetectedName = normalize(detectedName);
   if (!normalizedDetectedName) return [];
 
-  return products
-    .filter((product) => {
-      const names = [
-        product.nom,
-        ...product.nomsSecondaires.split("|").map((name) => name.trim()),
-      ];
-      return names.some((name) => normalize(name) === normalizedDetectedName);
-    })
+  return (exactNameIndex.get(normalizedDetectedName) ?? [])
     .map((product) => classifyProductWithData(product, riskPhrases))
     .sort((left, right) => left.amm.localeCompare(right.amm));
 }
@@ -226,6 +241,8 @@ export function resolveInventoryDetections(
   authorizations: EmergencyAuthorization[] = [],
   now: Date = new Date(),
 ): ResolvedInventoryDetection[] {
+  const exactNameIndex = createExactNameIndex(products);
+
   return detections.map((detection) => {
     const amm = detection.amm.replace(/\D/g, "");
     const exactAmmProduct = amm
@@ -234,7 +251,7 @@ export function resolveInventoryDetections(
 
     const exactNameProducts = getExactNameProducts(
       detection.productName,
-      products,
+      exactNameIndex,
       riskPhrases,
     );
     const distinctExactNameProducts = exactNameProducts.filter(
@@ -261,11 +278,13 @@ export function resolveInventoryDetections(
       !hasSufficientNameMatch(exactAmmProduct, detection.productName),
     );
     if (ammContradictsName) {
-      const trustedNameProduct = getSingleTrustedNameProduct(
-        detection.productName,
-        products,
-        riskPhrases,
-      );
+      const trustedNameProduct =
+        distinctExactNameProducts[0] ??
+        getSingleTrustedNameProduct(
+          detection.productName,
+          products,
+          riskPhrases,
+        );
       if (trustedNameProduct) {
         const detectedName = normalize(detection.productName);
         const secondaryName = trustedNameProduct.nomsSecondaires
@@ -294,9 +313,10 @@ export function resolveInventoryDetections(
 
     const product = exactAmmProduct
       ? classifyProductWithData(exactAmmProduct, riskPhrases)
-      : detection.productName.trim()
-        ? getSingleBestProduct(detection.productName, products, riskPhrases)
-        : null;
+      : (distinctExactNameProducts[0] ??
+        (detection.productName.trim()
+          ? getSingleBestProduct(detection.productName, products, riskPhrases)
+          : null));
 
     if (product) {
       const detectedName = normalize(detection.productName);

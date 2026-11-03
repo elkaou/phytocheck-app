@@ -599,6 +599,11 @@ export default function InventoryScanScreen() {
             data={detections}
             keyExtractor={(item) => String(item.containerIndex)}
             renderItem={renderDetection}
+            initialNumToRender={4}
+            maxToRenderPerBatch={4}
+            windowSize={5}
+            removeClippedSubviews
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.resultsContent}
             ListHeaderComponent={
               <View style={styles.resultsHeader}>
