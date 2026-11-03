@@ -612,7 +612,13 @@ export default function InventoryScanScreen() {
         </View>
       );
     },
-    [addedContainers, selectAmbiguousProduct, stock],
+    [
+      addedContainers,
+      expandedAmbiguousContainers,
+      selectAmbiguousProduct,
+      stock,
+      toggleAmbiguousContainer,
+    ],
   );
 
   const hasResults = detections.length > 0;
