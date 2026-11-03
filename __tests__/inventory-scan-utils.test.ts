@@ -41,23 +41,64 @@ const automatic: ResolvedInventoryDetection = {
   product,
 };
 
+const folyProduct = {
+  ...product,
+  amm: "9900115",
+  nom: "CENTURION R",
+  nomsSecondaires: "BALISTIK | ISOR | NOROIT | FOLY R | ZARVOX 120",
+} as ClassifiedProduct;
+
 describe("inventory scan utilities", () => {
   it("compte uniquement les bidons identifiés automatiquement", () => {
-    const corrected = applyManualInventoryCorrection([unresolved], 1, product)[0];
-    expect(countAutomaticInventorySearches([automatic, unresolved, corrected])).toBe(1);
+    const corrected = applyManualInventoryCorrection(
+      [unresolved],
+      1,
+      product,
+    )[0];
+    expect(
+      countAutomaticInventorySearches([automatic, unresolved, corrected]),
+    ).toBe(1);
   });
 
   it("rattache le produit choisi à un bidon initialement ambigu sans le rendre facturable", () => {
-    const [corrected] = applyManualInventoryCorrection([unresolved], 1, product);
+    const [corrected] = applyManualInventoryCorrection(
+      [unresolved],
+      1,
+      product,
+    );
 
     expect(corrected.product?.amm).toBe("1234567");
     expect(corrected.manuallyCorrected).toBe(true);
     expect(corrected.reason).toBeUndefined();
   });
 
+  it("conserve le nom lu FOLY'R après le choix explicite de CENTURION R", () => {
+    const corrected = applyManualInventoryCorrection(
+      [
+        {
+          containerIndex: 3,
+          detectedName: "FOLY'R",
+          detectedAmm: "2000380",
+          product: null,
+          reason: "ambiguous_name",
+        },
+      ],
+      3,
+      folyProduct,
+    )[0];
+
+    expect(corrected.product?.amm).toBe("9900115");
+    expect(corrected.stockDisplayName).toBe("FOLY'R");
+    expect(corrected.manuallyCorrected).toBe(true);
+  });
+
   it("explique le décompte par bidon et les corrections gratuites", () => {
     expect(getInventorySearchChargeNotice(4, false)).toContain("4 recherches");
-    expect(getInventorySearchChargeNotice(4, false)).toContain("corrigés manuellement ne sont pas décomptés");
-    expect(getInventorySearchChargeNotice(Infinity, true)).toContain("recherches illimitées");
+    expect(getInventorySearchChargeNotice(4, false)).toContain(
+      "corrigés manuellement ne sont pas décomptés",
+    );
+    expect(getInventorySearchChargeNotice(Infinity, true)).toContain(
+      "recherches illimitées",
+    );
   });
 });

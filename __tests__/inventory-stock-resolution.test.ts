@@ -206,7 +206,7 @@ describe("resolveInventoryDetections", () => {
 
     expect(resolved.product?.amm).toBe("1234567");
     expect(resolved.product?.nom).toBe("GLOBUS");
-    expect(resolved.stockDisplayName).toBe("RACKAM");
+    expect(resolved.stockDisplayName).toBe("Rackam");
   });
 
   it("retient une seule fiche quand le nom commercial est exact", () => {

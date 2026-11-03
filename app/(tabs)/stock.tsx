@@ -390,7 +390,12 @@ export default function StockScreen() {
           usages,
           withdrawalAmms,
           cultureMatcher,
-        ) && stockItemMatchesSearch(item, stockSearchQuery)
+        ) &&
+        stockItemMatchesSearch(
+          item,
+          stockSearchQuery,
+          productsByAmm.get(item.amm),
+        )
       );
     });
     return [...filtered].sort((a, b) => {

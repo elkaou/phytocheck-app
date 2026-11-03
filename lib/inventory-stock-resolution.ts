@@ -111,27 +111,31 @@ function hasSufficientNameMatch(
  * alias secondaire exact ou à son préfixe non ambigu (ex. VELMERI pour
  * l'alias catalogue VELMERI 500 WG). L'AMM reste la référence réglementaire.
  */
-function getStockDisplayName(
+/**
+ * Retourne le nom commercial validé à conserver dans le stock. Le libellé OCR
+ * est conservé tel quel dès qu'il correspond au nom principal ou à un alias
+ * secondaire de la fiche choisie, afin de ne pas remplacer FOLY'R par le nom
+ * principal CENTURION R après une sélection manuelle d'AMM.
+ */
+export function getStockDisplayName(
   product: Product,
   detectedName: string,
 ): string | undefined {
   const detected = normalize(detectedName);
   if (!detected) return undefined;
-  const matchedSecondaryName = product.nomsSecondaires
-    .split("|")
-    .map((name) => name.trim())
-    .find((name) => {
-      const normalized = normalize(name);
-      return (
-        normalized === detected ||
-        normalized.startsWith(`${detected} `) ||
-        detected.startsWith(`${normalized} `)
-      );
-    });
-  if (!matchedSecondaryName) return undefined;
-  return normalize(matchedSecondaryName) === detected
-    ? matchedSecondaryName
-    : detectedName.trim();
+  const commercialNames = [
+    product.nom,
+    ...product.nomsSecondaires.split("|").map((name) => name.trim()),
+  ].filter(Boolean);
+  const matches = commercialNames.some((name) => {
+    const normalized = normalize(name);
+    return (
+      normalized === detected ||
+      normalized.startsWith(`${detected} `) ||
+      detected.startsWith(`${normalized} `)
+    );
+  });
+  return matches ? detectedName.trim() : undefined;
 }
 
 type ExactNameIndex = Map<string, Product[]>;

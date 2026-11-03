@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeStockSearchTerm, stockItemMatchesSearch } from "@/lib/stock-search";
+import {
+  normalizeStockSearchTerm,
+  stockItemMatchesSearch,
+} from "@/lib/stock-search";
 import type { StockItem } from "@/lib/store";
 
 const item: StockItem = {
@@ -30,5 +33,19 @@ describe("recherche locale du stock", () => {
   it("ne masque aucun produit lorsque la recherche est vide", () => {
     expect(stockItemMatchesSearch(item, "   ")).toBe(true);
     expect(stockItemMatchesSearch(item, "inexistant")).toBe(false);
+  });
+
+  it("retrouve un ancien stock par un alias catalogue non mémorisé", () => {
+    expect(
+      stockItemMatchesSearch(
+        { ...item, amm: "9900115", nom: "CENTURION R", secondaryName: "" },
+        "FOLY",
+        {
+          amm: "9900115",
+          nom: "CENTURION R",
+          nomsSecondaires: "BALISTIK | FOLY R",
+        } as any,
+      ),
+    ).toBe(true);
   });
 });
