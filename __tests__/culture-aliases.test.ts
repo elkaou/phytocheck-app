@@ -76,4 +76,25 @@ describe("culture aliases", () => {
     expect(cultureMatchesSearch("Fraisier", "Groseillier")).toBe(false);
     expect(cultureMatchesSearch("Fraisier", "Pissenlit")).toBe(false);
   });
+
+  it("applique les regroupements des grandes cultures du catalogue", () => {
+    expect(cultureMatchesSearch("Crucifères oléagineuses", "Lin")).toBe(true);
+    expect(cultureMatchesSearch("Crucifères oléagineuses", "Chanvre")).toBe(
+      true,
+    );
+    expect(cultureMatchesSearch("Grandes cultures", "Sorgho")).toBe(true);
+    expect(cultureMatchesSearch("Grandes cultures", "Maïs doux")).toBe(false);
+    expect(cultureMatchesSearch("Cultures légumières", "Maïs doux")).toBe(true);
+  });
+
+  it("complète les cultures légumières et fruitières du catalogue", () => {
+    expect(cultureMatchesSearch("Cultures légumières", "Champignon")).toBe(
+      true,
+    );
+    expect(cultureMatchesSearch("Choux", "Chou-rave")).toBe(true);
+    expect(cultureMatchesSearch("Cultures fruitières", "Châtaignier")).toBe(
+      true,
+    );
+    expect(cultureMatchesSearch("Cultures fruitières", "Grenadier")).toBe(true);
+  });
 });
