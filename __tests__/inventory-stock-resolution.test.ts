@@ -302,6 +302,31 @@ describe("resolveInventoryDetections", () => {
     },
   );
 
+  it("conserve VELMERI comme nom de stock quand l’AMM correspond à ALAKAZAM 500 WG", () => {
+    const [resolved] = resolveInventoryDetections(
+      [{ containerIndex: 1, productName: "VELMERI", amm: "2220043" }],
+      [
+        {
+          amm: "2220043",
+          nom: "ALAKAZAM 500 WG",
+          nomsSecondaires: "VELMERI 500 WG | TERAVANT",
+          titulaire: "JT AGRO Ltd",
+          gammeUsage: "Professionnel",
+          substancesActives: "flonicamide 500.0 g/kg",
+          fonctions: "Insecticide",
+          formulation: "WG",
+          etat: "AUTORISE",
+          dateRetrait: "",
+          dateAutorisation: "28/02/2022",
+        },
+      ],
+      riskPhrases,
+    );
+
+    expect(resolved.product?.amm).toBe("2220043");
+    expect(resolved.stockDisplayName).toBe("VELMERI");
+  });
+
   it("ne propose aucune fiche quand une AMM contredit une étiquette non exploitable", () => {
     const [resolved] = resolveInventoryDetections(
       [{ containerIndex: 1, productName: "TEXTE FLOU", amm: "9500568" }],

@@ -55,7 +55,8 @@ export async function addToStock(
         return "unit_mismatch";
       }
       // Increment quantity
-      stock[existingIndex].quantite = (stock[existingIndex].quantite || 1) + quantity;
+      stock[existingIndex].quantite =
+        (stock[existingIndex].quantite || 1) + quantity;
       // Une AMM peut avoir plusieurs noms commerciaux. Conserver le nom
       // effectivement choisi afin que les recherches par matière active ne
       // marquent pas tous les alias comme étant en stock.
@@ -91,12 +92,19 @@ export async function addToStock(
 }
 
 // Update quantity for a stock item
-export async function updateStockQuantity(amm: string, quantity: number): Promise<boolean> {
+export async function updateStockQuantity(
+  amm: string,
+  quantity: number,
+  secondaryName?: string,
+): Promise<boolean> {
   try {
     const stock = await getStock();
     const index = stock.findIndex((item) => item.amm === amm);
     if (index < 0) return false;
     stock[index].quantite = Math.max(0, quantity);
+    if (secondaryName?.trim()) {
+      stock[index].secondaryName = secondaryName.trim();
+    }
     if (stock[index].quantite === 0) {
       stock.splice(index, 1);
     }
@@ -146,9 +154,13 @@ export async function getSearchCount(): Promise<number> {
 }
 
 // Increment search count. Une recherche multiple peut compter plusieurs bidons identifiés.
-export async function incrementSearchCount(amount: number = 1): Promise<number> {
+export async function incrementSearchCount(
+  amount: number = 1,
+): Promise<number> {
   const count = await getSearchCount();
-  const increment = Number.isFinite(amount) ? Math.max(0, Math.floor(amount)) : 0;
+  const increment = Number.isFinite(amount)
+    ? Math.max(0, Math.floor(amount))
+    : 0;
   const newCount = count + increment;
   await AsyncStorage.setItem(STORAGE_KEYS.SEARCH_COUNT, String(newCount));
   return newCount;
@@ -200,6 +212,7 @@ export async function getStockStats(): Promise<StockStats> {
     homologues: stock.filter((i) => i.classification === "homologue").length,
     ppnu: stock.filter((i) => i.classification === "retire").length,
     cmr: stock.filter((i) => i.classification === "homologue_cmr").length,
-    toxiques: stock.filter((i) => i.classification === "homologue_toxique").length,
+    toxiques: stock.filter((i) => i.classification === "homologue_toxique")
+      .length,
   };
 }

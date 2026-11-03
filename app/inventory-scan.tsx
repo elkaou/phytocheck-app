@@ -59,6 +59,8 @@ export default function InventoryScanScreen() {
   const [manualCorrectionDetection, setManualCorrectionDetection] =
     useState<ResolvedInventoryDetection | null>(null);
   const [addedContainers, setAddedContainers] = useState<number[]>([]);
+  const [expandedAmbiguousContainers, setExpandedAmbiguousContainers] =
+    useState<number[]>([]);
 
   const resolvedCount = useMemo(
     () => detections.filter((detection) => detection.product).length,
@@ -102,14 +104,23 @@ export default function InventoryScanScreen() {
         });
 
         setStatusText("Identification des bidons visibles...");
-        const result = await analyzeMutation.mutateAsync({
+        const request = {
           imageUrl: `data:image/jpeg;base64,${base64}`,
-        });
+        };
+        let result = await analyzeMutation.mutateAsync(request);
+
+        // Une réponse vide peut être un échec ponctuel du modèle ou du réseau,
+        // et ne signifie pas forcément que la photo est floue. Une seule seconde
+        // tentative évite de renvoyer immédiatement l’utilisateur vers la caméra.
+        if (!result.success || result.data.containers.length === 0) {
+          setStatusText("Nouvelle tentative de lecture de la photo...");
+          result = await analyzeMutation.mutateAsync(request);
+        }
 
         if (!result.success || result.data.containers.length === 0) {
           Alert.alert(
-            "Aucun bidon identifié",
-            "Aucun nom commercial ou numéro AMM suffisamment lisible n’a été trouvé. Rapprochez-vous des étagères et prenez une photo plus nette.",
+            "Lecture non concluante",
+            "La reconnaissance automatique n’a pas abouti cette fois-ci. Cela ne signifie pas nécessairement que la photo est floue : réessayez ou utilisez la recherche manuelle.",
           );
           return;
         }
@@ -143,6 +154,7 @@ export default function InventoryScanScreen() {
 
         setDetections(resolved);
         setAddedContainers([]);
+        setExpandedAmbiguousContainers([]);
       } catch (error: any) {
         const message = String(error?.message || error || "").toLowerCase();
         Alert.alert(
@@ -263,6 +275,7 @@ export default function InventoryScanScreen() {
         const updated = await updateProductQuantity(
           detection.product.amm,
           quantity,
+          detection.stockDisplayName,
         );
         if (!updated) {
           Alert.alert(
@@ -357,6 +370,14 @@ export default function InventoryScanScreen() {
     [],
   );
 
+  const toggleAmbiguousContainer = useCallback((containerIndex: number) => {
+    setExpandedAmbiguousContainers((current) =>
+      current.includes(containerIndex)
+        ? current.filter((index) => index !== containerIndex)
+        : [...current, containerIndex],
+    );
+  }, []);
+
   const renderDetection = useCallback(
     ({ item }: { item: ResolvedInventoryDetection }) => {
       const isAdded = addedContainers.includes(item.containerIndex);
@@ -382,42 +403,73 @@ export default function InventoryScanScreen() {
                 Ce nom commercial exact correspond à plusieurs fiches
                 réglementaires. Sélectionnez l’AMM qui figure sur votre produit.
               </Text>
-              {item.ambiguousProducts.map((product) => {
-                const status = getInventoryRegulatoryStatus(product);
-                return (
-                  <Pressable
-                    key={product.amm}
-                    onPress={() => selectAmbiguousProduct(item, product)}
-                    style={({ pressed }) => [
-                      styles.ambiguousOption,
-                      pressed && { opacity: 0.75 },
-                    ]}
-                  >
-                    <View style={styles.ambiguousOptionHeader}>
-                      <Text style={styles.ambiguousOptionTitle}>
-                        AMM {product.amm}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.ambiguousOptionStatus,
-                          { color: status.color },
-                        ]}
-                      >
-                        {status.label}
-                      </Text>
-                    </View>
-                    <Text style={styles.ambiguousOptionName}>
-                      {product.nom}
-                      {product.nomsSecondaires
-                        ? ` · ${product.nomsSecondaires}`
-                        : ""}
+              {item.ambiguousProducts.length >= 2 ? (
+                <Pressable
+                  onPress={() => toggleAmbiguousContainer(item.containerIndex)}
+                  style={({ pressed }) => [
+                    styles.ambiguousDropdown,
+                    pressed && { opacity: 0.75 },
+                  ]}
+                >
+                  <View style={styles.ambiguousDropdownCopy}>
+                    <Text style={styles.ambiguousDropdownTitle}>
+                      Choisir parmi {item.ambiguousProducts.length} fiches
+                      réglementaires
                     </Text>
-                    <Text style={styles.ambiguousOptionAction}>
-                      Choisir cette fiche
+                    <Text style={styles.ambiguousDropdownHint}>
+                      {expandedAmbiguousContainers.includes(item.containerIndex)
+                        ? "Masquer les choix"
+                        : "Afficher les AMM disponibles"}
                     </Text>
-                  </Pressable>
-                );
-              })}
+                  </View>
+                  <IconSymbol
+                    name={
+                      expandedAmbiguousContainers.includes(item.containerIndex)
+                        ? "chevron.up"
+                        : "chevron.down"
+                    }
+                    size={23}
+                    color="#0A7EA5"
+                  />
+                </Pressable>
+              ) : null}
+              {expandedAmbiguousContainers.includes(item.containerIndex) &&
+                item.ambiguousProducts.map((product) => {
+                  const status = getInventoryRegulatoryStatus(product);
+                  return (
+                    <Pressable
+                      key={product.amm}
+                      onPress={() => selectAmbiguousProduct(item, product)}
+                      style={({ pressed }) => [
+                        styles.ambiguousOption,
+                        pressed && { opacity: 0.75 },
+                      ]}
+                    >
+                      <View style={styles.ambiguousOptionHeader}>
+                        <Text style={styles.ambiguousOptionTitle}>
+                          AMM {product.amm}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.ambiguousOptionStatus,
+                            { color: status.color },
+                          ]}
+                        >
+                          {status.label}
+                        </Text>
+                      </View>
+                      <Text style={styles.ambiguousOptionName}>
+                        {product.nom}
+                        {product.nomsSecondaires
+                          ? ` · ${product.nomsSecondaires}`
+                          : ""}
+                      </Text>
+                      <Text style={styles.ambiguousOptionAction}>
+                        Choisir cette fiche
+                      </Text>
+                    </Pressable>
+                  );
+                })}
             </View>
           );
         }
@@ -836,6 +888,20 @@ const styles = StyleSheet.create({
   },
   unresolvedCard: { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" },
   ambiguousCard: { backgroundColor: "#FFF7ED", borderColor: "#FDBA74" },
+  ambiguousDropdown: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#7DD3FC",
+    borderRadius: 10,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  ambiguousDropdownCopy: { flex: 1, gap: 2 },
+  ambiguousDropdownTitle: { color: "#0A7EA5", fontSize: 15, fontWeight: "700" },
+  ambiguousDropdownHint: { color: "#64748B", fontSize: 12, lineHeight: 17 },
   cardHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
   cardTitle: { color: "#374151", fontSize: 14, fontWeight: "700" },
   productName: {

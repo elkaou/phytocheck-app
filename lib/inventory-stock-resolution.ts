@@ -106,6 +106,34 @@ function hasSufficientNameMatch(
   return getNameMatchScore(product, detectedName) >= 80;
 }
 
+/**
+ * Retourne le libellé réellement lu sur l'étiquette lorsqu'il correspond à un
+ * alias secondaire exact ou à son préfixe non ambigu (ex. VELMERI pour
+ * l'alias catalogue VELMERI 500 WG). L'AMM reste la référence réglementaire.
+ */
+function getStockDisplayName(
+  product: Product,
+  detectedName: string,
+): string | undefined {
+  const detected = normalize(detectedName);
+  if (!detected) return undefined;
+  const matchedSecondaryName = product.nomsSecondaires
+    .split("|")
+    .map((name) => name.trim())
+    .find((name) => {
+      const normalized = normalize(name);
+      return (
+        normalized === detected ||
+        normalized.startsWith(`${detected} `) ||
+        detected.startsWith(`${normalized} `)
+      );
+    });
+  if (!matchedSecondaryName) return undefined;
+  return normalize(matchedSecondaryName) === detected
+    ? matchedSecondaryName
+    : detectedName.trim();
+}
+
 type ExactNameIndex = Map<string, Product[]>;
 
 function createExactNameIndex(products: Product[]): ExactNameIndex {
@@ -286,11 +314,10 @@ export function resolveInventoryDetections(
           riskPhrases,
         );
       if (trustedNameProduct) {
-        const detectedName = normalize(detection.productName);
-        const secondaryName = trustedNameProduct.nomsSecondaires
-          .split("|")
-          .map((name) => name.trim())
-          .find((name) => normalize(name) === detectedName);
+        const secondaryName = getStockDisplayName(
+          trustedNameProduct,
+          detection.productName,
+        );
 
         return {
           containerIndex: detection.containerIndex,
@@ -319,11 +346,7 @@ export function resolveInventoryDetections(
           : null));
 
     if (product) {
-      const detectedName = normalize(detection.productName);
-      const secondaryName = product.nomsSecondaires
-        .split("|")
-        .map((name) => name.trim())
-        .find((name) => normalize(name) === detectedName);
+      const secondaryName = getStockDisplayName(product, detection.productName);
 
       return {
         containerIndex: detection.containerIndex,

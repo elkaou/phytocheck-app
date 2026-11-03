@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import { Platform } from "react-native";
 import * as Application from "expo-application";
 import * as SecureStore from "expo-secure-store";
@@ -38,9 +45,18 @@ interface AppContextType {
   remainingSearches: number;
   stockLimit: number;
   deviceId: string | null;
-  addProductToStock: (product: ClassifiedProduct, quantity?: number, unite?: "L" | "Kg", secondaryName?: string) => Promise<"added" | "incremented" | "unit_mismatch" | "limit" | "error">;
+  addProductToStock: (
+    product: ClassifiedProduct,
+    quantity?: number,
+    unite?: "L" | "Kg",
+    secondaryName?: string,
+  ) => Promise<"added" | "incremented" | "unit_mismatch" | "limit" | "error">;
   removeProductFromStock: (amm: string) => Promise<boolean>;
-  updateProductQuantity: (amm: string, quantity: number) => Promise<boolean>;
+  updateProductQuantity: (
+    amm: string,
+    quantity: number,
+    secondaryName?: string,
+  ) => Promise<boolean>;
   isProductInStock: (amm: string) => boolean;
   getProductQuantity: (amm: string) => number;
   performSearch: (amount?: number) => Promise<boolean>;
@@ -134,7 +150,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // pas un statut Premium déjà enregistré en base. C'est IAPProvider qui est
           // responsable de la vérification réelle via getAvailablePurchases() et qui
           // appellera setPremium(true/false) avec allowDowngrade:true si l'abonnement a expiré.
-          const result = await syncDeviceMutation.mutateAsync({ deviceId: id, isPremium: false, allowDowngrade: false });
+          const result = await syncDeviceMutation.mutateAsync({
+            deviceId: id,
+            isPremium: false,
+            allowDowngrade: false,
+          });
           if (!result.offline) {
             // Utiliser le compteur serveur (plus fiable que le local)
             setSearchCount(result.searchCount);
@@ -150,7 +170,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setSearchCount(sc);
       }
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const refreshStock = useCallback(async () => {
@@ -161,25 +181,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addProductToStock = useCallback(
-    async (product: ClassifiedProduct, quantity: number = 1, unite: "L" | "Kg" = "L", secondaryName?: string): Promise<"added" | "incremented" | "unit_mismatch" | "limit" | "error"> => {
+    async (
+      product: ClassifiedProduct,
+      quantity: number = 1,
+      unite: "L" | "Kg" = "L",
+      secondaryName?: string,
+    ): Promise<
+      "added" | "incremented" | "unit_mismatch" | "limit" | "error"
+    > => {
       const result = await addToStock(product, quantity, unite, secondaryName);
       if (result === "added" || result === "incremented") {
         await refreshStock();
       }
       return result;
     },
-    [refreshStock]
+    [refreshStock],
   );
 
   const updateProductQuantity = useCallback(
-    async (amm: string, quantity: number): Promise<boolean> => {
-      const success = await updateStockQuantity(amm, quantity);
+    async (
+      amm: string,
+      quantity: number,
+      secondaryName?: string,
+    ): Promise<boolean> => {
+      const success = await updateStockQuantity(amm, quantity, secondaryName);
       if (success) {
         await refreshStock();
       }
       return success;
     },
-    [refreshStock]
+    [refreshStock],
   );
 
   const checkStockRegulatoryStatus = useCallback(
@@ -199,9 +230,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const checkStockEmergencyAuthorizations = useCallback(
-    async (authorizations: EmergencyAuthorization[]): Promise<StockEmergencyAuthorizationChange[]> => {
+    async (
+      authorizations: EmergencyAuthorization[],
+    ): Promise<StockEmergencyAuthorizationChange[]> => {
       const storedStock = await getStock();
-      return checkSavedStockEmergencyAuthorizations(storedStock, authorizations);
+      return checkSavedStockEmergencyAuthorizations(
+        storedStock,
+        authorizations,
+      );
     },
     [],
   );
@@ -211,7 +247,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const item = stock.find((i) => i.amm === amm);
       return item?.quantite || 0;
     },
-    [stock]
+    [stock],
   );
 
   const removeProductFromStock = useCallback(
@@ -222,14 +258,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return success;
     },
-    [refreshStock]
+    [refreshStock],
   );
 
   const isProductInStock = useCallback(
     (amm: string): boolean => {
       return stock.some((item) => item.amm === amm);
     },
-    [stock]
+    [stock],
   );
 
   /**
@@ -237,57 +273,69 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    * Une recherche ne doit jamais attendre le réseau : Render ou une connexion
    * mobile lente ne doivent pas bloquer l'affichage des résultats E-Phy.
    */
-  const performSearch = useCallback(async (amount: number = 1): Promise<boolean> => {
-    const increment = Number.isFinite(amount) ? Math.max(1, Math.floor(amount)) : 1;
-    // Premium : toujours autorisé
-    if (isPremium) {
-      // Incrémenter quand même côté local pour cohérence
+  const performSearch = useCallback(
+    async (amount: number = 1): Promise<boolean> => {
+      const increment = Number.isFinite(amount)
+        ? Math.max(1, Math.floor(amount))
+        : 1;
+      // Premium : toujours autorisé
+      if (isPremium) {
+        // Incrémenter quand même côté local pour cohérence
+        const newCount = await incrementSearchCount(increment);
+        setSearchCount(newCount);
+        return true;
+      }
+
+      // Vérification locale d'abord (réponse instantanée)
+      if (searchCount + increment > FREE_SEARCH_LIMIT) {
+        return false;
+      }
+
+      // Le compteur local est la réponse immédiate pour garder la recherche
+      // réactive. Le serveur reste synchronisé sans être sur le chemin critique.
       const newCount = await incrementSearchCount(increment);
       setSearchCount(newCount);
-      return true;
-    }
 
-    // Vérification locale d'abord (réponse instantanée)
-    if (searchCount + increment > FREE_SEARCH_LIMIT) {
-      return false;
-    }
-
-    // Le compteur local est la réponse immédiate pour garder la recherche
-    // réactive. Le serveur reste synchronisé sans être sur le chemin critique.
-    const newCount = await incrementSearchCount(increment);
-    setSearchCount(newCount);
-
-    if (deviceId) {
-      void incrementSearchMutation
-        .mutateAsync({ deviceId, isPremium, amount: increment })
-        .then((result) => {
-          // Si le serveur possède un compteur déjà plus élevé, afficher la
-          // limite afin que la prochaine recherche respecte sa source de vérité.
-          if (!result.allowed) setSearchCount(FREE_SEARCH_LIMIT);
-        })
-        .catch(() => {
-          // Hors ligne ou serveur temporairement indisponible : le compteur
-          // local a déjà été enregistré, aucune action visible n'est requise.
-        });
-    }
-
-    return true;
-  }, [isPremium, searchCount, deviceId, incrementSearchMutation]);
-
-  const setPremium = useCallback(async (value: boolean) => {
-    await setIsPremiumStorage(value);
-    setIsPremiumState(value);
-    // Synchroniser le statut Premium avec le serveur.
-    // allowDowngrade: true car c'est IAPProvider qui appelle setPremium après vérification
-    // réelle de l'abonnement — il peut donc rétrograder true→false si l'abonnement a expiré.
-    if (deviceId) {
-      try {
-        await syncDeviceMutation.mutateAsync({ deviceId, isPremium: value, allowDowngrade: true });
-      } catch {
-        // Ignorer les erreurs réseau
+      if (deviceId) {
+        void incrementSearchMutation
+          .mutateAsync({ deviceId, isPremium, amount: increment })
+          .then((result) => {
+            // Si le serveur possède un compteur déjà plus élevé, afficher la
+            // limite afin que la prochaine recherche respecte sa source de vérité.
+            if (!result.allowed) setSearchCount(FREE_SEARCH_LIMIT);
+          })
+          .catch(() => {
+            // Hors ligne ou serveur temporairement indisponible : le compteur
+            // local a déjà été enregistré, aucune action visible n'est requise.
+          });
       }
-    }
-  }, [deviceId, syncDeviceMutation]);
+
+      return true;
+    },
+    [isPremium, searchCount, deviceId, incrementSearchMutation],
+  );
+
+  const setPremium = useCallback(
+    async (value: boolean) => {
+      await setIsPremiumStorage(value);
+      setIsPremiumState(value);
+      // Synchroniser le statut Premium avec le serveur.
+      // allowDowngrade: true car c'est IAPProvider qui appelle setPremium après vérification
+      // réelle de l'abonnement — il peut donc rétrograder true→false si l'abonnement a expiré.
+      if (deviceId) {
+        try {
+          await syncDeviceMutation.mutateAsync({
+            deviceId,
+            isPremium: value,
+            allowDowngrade: true,
+          });
+        } catch {
+          // Ignorer les erreurs réseau
+        }
+      }
+    },
+    [deviceId, syncDeviceMutation],
+  );
 
   return (
     <AppContext.Provider
