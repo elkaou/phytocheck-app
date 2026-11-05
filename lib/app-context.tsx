@@ -118,6 +118,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [searchCount, setSearchCount] = useState(0);
   const searchCountRef = useRef(0);
+  const counterReadyRef = useRef(false);
+  const counterReadyPromiseRef = useRef<Promise<void> | null>(null);
   const [isPremium, setIsPremiumState] = useState(false);
   const [deviceId, setDeviceId] = useState<string | null>(null);
 
@@ -132,7 +134,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Load initial data + synchronisation appareil au démarrage
   useEffect(() => {
-    (async () => {
+    const initializeCounter = async () => {
       const [s, sc, ip] = await Promise.all([
         getStock(),
         getSearchCount(),
@@ -195,7 +197,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         searchCountRef.current = Math.max(0, sc);
         setSearchCount(sc);
       }
-    })();
+      counterReadyRef.current = true;
+    };
+
+    counterReadyPromiseRef.current = initializeCounter().catch(() => {
+      // En cas d'erreur inattendue, le compteur local reste utilisable.
+      counterReadyRef.current = true;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -301,6 +309,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    */
   const performSearch = useCallback(
     async (amount: number = 1): Promise<boolean> => {
+      // Ne jamais lancer une recherche pendant que la synchronisation initiale
+      // peut encore remplacer le compteur local avec une valeur Render
+      // obsolète. C'était la cause du saut à 0 restante après une seule
+      // recherche effectuée juste après l'ouverture de l'application.
+      if (!counterReadyRef.current && counterReadyPromiseRef.current) {
+        await counterReadyPromiseRef.current;
+      }
       const increment = Number.isFinite(amount)
         ? Math.max(1, Math.floor(amount))
         : 1;

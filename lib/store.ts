@@ -153,6 +153,19 @@ export async function getSearchCount(): Promise<number> {
   }
 }
 
+/** Remet le compteur à zéro pour l'aperçu Web de développement uniquement. */
+export async function resetSearchCount(): Promise<void> {
+  await AsyncStorage.setItem(STORAGE_KEYS.SEARCH_COUNT, "0");
+}
+
+/** Remplace le compteur local par la valeur de référence du serveur. */
+export async function setSearchCountValue(count: number): Promise<void> {
+  const normalized = Number.isFinite(count)
+    ? Math.max(0, Math.floor(count))
+    : 0;
+  await AsyncStorage.setItem(STORAGE_KEYS.SEARCH_COUNT, String(normalized));
+}
+
 // Increment search count. Une recherche multiple peut compter plusieurs bidons identifiés.
 export async function incrementSearchCount(
   amount: number = 1,
