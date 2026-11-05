@@ -16,6 +16,8 @@ import {
   updateStockQuantity,
   replaceStock,
   getSearchCount,
+  resetSearchCount,
+  setSearchCountValue,
   incrementSearchCount,
   getIsPremium,
   setIsPremium as setIsPremiumStorage,
@@ -60,6 +62,7 @@ interface AppContextType {
   isProductInStock: (amm: string) => boolean;
   getProductQuantity: (amm: string) => number;
   performSearch: (amount?: number) => Promise<boolean>;
+  resetDevelopmentSearchCount: () => Promise<void>;
   setPremium: (value: boolean) => Promise<void>;
   refreshStock: () => Promise<void>;
   checkStockRegulatoryStatus: (
@@ -114,6 +117,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toxiques: 0,
   });
   const [searchCount, setSearchCount] = useState(0);
+  const searchCountRef = useRef(0);
   const [isPremium, setIsPremiumState] = useState(false);
   const [deviceId, setDeviceId] = useState<string | null>(null);
 
@@ -139,6 +143,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const stats = await getStockStats();
       setStockStats(stats);
 
+      // L'aperçu Web de développement doit toujours rester testable. Les builds
+      // Android/iOS et les environnements de production conservent le compteur
+      // normal, synchronisé avec l'appareil et le serveur.
+      const isDevelopmentPreview =
+        Platform.OS === "web" && process.env.NODE_ENV !== "production";
+      if (isDevelopmentPreview) {
+        await resetSearchCount();
+        searchCountRef.current = 0;
+        setSearchCount(0);
+        return;
+      }
+
       // Récupérer l'identifiant appareil
       const id = await getDeviceId();
       setDeviceId(id);
@@ -156,17 +172,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             allowDowngrade: false,
           });
           if (!result.offline) {
-            // Utiliser le compteur serveur (plus fiable que le local)
-            setSearchCount(result.searchCount);
+            // Render est la référence au démarrage. Cela répare aussi un
+            // ancien compteur local bloqué à 20 après un précédent bug.
+            const serverCount = Math.min(
+              FREE_SEARCH_LIMIT,
+              Math.max(0, result.searchCount),
+            );
+            searchCountRef.current = serverCount;
+            await setSearchCountValue(serverCount);
+            setSearchCount(serverCount);
           } else {
             // Mode offline : utiliser le compteur local
+            searchCountRef.current = Math.max(0, sc);
             setSearchCount(sc);
           }
         } catch {
           // Serveur inaccessible : utiliser le compteur local
+          searchCountRef.current = Math.max(0, sc);
           setSearchCount(sc);
         }
       } else {
+        searchCountRef.current = Math.max(0, sc);
         setSearchCount(sc);
       }
     })();
@@ -282,27 +308,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (isPremium) {
         // Incrémenter quand même côté local pour cohérence
         const newCount = await incrementSearchCount(increment);
+        searchCountRef.current = newCount;
         setSearchCount(newCount);
         return true;
       }
 
       // Vérification locale d'abord (réponse instantanée)
-      if (searchCount + increment > FREE_SEARCH_LIMIT) {
+      const currentCount = searchCountRef.current;
+      if (currentCount + increment > FREE_SEARCH_LIMIT) {
         return false;
       }
 
       // Le compteur local est la réponse immédiate pour garder la recherche
       // réactive. Le serveur reste synchronisé sans être sur le chemin critique.
       const newCount = await incrementSearchCount(increment);
+      searchCountRef.current = newCount;
       setSearchCount(newCount);
 
       if (deviceId) {
         void incrementSearchMutation
           .mutateAsync({ deviceId, isPremium, amount: increment })
           .then((result) => {
-            // Si le serveur possède un compteur déjà plus élevé, afficher la
-            // limite afin que la prochaine recherche respecte sa source de vérité.
-            if (!result.allowed) setSearchCount(FREE_SEARCH_LIMIT);
+            // Le serveur peut refuser l'incrément si son compteur est déjà
+            // supérieur au compteur local (par exemple après une recherche
+            // effectuée sur un autre écran ou une synchronisation retardée).
+            // Dans ce cas, utiliser le compteur réellement renvoyé par le
+            // serveur. Ne jamais remplacer arbitrairement ce compteur par la
+            // limite : cela affichait « 0 restante » alors que Render pouvait
+            // encore être à 12 recherches utilisées.
+            if (result.allowed && Number.isFinite(result.searchCount)) {
+              const serverCount = Math.max(0, result.searchCount);
+              // Pour une recherche unique, Render doit confirmer exactement
+              // la nouvelle valeur locale. Une valeur beaucoup plus élevée
+              // est un retour obsolète ou lié à un autre état d'appareil et
+              // ne doit pas afficher « 0 restante ».
+              if (serverCount === searchCountRef.current) {
+                void setSearchCountValue(serverCount);
+                setSearchCount(serverCount);
+              }
+            }
           })
           .catch(() => {
             // Hors ligne ou serveur temporairement indisponible : le compteur
@@ -312,7 +356,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       return true;
     },
-    [isPremium, searchCount, deviceId, incrementSearchMutation],
+    [isPremium, deviceId, incrementSearchMutation],
   );
 
   const setPremium = useCallback(
@@ -337,6 +381,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [deviceId, syncDeviceMutation],
   );
 
+  const resetDevelopmentSearchCount = useCallback(async () => {
+    if (Platform.OS !== "web" || process.env.NODE_ENV === "production") return;
+    await resetSearchCount();
+    searchCountRef.current = 0;
+    setSearchCount(0);
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -355,6 +406,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isProductInStock,
         getProductQuantity,
         performSearch,
+        resetDevelopmentSearchCount,
         setPremium,
         refreshStock,
       }}
