@@ -149,7 +149,7 @@ const riskPhrases: Record<string, RiskPhrase[]> = riskPhrasesData as Record<
 
 // Total count
 export const TOTAL_PRODUCTS = products.length;
-export const DB_UPDATE_DATE = "02/11/2026";
+export const DB_UPDATE_DATE = "05/11/2026";
 
 // Détermine si un produit est retiré, en se basant sur le champ etat
 // OU sur la dateRetrait si etat est vide (cas du CSV E-Phy où la colonne peut être absente)
