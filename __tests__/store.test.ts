@@ -23,6 +23,7 @@ import {
   removeFromStock,
   isInStock,
   getSearchCount,
+  resetSearchCount,
   incrementSearchCount,
   getRemainingSearches,
   canSearch,
@@ -34,7 +35,10 @@ import {
 } from "../lib/store";
 import type { ClassifiedProduct } from "../lib/product-service";
 
-function makeProduct(amm: string, classification = "homologue"): ClassifiedProduct {
+function makeProduct(
+  amm: string,
+  classification = "homologue",
+): ClassifiedProduct {
   return {
     amm,
     nom: `Produit ${amm}`,
@@ -197,6 +201,13 @@ describe("store", () => {
       expect(await getRemainingSearches()).toBe(FREE_SEARCH_LIMIT);
       await incrementSearchCount();
       expect(await getRemainingSearches()).toBe(FREE_SEARCH_LIMIT - 1);
+    });
+
+    it("should reset the local counter for development previews", async () => {
+      await incrementSearchCount(5);
+      await resetSearchCount();
+      expect(await getSearchCount()).toBe(0);
+      expect(await getRemainingSearches()).toBe(FREE_SEARCH_LIMIT);
     });
 
     it("should block searches after limit", async () => {

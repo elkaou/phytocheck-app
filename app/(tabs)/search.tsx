@@ -15,6 +15,7 @@ import {
   Alert,
   ActivityIndicator,
   Keyboard,
+  Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -38,6 +39,11 @@ import {
   type CultureSuggestion,
 } from "@/lib/culture-aliases";
 import { createCultureSearchIndex } from "@/lib/culture-search";
+import {
+  getBeeWarningForAmm,
+  getBeeWarningLabel,
+  type BeeWarningLevel,
+} from "@/lib/bee-restrictions";
 import { createDeferredCultureSearchIndex } from "@/lib/deferred-culture-search";
 import { prepareCultureFilterInteraction } from "@/lib/culture-filter-interaction";
 import { getCultureSearchLoadingDescription } from "@/lib/culture-search-loading";
@@ -65,7 +71,13 @@ const CULTURE_RESULT_PAGE_SIZE = 20;
 export default function SearchScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string; q?: string }>();
-  const { remainingSearches, isPremium, performSearch, stock } = useApp();
+  const {
+    remainingSearches,
+    isPremium,
+    performSearch,
+    resetDevelopmentSearchCount,
+    stock,
+  } = useApp();
   const {
     products: dynamicProducts,
     riskPhrases: dynamicRiskPhrases,
@@ -85,6 +97,7 @@ export default function SearchScreen() {
   // Les recherches commencent par les produits homologués. Le bouton permet
   // ensuite de réafficher les produits retirés à la demande.
   const [filterHomologues, setFilterHomologues] = useState(true);
+  const [retiredFallbackActive, setRetiredFallbackActive] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
   // --- États recherche par culture ---
@@ -97,9 +110,19 @@ export default function SearchScreen() {
   const [cultureCiblesByAmm, setCultureCiblesByAmm] = useState<
     ReadonlyMap<string, readonly string[]>
   >(new Map());
+  const [cultureBeeRestrictedAmms, setCultureBeeRestrictedAmms] = useState<
+    ReadonlySet<string>
+  >(new Set());
+  const [cultureBeeWarningsByAmm, setCultureBeeWarningsByAmm] = useState<
+    ReadonlyMap<string, BeeWarningLevel>
+  >(new Map());
   const [visibleCultureResultCount, setVisibleCultureResultCount] = useState(
     CULTURE_RESULT_PAGE_SIZE,
   );
+  const [developmentCounterReset, setDevelopmentCounterReset] = useState(false);
+
+  const isDevelopmentPreview =
+    Platform.OS === "web" && process.env.NODE_ENV !== "production";
 
   const scrollViewRef = useRef<ScrollView>(null);
   const resultsRef = useRef<View>(null);
@@ -178,6 +201,16 @@ export default function SearchScreen() {
     return sortProductsWithStockItemsFirst(statusFiltered, stock);
   }, [filterHomologues, results, searchType, stock]);
 
+  const displayedManualResults = useMemo(() => {
+    if (searchType === "culture" || !retiredFallbackActive) {
+      return filteredResults;
+    }
+    return sortProductsWithStockItemsFirst(
+      filterHomologatedProducts(results, true),
+      stock,
+    );
+  }, [filteredResults, retiredFallbackActive, results, searchType, stock]);
+
   const sortedCibleFilteredResults = useMemo(
     () => sortProductsWithStockItemsFirst(cibleFilteredResults, stock),
     [cibleFilteredResults, stock],
@@ -255,6 +288,7 @@ export default function SearchScreen() {
     (cultureName: string, typeFilter: TypeFilter) => {
       setIsSearching(true);
       setSearchType("culture");
+      setRetiredFallbackActive(false);
       setSelectedCible(null); // Réinitialiser le filtre cible à chaque nouvelle recherche
       setVisibleCultureResultCount(CULTURE_RESULT_PAGE_SIZE);
       const requestId = ++cultureSearchRequestId.current;
@@ -267,6 +301,8 @@ export default function SearchScreen() {
 
         setResults(found.products);
         setCultureCiblesByAmm(found.ciblesByAmm);
+        setCultureBeeRestrictedAmms(found.beeRestrictedAmms);
+        setCultureBeeWarningsByAmm(found.beeWarningsByAmm);
         setHasSearched(true);
         setIsSearching(false);
 
@@ -357,6 +393,7 @@ export default function SearchScreen() {
     (searchQuery: string, type: "name" | "substance" = "name") => {
       setIsSearching(true);
       setSearchType(type);
+      setRetiredFallbackActive(false);
       setTimeout(() => {
         const found =
           type === "substance"
@@ -372,7 +409,11 @@ export default function SearchScreen() {
                 dynamicProducts,
                 dynamicRiskPhrases,
               );
+        const homologatedFound = filterHomologatedProducts(found, false);
         setResults(found);
+        setRetiredFallbackActive(
+          filterHomologues && found.length > 0 && homologatedFound.length === 0,
+        );
         setHasSearched(true);
         setIsSearching(false);
 
@@ -417,6 +458,7 @@ export default function SearchScreen() {
         setResults([]);
         setHasSearched(false);
         setFilterHomologues(true);
+        setRetiredFallbackActive(false);
         setSelectedTypeFilter("Tous");
         setShowCultureSuggestions(false);
         savedScrollY.current = 0;
@@ -475,6 +517,16 @@ export default function SearchScreen() {
       const stockLabel = stockItem
         ? `En stock : ${formatStockQuantity(stockItem.quantite)} ${stockItem.unite}`
         : "En stock";
+      // Les restrictions issues du CSV produit s'appliquent à l'AMM entière
+      // et doivent donc rester visibles dans une recherche par nom/AMM aussi.
+      // Les restrictions propres à une ligne d'usage sont ajoutées pour la
+      // recherche par culture.
+      const beeWarningLevel =
+        cultureBeeWarningsByAmm.get(item.amm) ?? getBeeWarningForAmm(item.amm);
+      const hasBeeRestriction = Boolean(
+        beeWarningLevel ||
+        (searchType === "culture" && cultureBeeRestrictedAmms.has(item.amm)),
+      );
 
       return (
         <Pressable
@@ -511,16 +563,35 @@ export default function SearchScreen() {
                 </Text>
               )}
             </View>
-            {inStock && (
-              <View style={styles.stockBadge}>
-                <IconSymbol
-                  name="checkmark.circle.fill"
-                  size={14}
-                  color="#15803D"
-                />
-                <Text style={styles.stockBadgeText}>{stockLabel}</Text>
-              </View>
-            )}
+            <View style={styles.resultBadges}>
+              {hasBeeRestriction && (
+                <View
+                  style={[
+                    styles.beeBadge,
+                    beeWarningLevel === "restricted-during-flowering" &&
+                      styles.beeBadgeFlowering,
+                    beeWarningLevel === "restricted-in-presence-of-bees" &&
+                      styles.beeBadgePresence,
+                  ]}
+                  accessible
+                  accessibilityLabel={`Avertissement abeilles : ${getBeeWarningLabel(
+                    beeWarningLevel ?? "conditional",
+                  )}`}
+                >
+                  <Text style={styles.beeBadgeText}>🐝</Text>
+                </View>
+              )}
+              {inStock && (
+                <View style={styles.stockBadge}>
+                  <IconSymbol
+                    name="checkmark.circle.fill"
+                    size={14}
+                    color="#15803D"
+                  />
+                  <Text style={styles.stockBadgeText}>{stockLabel}</Text>
+                </View>
+              )}
+            </View>
           </View>
           <View style={styles.resultBottomRow}>
             <View style={styles.resultCardContent}>
@@ -552,7 +623,14 @@ export default function SearchScreen() {
         </Pressable>
       );
     },
-    [router, searchType, cultureQuery, stock],
+    [
+      router,
+      searchType,
+      cultureQuery,
+      cultureBeeRestrictedAmms,
+      cultureBeeWarningsByAmm,
+      stock,
+    ],
   );
 
   // Titre du résultat selon le type de recherche
@@ -564,11 +642,11 @@ export default function SearchScreen() {
       const cibleLabel = selectedCible ? ` · ${selectedCible}` : "";
       return `${count} produit${count > 1 ? "s" : ""} autorisé${count > 1 ? "s" : ""} sur ${cultureQuery}${filterLabel}${cibleLabel}`;
     }
-    const count = filteredResults.length;
+    const count = displayedManualResults.length;
     return `${count} résultat${count > 1 ? "s" : ""}${filterHomologues ? " (homologués)" : ""}`;
   }, [
     searchType,
-    filteredResults,
+    displayedManualResults,
     cultureQuery,
     selectedTypeFilter,
     filterHomologues,
@@ -593,6 +671,32 @@ export default function SearchScreen() {
                 : `${remainingSearches} recherche${remainingSearches > 1 ? "s" : ""} restante${remainingSearches > 1 ? "s" : ""}`}
             </Text>
           </View>
+        )}
+        {isDevelopmentPreview && (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Réinitialiser le compteur de test"
+              style={({ pressed }) => [
+                styles.resetDevelopmentButton,
+                pressed && { opacity: 0.75 },
+              ]}
+              onPress={async () => {
+                await resetDevelopmentSearchCount();
+                setDevelopmentCounterReset(true);
+                setTimeout(() => setDevelopmentCounterReset(false), 1800);
+              }}
+            >
+              <Text style={styles.resetDevelopmentButtonText}>
+                Réinitialiser le compteur de test
+              </Text>
+            </Pressable>
+            {developmentCounterReset && (
+              <Text style={styles.resetDevelopmentConfirmation}>
+                Compteur réinitialisé : 20 recherches
+              </Text>
+            )}
+          </>
         )}
       </View>
 
@@ -647,7 +751,10 @@ export default function SearchScreen() {
               ref={scrollViewRef}
               contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
               showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
+              // Le premier toucher doit sélectionner la suggestion même si le
+              // clavier iOS est encore ouvert. La fermeture est déclenchée par
+              // le handler de la suggestion après la mise à jour du champ.
+              keyboardShouldPersistTaps="always"
               onScroll={(e) => {
                 savedScrollY.current = e.nativeEvent.contentOffset.y;
               }}
@@ -834,11 +941,14 @@ export default function SearchScreen() {
                                   pressed && { backgroundColor: "#F0F9FF" },
                                 ]}
                                 onPress={() => {
-                                  prepareCultureFilterInteraction(
-                                    Keyboard.dismiss,
-                                  );
                                   setCultureQuery(suggestion.value);
                                   setShowCultureSuggestions(false);
+                                  // Laisser iOS terminer le onPress avant de
+                                  // fermer le clavier évite que le premier clic
+                                  // soit interprété comme un simple dismiss.
+                                  requestAnimationFrame(() =>
+                                    Keyboard.dismiss(),
+                                  );
                                 }}
                               >
                                 <Text style={styles.suggestionText}>
@@ -1053,13 +1163,30 @@ export default function SearchScreen() {
               {/* Aucun résultat */}
               {!isSearching &&
                 hasSearched &&
-                results.length === 0 &&
+                (searchType === "culture"
+                  ? sortedCibleFilteredResults.length === 0
+                  : displayedManualResults.length === 0) &&
                 emergencyResults.length === 0 && (
                   <View style={styles.emptyContainer}>
                     <Text style={styles.emptyText}>
                       {searchType === "culture"
                         ? `Aucun produit autorisé trouvé sur "${cultureQuery}"${selectedTypeFilter !== "Tous" ? ` pour le type "${selectedTypeFilter}"` : ""}`
                         : `Aucun produit trouvé pour "${searchType === "substance" ? substanceQuery : query}"`}
+                    </Text>
+                  </View>
+                )}
+
+              {!isSearching &&
+                hasSearched &&
+                retiredFallbackActive &&
+                displayedManualResults.length > 0 && (
+                  <View style={styles.retiredFallbackNotice}>
+                    <Text style={styles.retiredFallbackTitle}>
+                      Aucun produit homologué trouvé
+                    </Text>
+                    <Text style={styles.retiredFallbackText}>
+                      Les produits retirés ou non homologués correspondants sont
+                      affichés ci-dessous à titre informatif.
                     </Text>
                   </View>
                 )}
@@ -1148,7 +1275,7 @@ export default function SearchScreen() {
               )}
 
               {/* Résultats */}
-              {!isSearching && results.length > 0 && (
+              {!isSearching && displayedManualResults.length > 0 && (
                 <View ref={resultsRef} style={{ marginTop: 16 }}>
                   <Text style={styles.helpHint}>
                     ℹ️ Cliquez sur un produit pour plus de détails (Usages,
@@ -1180,7 +1307,10 @@ export default function SearchScreen() {
                           borderWidth: 1.5,
                           borderColor: "#2E7D32",
                         })}
-                        onPress={() => setFilterHomologues((f) => !f)}
+                        onPress={() => {
+                          setRetiredFallbackActive(false);
+                          setFilterHomologues((f) => !f);
+                        }}
                       >
                         <IconSymbol
                           name={
@@ -1205,7 +1335,7 @@ export default function SearchScreen() {
                   </View>
                   {(searchType === "culture"
                     ? visibleCultureResults
-                    : filteredResults
+                    : displayedManualResults
                   ).map((item, index) => (
                     <View key={`${item.amm}-${item.nom}-${index}`}>
                       {renderProduct({ item })}
@@ -1272,6 +1402,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     color: "#EF4444",
+  },
+  resetDevelopmentButton: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.75)",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  resetDevelopmentButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  resetDevelopmentConfirmation: {
+    marginTop: 5,
+    fontSize: 12,
+    color: "#FFFFFF",
   },
   content: {
     flex: 1,
@@ -1545,6 +1694,26 @@ const styles = StyleSheet.create({
     color: "#687076",
     textAlign: "center",
   },
+  retiredFallbackNotice: {
+    marginTop: 16,
+    marginBottom: 8,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#FFF7ED",
+    borderWidth: 1,
+    borderColor: "#FDBA74",
+  },
+  retiredFallbackTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#9A3412",
+    marginBottom: 4,
+  },
+  retiredFallbackText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: "#7C2D12",
+  },
   helpHint: {
     fontSize: 12,
     color: "#687076",
@@ -1593,6 +1762,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 10,
   },
+  resultBadges: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexShrink: 0,
+  },
   resultTitleContainer: {
     flex: 1,
   },
@@ -1610,6 +1785,28 @@ const styles = StyleSheet.create({
     color: "#15803D",
     fontSize: 11,
     fontWeight: "700",
+  },
+  beeBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FEF3C7",
+    borderWidth: 1,
+    borderColor: "#F59E0B",
+  },
+  beeBadgeFlowering: {
+    backgroundColor: "#FEE2E2",
+    borderColor: "#DC2626",
+  },
+  beeBadgePresence: {
+    backgroundColor: "#FFEDD5",
+    borderColor: "#EA580C",
+  },
+  beeBadgeText: {
+    fontSize: 17,
+    lineHeight: 20,
   },
   resultBottomRow: {
     flexDirection: "row",

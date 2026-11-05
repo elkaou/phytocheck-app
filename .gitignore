@@ -68,3 +68,4 @@ Thumbs.db
 # Copier ces fichiers à la racine du projet avant de lancer update_data.bat
 produits_utf8.csv
 produits_phrases_de_risque_utf8.csv
+.project-config.json

@@ -6,7 +6,12 @@ import type { CultureSearchIndex } from "@/lib/culture-search";
 function createIndex(): CultureSearchIndex {
   return {
     cultures: ["Orge"],
-    search: () => ({ products: [], ciblesByAmm: new Map() }),
+    search: () => ({
+      products: [],
+      ciblesByAmm: new Map(),
+      beeRestrictedAmms: new Set(),
+      beeWarningsByAmm: new Map(),
+    }),
   };
 }
 
@@ -23,7 +28,9 @@ describe("deferred culture search index", () => {
   it("partage une seule préparation planifiée entre les premiers appels", async () => {
     const buildIndex = vi.fn(createIndex);
     const queue: Array<() => void> = [];
-    const deferred = createDeferredCultureSearchIndex(buildIndex, (work) => queue.push(work));
+    const deferred = createDeferredCultureSearchIndex(buildIndex, (work) =>
+      queue.push(work),
+    );
 
     const first = deferred.prepare();
     const second = deferred.prepare();

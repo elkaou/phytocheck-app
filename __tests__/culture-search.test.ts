@@ -5,6 +5,11 @@ import type { Product, RiskPhrase } from "@/lib/product-service";
 import type { ProductUsage } from "@/lib/data-context";
 import bundledProducts from "@/assets/data/products.json";
 import bundledUsages from "@/assets/data/usages.json";
+import beeRestrictions from "@/assets/data/bee-restrictions.json";
+import {
+  getBeeWarningLevel,
+  type BeeRestrictionRecord,
+} from "@/lib/bee-restrictions";
 
 const products: Product[] = [
   {
@@ -138,6 +143,83 @@ describe("indexed culture search", () => {
       "ALTACOR TEST",
     ]);
     expect(result.ciblesByAmm.get("1000003")).toEqual(["Pucerons"]);
+    expect(result.beeRestrictedAmms.has("1000003")).toBe(false);
+  });
+
+  it("signale une restriction abeilles uniquement sur l'usage culturel correspondant", () => {
+    const beeProduct: Product = {
+      ...products[2],
+      amm: "bee-amm",
+      nom: "BEE TEST",
+    };
+    const beeIndex = createCultureSearchIndex(
+      [beeProduct],
+      {},
+      {
+        "bee-amm": [
+          {
+            culture: "Fraisier",
+            cible: "Pucerons",
+            condition:
+              "Emploi autorisé pendant la floraison en dehors de la présence des abeilles.",
+          },
+        ],
+      },
+    );
+
+    expect(
+      beeIndex.search("Fraisier", "Insecticide").beeRestrictedAmms,
+    ).toEqual(new Set(["bee-amm"]));
+  });
+
+  it("identifie CURAME 25 WG comme SPe 8 pendant la floraison", () => {
+    const record = beeRestrictions["2180894"] as BeeRestrictionRecord;
+    expect(record.restrictionCodes).toContain("SPe 8");
+    expect(record.restrictionTexts.join(" ")).toMatch(
+      /ne pas appliquer durant la floraison/i,
+    );
+    expect(getBeeWarningLevel(record)).toBe("restricted-during-flowering");
+  });
+
+  it("ne transforme pas une simple mention de floraison en avertissement abeilles", () => {
+    const floweringOnlyIndex = createCultureSearchIndex(
+      [{ ...products[2], amm: "flowering-only", nom: "FLOWERING ONLY" }],
+      {},
+      {
+        "flowering-only": [
+          {
+            culture: "Fraisier",
+            cible: "Test",
+            condition: "Ne pas appliquer durant la floraison.",
+          },
+        ],
+      },
+    );
+    const result = floweringOnlyIndex.search("Fraisier", "Insecticide");
+    expect(result.beeRestrictedAmms.has("flowering-only")).toBe(false);
+    expect(result.beeWarningsByAmm.has("flowering-only")).toBe(false);
+  });
+
+  it("calcule le niveau SPe 8 depuis la condition d'usage quand l'AMM est nouvelle", () => {
+    const newBeeIndex = createCultureSearchIndex(
+      [{ ...products[2], amm: "new-bee-amm", nom: "NEW BEE" }],
+      {},
+      {
+        "new-bee-amm": [
+          {
+            culture: "Fraisier",
+            cible: "Pucerons",
+            condition:
+              "SPe 8 : Pour protéger les abeilles, ne pas appliquer durant la floraison.",
+          },
+        ],
+      },
+    );
+    expect(
+      newBeeIndex
+        .search("Fraisier", "Insecticide")
+        .beeWarningsByAmm.get("new-bee-amm"),
+    ).toBe("restricted-during-flowering");
   });
 
   it("retrouve les usages de l'AMM de référence pour un permis PCP", () => {

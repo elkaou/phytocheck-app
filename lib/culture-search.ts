@@ -8,6 +8,7 @@ import {
 import { normalizeCultureName } from "./culture-aliases";
 import { createEphyCultureMatcher } from "./culture-usage-scope";
 import { getUsageAmm, isActiveProductUsage } from "./product-usages";
+import { getBeeWarningForAmm, type BeeWarningLevel } from "./bee-restrictions";
 
 export type CultureProductType =
   "Tous" | "Herbicide" | "Fongicide" | "Insecticide" | "Acaricide";
@@ -16,7 +17,19 @@ export interface CultureSearchResult {
   products: ClassifiedProduct[];
   /** Cibles disponibles pour chaque AMM, limitées à la culture demandée et ses alias. */
   ciblesByAmm: ReadonlyMap<string, readonly string[]>;
+  /** AMM dont au moins un usage correspondant impose l'absence d'abeilles. */
+  beeRestrictedAmms: ReadonlySet<string>;
+  /** Niveau d'avertissement abeilles applicable à la culture recherchée. */
+  beeWarningsByAmm: ReadonlyMap<string, BeeWarningLevel>;
 }
+
+/** Restriction réglementaire affichée sous forme d'avertissement abeilles. */
+export const BEE_RESTRICTION_PATTERN =
+  /en\s+dehors\s+de\s+la\s+présence\s+(?:des?\s+)?abeilles?/i;
+const BEE_FLOWERING_RESTRICTION_PATTERN =
+  /SPe\s*8[\s\S]*abeilles?[\s\S]*(?:ne\s+pas\s+appliquer|ne\s+pas\s+utiliser)[\s\S]*(?:durant|pendant)\s+la\s+floraison/i;
+const BEE_PRESENCE_RESTRICTION_PATTERN =
+  /SPe\s*8[\s\S]*abeilles?[\s\S]*ne\s+pas\s+(?:appliquer|utiliser)[\s\S]*en\s+présence/i;
 
 export interface CultureSearchIndex {
   /** Cultures E‑Phy disponibles, conservées pour l'autocomplétion. */
@@ -128,6 +141,8 @@ export function createCultureSearchIndex(
       }
 
       const ciblesByAmm = new Map<string, readonly string[]>();
+      const beeRestrictedAmms = new Set<string>();
+      const beeWarningsByAmm = new Map<string, BeeWarningLevel>();
       const found: ClassifiedProduct[] = [];
 
       for (const amm of matchingAmms) {
@@ -154,15 +169,41 @@ export function createCultureSearchIndex(
         const matchedCibles = new Set<string>();
         const usageAmm = getUsageAmm(matchingProducts[0]);
         let hasMatchingUsage = false;
+        let hasBeeRestriction = false;
+        let usageBeeWarning: BeeWarningLevel | undefined;
         for (const usage of activeUsagesByAmm.get(usageAmm) ?? []) {
           if (!normalizedCultureNames.has(usage.cultureKey)) continue;
           if (!cultureMatcher.allowsCondition(usage.usage)) continue;
           hasMatchingUsage = true;
           if (usage.cible) matchedCibles.add(usage.cible);
+          const condition = usage.usage.condition ?? "";
+          if (
+            BEE_FLOWERING_RESTRICTION_PATTERN.test(condition) ||
+            BEE_PRESENCE_RESTRICTION_PATTERN.test(condition) ||
+            BEE_RESTRICTION_PATTERN.test(condition)
+          ) {
+            hasBeeRestriction = true;
+            usageBeeWarning = BEE_FLOWERING_RESTRICTION_PATTERN.test(condition)
+              ? "restricted-during-flowering"
+              : BEE_PRESENCE_RESTRICTION_PATTERN.test(condition)
+                ? "restricted-in-presence-of-bees"
+                : "conditional";
+          }
         }
         // Une AMM candidate peut n'avoir que des lignes restreintes à d'autres
         // cultures. Ni le produit ni ses cibles ne doivent alors être retournés.
         if (!hasMatchingUsage) continue;
+        const dataBeeWarning = getBeeWarningForAmm(usageAmm);
+        const beeWarning =
+          dataBeeWarning === "restricted-during-flowering" ||
+          usageBeeWarning === "restricted-during-flowering"
+            ? "restricted-during-flowering"
+            : dataBeeWarning === "restricted-in-presence-of-bees" ||
+                usageBeeWarning === "restricted-in-presence-of-bees"
+              ? "restricted-in-presence-of-bees"
+              : dataBeeWarning || usageBeeWarning;
+        if (hasBeeRestriction || beeWarning) beeRestrictedAmms.add(amm);
+        if (beeWarning) beeWarningsByAmm.set(amm, beeWarning);
         ciblesByAmm.set(
           amm,
           Array.from(matchedCibles).sort((a, b) => a.localeCompare(b, "fr")),
@@ -183,7 +224,12 @@ export function createCultureSearchIndex(
         const nameB = b.matchedName || b.nom;
         return nameA.localeCompare(nameB, "fr", { sensitivity: "base" });
       });
-      return { products: found, ciblesByAmm };
+      return {
+        products: found,
+        ciblesByAmm,
+        beeRestrictedAmms,
+        beeWarningsByAmm,
+      };
     },
   };
 }

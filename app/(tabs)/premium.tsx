@@ -1,4 +1,13 @@
-import { ScrollView, Text, View, Pressable, StyleSheet, Platform, Alert, Linking } from "react-native";
+import {
+  ScrollView,
+  Text,
+  View,
+  Pressable,
+  StyleSheet,
+  Platform,
+  Alert,
+  Linking,
+} from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useApp } from "@/lib/app-context";
@@ -65,7 +74,7 @@ export default function PremiumScreen() {
                   onPress: () => setPremium(true),
                 },
               ]),
-        ]
+        ],
       );
     }
   };
@@ -79,7 +88,7 @@ export default function PremiumScreen() {
         platformSupported
           ? "Le service d'abonnement n'est pas disponible actuellement. Vérifiez votre connexion internet."
           : "La restauration des abonnements n'est disponible que sur Android et iOS.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
       );
     }
   };
@@ -90,12 +99,17 @@ export default function PremiumScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>PhytoCheck Premium</Text>
           <Text style={styles.headerSubtitle}>
-            Abonnement {subscriptionType === "monthly" ? "mensuel" : "annuel"} actif
+            Abonnement {subscriptionType === "monthly" ? "mensuel" : "annuel"}{" "}
+            actif
           </Text>
         </View>
         <View style={styles.content}>
           <View style={styles.activeCard}>
-            <IconSymbol name="checkmark.circle.fill" size={48} color="#22C55E" />
+            <IconSymbol
+              name="checkmark.circle.fill"
+              size={48}
+              color="#22C55E"
+            />
             <Text style={styles.activeTitle}>Premium actif</Text>
             <Text style={styles.activeSubtitle}>
               Recherches illimitées, stock illimité et export PDF disponibles.
@@ -114,7 +128,9 @@ export default function PremiumScreen() {
               ]}
               onPress={() => setPremium(false)}
             >
-              <Text style={styles.deactivateText}>Désactiver Premium (test)</Text>
+              <Text style={styles.deactivateText}>
+                Désactiver Premium (test)
+              </Text>
             </Pressable>
           )}
         </View>
@@ -230,8 +246,6 @@ export default function PremiumScreen() {
             >
               <Text style={styles.restoreText}>Restaurer mes achats</Text>
             </Pressable>
-
-
           </View>
 
           {/* Legal text */}
@@ -242,18 +256,40 @@ export default function PremiumScreen() {
                 : "L'abonnement sera facturé sur votre compte Google Play à la confirmation de l'achat. Il se renouvelle automatiquement sauf si vous l'annulez au moins 24 heures avant la fin de la période en cours. Gérez vos abonnements dans les paramètres Google Play."}
             </Text>
             <Pressable
-              onPress={() => Linking.openURL("https://elkaou.github.io/phytocheck-app/terms-of-service.html")}
-              style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, marginTop: 8 }]}
+              onPress={() =>
+                Linking.openURL(
+                  "https://elkaou.github.io/phytocheck-app/terms-of-service.html",
+                )
+              }
+              style={({ pressed }) => [
+                { opacity: pressed ? 0.7 : 1, marginTop: 8 },
+              ]}
             >
-              <Text style={[styles.legalText, { textDecorationLine: "underline", fontWeight: "600" }]}>
+              <Text
+                style={[
+                  styles.legalText,
+                  { textDecorationLine: "underline", fontWeight: "600" },
+                ]}
+              >
                 Conditions d'utilisation (CGU)
               </Text>
             </Pressable>
             <Pressable
-              onPress={() => Linking.openURL("https://elkaou.github.io/phytocheck-app/privacy-policy.html")}
-              style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, marginTop: 4 }]}
+              onPress={() =>
+                Linking.openURL(
+                  "https://elkaou.github.io/phytocheck-app/privacy-policy.html",
+                )
+              }
+              style={({ pressed }) => [
+                { opacity: pressed ? 0.7 : 1, marginTop: 4 },
+              ]}
             >
-              <Text style={[styles.legalText, { textDecorationLine: "underline", fontWeight: "600" }]}>
+              <Text
+                style={[
+                  styles.legalText,
+                  { textDecorationLine: "underline", fontWeight: "600" },
+                ]}
+              >
                 Politique de confidentialité
               </Text>
             </Pressable>

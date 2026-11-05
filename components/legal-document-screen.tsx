@@ -84,14 +84,18 @@ export function LegalDocumentScreen({ document, children }: LegalDocumentScreenP
   return (
     <ScreenContainer containerClassName="bg-primary">
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{document.title}</Text>
+        <Text style={styles.headerTitle} maxFontSizeMultiplier={1.15}>
+          {document.title}
+        </Text>
       </View>
 
       <View style={styles.content}>
         <View style={styles.statusBar}>
           <View style={styles.statusTextContainer}>
             {source === "loading" || isRefreshing ? <ActivityIndicator color="#0A7EA5" size="small" /> : null}
-            <Text style={styles.statusText}>{statusLabel}</Text>
+            <Text style={styles.statusText} maxFontSizeMultiplier={1.15}>
+              {statusLabel}
+            </Text>
           </View>
           <Pressable
             accessibilityRole="button"
@@ -100,7 +104,9 @@ export function LegalDocumentScreen({ document, children }: LegalDocumentScreenP
             onPress={() => void loadDocument()}
             style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed]}
           >
-            <Text style={styles.refreshButtonText}>Actualiser</Text>
+            <Text style={styles.refreshButtonText} maxFontSizeMultiplier={1.15}>
+              Actualiser
+            </Text>
           </Pressable>
         </View>
 
@@ -110,6 +116,9 @@ export function LegalDocumentScreen({ document, children }: LegalDocumentScreenP
             originWhitelist={["*"]}
             setSupportMultipleWindows={false}
             allowsBackForwardNavigationGestures
+            // Empêche le WebView Android de doubler les tailles CSS lorsque
+            // la taille de police système du téléphone est augmentée.
+            textZoom={100}
             onError={() => {
               setHtml(null);
               setSource("offline");
@@ -127,7 +136,9 @@ export function LegalDocumentScreen({ document, children }: LegalDocumentScreenP
           onPress={() => router.back()}
           style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
         >
-          <Text style={styles.closeButtonText}>Fermer</Text>
+          <Text style={styles.closeButtonText} maxFontSizeMultiplier={1.15}>
+            Fermer
+          </Text>
         </Pressable>
       </View>
     </ScreenContainer>

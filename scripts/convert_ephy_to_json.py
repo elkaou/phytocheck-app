@@ -1,23 +1,27 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 convert_ephy_to_json.py
 =======================
-Convertit les deux fichiers CSV E-PHY en JSON pour l'application PhytoCheck.
+Convertit les fichiers CSV E-PHY en JSON pour l'application PhytoCheck.
 Intègre également les produits PCP (Permis de Commerce Parallèle) si le CSV est présent.
 
 Usage :
-    python scripts/convert_ephy_to_json.py [--products CSV] [--risks CSV] [--pcp CSV] [--out-dir DIR]
+    python scripts/convert_ephy_to_json.py [--products CSV] [--risks CSV] [--pcp CSV]
+        [--conditions CSV] [--out-dir DIR]
+    python scripts/convert_ephy_to_json.py --bee-only [--conditions CSV] [--out-dir DIR]
 
 Fichiers CSV attendus (téléchargeables sur https://ephy.anses.fr) :
     - Produits phytopharmaceutiques : "produits_utf8.csv"
     - Phrases de risque :             "produits_phrases_de_risque_utf8.csv"
     - Permis de commerce parallèle :  "permis_de_commerce_parallele_utf8.csv" (optionnel)
     - Usages des produits autorisés : "usages_des_produits_autorises_utf8.csv" (optionnel)
+    - Conditions d'emploi : "produits_condition_emploi_utf8.csv" (optionnel)
 
 Sorties générées dans assets/data/ :
     - products.json
     - risk-phrases.json
     - usages.json (si le CSV usages est présent)
+    - bee-restrictions.json (si le CSV des conditions d'emploi est présent)
 
 Le script met également à jour automatiquement :
     - DB_UPDATE_DATE dans lib/product-service.ts
@@ -45,6 +49,7 @@ DEFAULT_PCP_CSV = PROJECT_ROOT / "permis_de_commerce_parallele_utf8.csv"
 # cultures. Le fichier usages_des_produits_autorises_utf8.csv décrit les
 # produits autorisés mais ne contient pas ces lignes d'usages détaillées.
 DEFAULT_USAGES_CSV = PROJECT_ROOT / "produits_usages_utf8.csv"
+DEFAULT_CONDITIONS_CSV = PROJECT_ROOT / "produits_condition_emploi_utf8.csv"
 OUT_DIR = PROJECT_ROOT / "assets" / "data"
 PRODUCT_SERVICE = PROJECT_ROOT / "lib" / "product-service.ts"
 TERMS_OF_SERVICE = PROJECT_ROOT / "TERMS_OF_SERVICE.md"
@@ -108,6 +113,12 @@ def parse_args():
                         help=f"Chemin vers le CSV usages (défaut: {DEFAULT_USAGES_CSV.name})")
     parser.add_argument("--no-usages", action="store_true",
                         help="Ne pas générer usages.json même si le CSV est présent")
+    parser.add_argument("--conditions", default=str(DEFAULT_CONDITIONS_CSV),
+                        help=f"Chemin vers le CSV des conditions d'emploi (défaut: {DEFAULT_CONDITIONS_CSV.name})")
+    parser.add_argument("--no-bee", action="store_true",
+                        help="Ne pas générer bee-restrictions.json")
+    parser.add_argument("--bee-only", action="store_true",
+                        help="Générer uniquement bee-restrictions.json ; les CSV produits/risques ne sont pas requis")
     return parser.parse_args()
 
 
@@ -411,6 +422,87 @@ def convert_usages(csv_path):
     return usages_map
 
 
+# Les textes E-Phy peuvent varier légèrement selon la campagne de données.
+# Ces motifs excluent volontairement « avant floraison » et « fin de floraison »
+# lorsqu'ils ne contiennent pas une interdiction explicite concernant les abeilles.
+BEE_SPE8_RE = re.compile(r"\bSPe\s*8\b", re.IGNORECASE)
+BEE_FLOWERING_RE = re.compile(
+    r"ne\s+pas\s+appliquer\s+(?:durant|pendant)\s+(?:la\s+)?floraison",
+    re.IGNORECASE,
+)
+BEE_PRESENCE_RE = re.compile(
+    r"ne\s+pas\s+(?:utiliser|appliquer)\s+(?:en\s+présence|en\s+presence)\s+(?:des?\s+)?abeilles?",
+    re.IGNORECASE,
+)
+BEE_OUTSIDE_PRESENCE_RE = re.compile(
+    r"en\s+dehors\s+de\s+la\s+présence\s+(?:des?\s+)?abeilles?",
+    re.IGNORECASE,
+)
+BEE_MENTION_RE = re.compile(r"abeilles?|pollinisateurs?", re.IGNORECASE)
+
+
+def classify_bee_restriction(text):
+    """Retourne le niveau abeilles d'un texte réglementaire, ou None.
+
+    Le niveau « conditional » couvre les usages autorisés uniquement hors
+    présence d'abeilles. Une simple mention de floraison sans interdiction
+    explicite n'est jamais considérée comme une restriction SPe 8.
+    """
+    normalized = " ".join((text or "").split())
+    if not normalized or not BEE_MENTION_RE.search(normalized):
+        return None
+
+    if BEE_FLOWERING_RE.search(normalized):
+        return "restricted-during-flowering"
+    if BEE_PRESENCE_RE.search(normalized):
+        return "restricted-in-presence-of-bees"
+    if BEE_OUTSIDE_PRESENCE_RE.search(normalized):
+        return "conditional"
+    if BEE_SPE8_RE.search(normalized):
+        return "conditional"
+    return None
+
+
+def convert_bee_restrictions(csv_path):
+    """Extrait les restrictions abeilles générales, indexées par AMM."""
+    print(f"  Fichier : {csv_path}")
+    restrictions = {}
+    with open_csv(csv_path) as f:
+        reader = csv.DictReader(f, delimiter=";")
+        for row in reader:
+            row = normalize_row(row)
+            amm = find_col(row, "numero AMM", "N° AMM").strip()
+            category = find_col(row, "catégorie de condition d’emploi", "categorie de condition d'emploi").strip()
+            text = find_col(row, "condition d’emploi libelle", "condition d'emploi libelle").strip()
+            if not amm or not text:
+                continue
+            # Les restrictions produit proviennent de la catégorie faune.
+            if category and "faune" not in category.lower():
+                continue
+            level = classify_bee_restriction(text)
+            if not level:
+                continue
+            bucket = restrictions.setdefault(amm, {
+                "hasBeeRestriction": True,
+                "levels": [],
+                "restrictionCodes": [],
+                "restrictionTexts": [],
+                "source": "produits_condition_emploi_utf8.csv / Environnement faune",
+            })
+            if level not in bucket["levels"]:
+                bucket["levels"].append(level)
+            if BEE_SPE8_RE.search(text) and "SPe 8" not in bucket["restrictionCodes"]:
+                bucket["restrictionCodes"].append("SPe 8")
+            if text not in bucket["restrictionTexts"]:
+                bucket["restrictionTexts"].append(text)
+
+    for entry in restrictions.values():
+        entry["levels"].sort()
+        entry["restrictionCodes"].sort()
+        entry["restrictionTexts"].sort()
+    return restrictions
+
+
 def update_manifest(update_date_str, products_count, risks_count, usages_count=None):
     """Met à jour manifest.json dans assets/data/ du projet ET dans le dépôt phytocheck-data."""
     manifest_data = {
@@ -560,7 +652,20 @@ def main():
     risks_csv = Path(args.risks)
     pcp_csv = Path(args.pcp)
     usages_csv = Path(args.usages)
+    conditions_csv = Path(args.conditions)
     out_dir = Path(args.out_dir)
+
+    if args.bee_only:
+        if not conditions_csv.exists():
+            print(f"\nERREUR : Fichier conditions d'emploi introuvable : {conditions_csv}")
+            sys.exit(1)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        restrictions = convert_bee_restrictions(conditions_csv)
+        bee_out = out_dir / "bee-restrictions.json"
+        with open(bee_out, "w", encoding="utf-8") as f:
+            json.dump(restrictions, f, ensure_ascii=False, separators=(",", ":"))
+        print(f"  → Écrit : {bee_out} ({len(restrictions):,} AMM)")
+        return
 
     # Vérifications
     if not products_csv.exists():
@@ -627,16 +732,28 @@ def main():
     else:
         print(f"\n[4/6] Conversion usages désactivée (--no-usages).")
 
+    bee_count = None
+    if not args.no_bee and conditions_csv.exists():
+        print("\n[5/7] Extraction des restrictions abeilles...")
+        bee_restrictions = convert_bee_restrictions(conditions_csv)
+        bee_count = len(bee_restrictions)
+        bee_out = out_dir / "bee-restrictions.json"
+        with open(bee_out, "w", encoding="utf-8") as f:
+            json.dump(bee_restrictions, f, ensure_ascii=False, separators=(",", ":"))
+        print(f"  → Écrit : {bee_out} ({bee_count:,} AMM)")
+    elif not args.no_bee:
+        print(f"\n[5/7] CSV conditions d'emploi non trouvé ({conditions_csv.name}), étape ignorée.")
+
     # ── Mise à jour des métadonnées de données et des documents ────────────────
     today = date.today().strftime("%d/%m/%Y")
     if not args.no_update_ts:
-        print("\n[5/7] Mise à jour de lib/product-service.ts...")
+        print("\n[6/7] Mise à jour de lib/product-service.ts...")
         update_product_service(PRODUCT_SERVICE, today)
 
-    print("\n[6/7] Mise à jour de la date E-Phy dans les CGU...")
+    print("\n[7/8] Mise à jour de la date E-Phy dans les CGU...")
     update_terms_database_date(today)
 
-    print("\n[7/7] Mise à jour de manifest.json et data-context.tsx...")
+    print("\n[8/8] Mise à jour de manifest.json et data-context.tsx...")
     update_manifest(today, len(products), len(risks), usages_count)
     update_bundle_manifest(DATA_CONTEXT, today, len(products), len(risks), usages_count)
 
@@ -650,6 +767,8 @@ def main():
     print(f"  AMM avec risques  : {len(risks):,}")
     if usages_count is not None:
         print(f"  Usages autorisés  : {usages_count:,}")
+    if bee_count is not None:
+        print(f"  AMM avec restriction abeilles : {bee_count:,}")
     print(f"  Date mise à jour  : {date.today().strftime('%d/%m/%Y')}")
     print("=" * 50)
     print("\nFichiers mis à jour :")
@@ -657,6 +776,8 @@ def main():
     print(f"  ✓ assets/data/risk-phrases.json")
     if usages_count is not None:
         print(f"  ✓ assets/data/usages.json")
+    if bee_count is not None:
+        print(f"  ✓ assets/data/bee-restrictions.json")
     print(f"  ✓ lib/product-service.ts (DB_UPDATE_DATE)")
     print(f"  ✓ manifest.json (GitHub Pages)")
     print(f"  ✓ lib/data-context.tsx (BUNDLE_MANIFEST)")
