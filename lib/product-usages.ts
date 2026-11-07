@@ -18,15 +18,16 @@ const BUNDLED_USAGE_DATA = bundledUsages as Record<string, ProductUsage[]>;
 
 function getUsageRows(
   usageAmm: string,
-  usages: Record<string, ProductUsage[]>,
+  usages: Record<string, ProductUsage[]> | undefined,
 ): ProductUsage[] {
   // Les données distantes peuvent être publiées de façon partielle pendant la
   // mise à jour de GitHub Pages. Dans ce cas, conserver les usages embarqués
   // évite qu'un produit existant comme BORAVI WG disparaisse d'un filtre
   // culturel sur Android. Une entrée distante présente, même vide, reste
   // prioritaire afin de respecter la source réglementaire publiée.
-  if (Object.prototype.hasOwnProperty.call(usages, usageAmm)) {
-    return usages[usageAmm] ?? [];
+  if (usages && Object.prototype.hasOwnProperty.call(usages, usageAmm)) {
+    const rows = usages[usageAmm];
+    return Array.isArray(rows) ? rows : [];
   }
   return BUNDLED_USAGE_DATA[usageAmm] ?? [];
 }
@@ -41,10 +42,12 @@ function getUsageRows(
 export function getUsageAmm(
   product: Pick<Product, "amm" | "referenceAmm">,
 ): string {
+  const referenceAmm =
+    typeof product.referenceAmm === "string"
+      ? product.referenceAmm.trim()
+      : undefined;
   return (
-    product.referenceAmm?.trim() ??
-    BUNDLED_REFERENCE_AMMS.get(product.amm) ??
-    product.amm
+    referenceAmm || (BUNDLED_REFERENCE_AMMS.get(product.amm) ?? product.amm)
   );
 }
 
