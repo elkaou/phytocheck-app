@@ -36,6 +36,11 @@ import {
   getClassificationBgColor,
   ProductClassification,
 } from "@/lib/product-service";
+import {
+  getBeeWarningForProduct,
+  getBeeWarningLabel,
+  type BeeWarningLevel,
+} from "@/lib/bee-restrictions";
 import { getStock, StockItem, FREE_STOCK_LIMIT } from "@/lib/store";
 import { stockItemMatchesSearch } from "@/lib/stock-search";
 import {
@@ -413,6 +418,20 @@ export default function StockScreen() {
     stockSearchQuery,
   ]);
 
+  // Ce calcul parcourt les usages E-Phy et reconstruit les alias culturels.
+  // Le refaire dans renderItem provoquait des pauses visibles pendant le
+  // défilement Android. On le prépare une seule fois pour les AMM affichées.
+  const outsideFarmCultureAmms = useMemo(() => {
+    if (farmCultures.length === 0) return new Set<string>();
+    const result = new Set<string>();
+    filteredStock.forEach((item) => {
+      if (isStockProductOutsideFarmCultures(item.amm, farmCultures, usages)) {
+        result.add(item.amm);
+      }
+    });
+    return result;
+  }, [filteredStock, farmCultures, usages]);
+
   const stockEmergencyReminders = useMemo(() => {
     const reminders = new Map<
       string,
@@ -427,6 +446,19 @@ export default function StockScreen() {
     });
     return reminders;
   }, [stock, emergencyAuthorizations]);
+
+  // Les conditions Abeille peuvent être nombreuses par AMM. Les calculer une
+  // seule fois pour le stock évite de ralentir le défilement Android.
+  const beeWarningsByAmm = useMemo(() => {
+    const warnings = new Map<string, BeeWarningLevel>();
+    stock.forEach((item) => {
+      const product = productsByAmm.get(item.amm);
+      if (!product) return;
+      const warning = getBeeWarningForProduct(product, usages);
+      if (warning) warnings.set(item.amm, warning);
+    });
+    return warnings;
+  }, [stock, productsByAmm, usages]);
 
   const handleStockSearchToggle = useCallback(() => {
     setIsStockSearchOpen((isOpen) => {
@@ -840,11 +872,8 @@ export default function StockScreen() {
     ({ item }: { item: StockItem }) => {
       const emergencyReminder = stockEmergencyReminders.get(item.amm);
       const withdrawalReminder = stockWithdrawalReminders.get(item.amm);
-      const outsideFarmCultures = isStockProductOutsideFarmCultures(
-        item.amm,
-        farmCultures,
-        usages,
-      );
+      const outsideFarmCultures = outsideFarmCultureAmms.has(item.amm);
+      const beeWarningLevel = beeWarningsByAmm.get(item.amm);
       return (
         <View style={styles.stockCard}>
           <View style={styles.stockCardContent}>
@@ -866,6 +895,23 @@ export default function StockScreen() {
               <Text style={styles.stockNameChevron}>›</Text>
             </Pressable>
             <Text style={styles.stockAMM}>AMM : {item.amm}</Text>
+            {beeWarningLevel ? (
+              <View
+                style={[
+                  styles.stockBeeBadge,
+                  beeWarningLevel === "restricted-during-flowering" &&
+                    styles.stockBeeBadgeFlowering,
+                  beeWarningLevel === "restricted-in-presence-of-bees" &&
+                    styles.stockBeeBadgePresence,
+                ]}
+                accessible
+                accessibilityRole="image"
+                accessibilityLabel={`Avertissement abeilles : ${getBeeWarningLabel(beeWarningLevel)}`}
+              >
+                <Text style={styles.stockBeeBadgeIcon}>🐝</Text>
+                <Text style={styles.stockBeeBadgeText}>Abeilles</Text>
+              </View>
+            ) : null}
             {outsideFarmCultures ? (
               <View style={styles.stockCultureWarning}>
                 <MaterialIcons name="agriculture" size={17} color="#9A3412" />
@@ -982,7 +1028,8 @@ export default function StockScreen() {
       handleRemove,
       stockEmergencyReminders,
       stockWithdrawalReminders,
-      usages,
+      outsideFarmCultureAmms,
+      beeWarningsByAmm,
     ],
   );
 
@@ -1125,10 +1172,14 @@ export default function StockScreen() {
           contentContainerStyle={styles.stockListContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          removeClippedSubviews={Platform.OS === "android"}
-          initialNumToRender={6}
-          maxToRenderPerBatch={6}
-          windowSize={5}
+          // Les cartes ont une hauteur variable (alertes, autorisations,
+          // libellés longs). Une fenêtre un peu plus large évite les créations
+          // de vues visibles au dernier moment, source de saccades Android.
+          removeClippedSubviews={false}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          updateCellsBatchingPeriod={50}
+          windowSize={9}
         />
       </View>
 
@@ -1330,6 +1381,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#687076",
     marginTop: 2,
+  },
+  stockBeeBadge: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 8,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    backgroundColor: "#FEF3C7",
+    borderWidth: 1,
+    borderColor: "#F59E0B",
+  },
+  stockBeeBadgeFlowering: {
+    backgroundColor: "#FEE2E2",
+    borderColor: "#DC2626",
+  },
+  stockBeeBadgePresence: {
+    backgroundColor: "#FFEDD5",
+    borderColor: "#EA580C",
+  },
+  stockBeeBadgeIcon: {
+    fontSize: 16,
+    lineHeight: 19,
+  },
+  stockBeeBadgeText: {
+    color: "#92400E",
+    fontSize: 11,
+    fontWeight: "700",
   },
   stockCultureWarning: {
     alignSelf: "stretch",
