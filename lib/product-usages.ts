@@ -42,13 +42,12 @@ function getUsageRows(
 export function getUsageAmm(
   product: Pick<Product, "amm" | "referenceAmm">,
 ): string {
+  const amm = String(product.amm).trim();
   const referenceAmm =
     typeof product.referenceAmm === "string"
       ? product.referenceAmm.trim()
       : undefined;
-  return (
-    referenceAmm || (BUNDLED_REFERENCE_AMMS.get(product.amm) ?? product.amm)
-  );
+  return referenceAmm || (BUNDLED_REFERENCE_AMMS.get(amm) ?? amm);
 }
 
 /** Résout aussi les usages lorsqu’une carte Stock ne contient que son AMM. */

@@ -1164,6 +1164,7 @@ export default function StockScreen() {
           data={filteredStock}
           renderItem={renderStockItem}
           keyExtractor={(item) => item.amm}
+          style={styles.stockList}
           ListEmptyComponent={
             <View style={styles.emptyCard}>
               <Text style={styles.emptyText}>{stockEmptyMessage}</Text>
@@ -1180,6 +1181,7 @@ export default function StockScreen() {
           maxToRenderPerBatch={8}
           updateCellsBatchingPeriod={50}
           windowSize={9}
+          nestedScrollEnabled
         />
       </View>
 
@@ -1349,6 +1351,10 @@ const styles = StyleSheet.create({
   stockListContent: {
     flexGrow: 1,
     paddingBottom: 20,
+  },
+  stockList: {
+    flex: 1,
+    minHeight: 0,
   },
   stockCard: {
     backgroundColor: "#FFFFFF",

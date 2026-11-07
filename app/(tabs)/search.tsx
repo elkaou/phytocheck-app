@@ -41,6 +41,7 @@ import {
 import { createCultureSearchIndex } from "@/lib/culture-search";
 import {
   getBeeWarningForAmm,
+  getBeeWarningForProduct,
   getBeeWarningLabel,
   type BeeWarningLevel,
 } from "@/lib/bee-restrictions";
@@ -522,7 +523,9 @@ export default function SearchScreen() {
       // Les restrictions propres à une ligne d'usage sont ajoutées pour la
       // recherche par culture.
       const beeWarningLevel =
-        cultureBeeWarningsByAmm.get(item.amm) ?? getBeeWarningForAmm(item.amm);
+        cultureBeeWarningsByAmm.get(item.amm) ??
+        getBeeWarningForProduct(item, usages) ??
+        getBeeWarningForAmm(item.amm);
       const hasBeeRestriction = Boolean(
         beeWarningLevel ||
         (searchType === "culture" && cultureBeeRestrictedAmms.has(item.amm)),
@@ -599,6 +602,25 @@ export default function SearchScreen() {
               <Text style={styles.resultInfo} numberOfLines={1}>
                 {item.titulaire}
               </Text>
+              {hasBeeRestriction && (
+                <View
+                  style={[
+                    styles.manualBeeBadge,
+                    beeWarningLevel === "restricted-during-flowering" &&
+                      styles.manualBeeBadgeFlowering,
+                    beeWarningLevel === "restricted-in-presence-of-bees" &&
+                      styles.manualBeeBadgePresence,
+                  ]}
+                  accessible
+                  accessibilityRole="image"
+                  accessibilityLabel={`Avertissement abeilles : ${getBeeWarningLabel(
+                    beeWarningLevel ?? "conditional",
+                  )}`}
+                >
+                  <Text style={styles.manualBeeBadgeIcon}>🐝</Text>
+                  <Text style={styles.manualBeeBadgeText}>Abeilles</Text>
+                </View>
+              )}
             </View>
             <View
               style={[
@@ -629,6 +651,7 @@ export default function SearchScreen() {
       cultureQuery,
       cultureBeeRestrictedAmms,
       cultureBeeWarningsByAmm,
+      usages,
       stock,
     ],
   );
@@ -1805,8 +1828,38 @@ const styles = StyleSheet.create({
     borderColor: "#EA580C",
   },
   beeBadgeText: {
-    fontSize: 17,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 19,
+  },
+  manualBeeBadge: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 7,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    backgroundColor: "#FEF3C7",
+    borderWidth: 1,
+    borderColor: "#F59E0B",
+  },
+  manualBeeBadgeFlowering: {
+    backgroundColor: "#FEE2E2",
+    borderColor: "#DC2626",
+  },
+  manualBeeBadgePresence: {
+    backgroundColor: "#FFEDD5",
+    borderColor: "#EA580C",
+  },
+  manualBeeBadgeIcon: {
+    fontSize: 15,
+    lineHeight: 18,
+  },
+  manualBeeBadgeText: {
+    color: "#92400E",
+    fontSize: 11,
+    fontWeight: "700",
   },
   resultBottomRow: {
     flexDirection: "row",

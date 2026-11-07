@@ -78,7 +78,7 @@ export function getBeeWarningLevel(
 }
 
 export function getBeeWarningForAmm(amm: string): BeeWarningLevel | undefined {
-  return getBeeWarningLevel(beeRestrictions[amm]);
+  return getBeeWarningLevel(beeRestrictions[String(amm).trim()]);
 }
 
 function mostSevereBeeWarning(
@@ -122,7 +122,13 @@ export function getBeeWarningForProduct(
   // Pour un avertissement de sécurité, on complète donc les lignes distantes
   // par les lignes embarquées au lieu de perdre une condition Abeilles.
   const usageWarning = getBeeWarningForConditions(
-    [...remoteRows, ...embeddedRows].map((usage) => usage.condition),
+    [...remoteRows, ...embeddedRows].map((usage) => {
+      const row = usage as ProductUsage & {
+        conditions?: string;
+        mention?: string;
+      };
+      return row.condition ?? row.conditions ?? row.mention;
+    }),
   );
   return mostSevereBeeWarning(dataWarning, usageWarning);
 }
