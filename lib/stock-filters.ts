@@ -198,6 +198,7 @@ export function isStockProductOutsideFarmCultures(
   productOrAmm: Product | string,
   farmCultures: string[],
   usages: Record<string, ProductUsage[]>,
+  matcher?: StockCultureMatcher,
 ): boolean {
   if (farmCultures.length === 0) return false;
 
@@ -208,9 +209,9 @@ export function isStockProductOutsideFarmCultures(
   ).filter((usage) => usage.culture?.trim());
   if (productUsages.length === 0) return false;
 
-  const matcher = createStockCultureMatcher(farmCultures);
+  const cultureMatcher = matcher ?? createStockCultureMatcher(farmCultures);
   return !productUsages.some((usage) =>
-    usageMatchesCultureMatcher(usage, matcher),
+    usageMatchesCultureMatcher(usage, cultureMatcher),
   );
 }
 

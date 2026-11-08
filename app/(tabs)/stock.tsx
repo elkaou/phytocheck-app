@@ -425,12 +425,19 @@ export default function StockScreen() {
     if (farmCultures.length === 0) return new Set<string>();
     const result = new Set<string>();
     filteredStock.forEach((item) => {
-      if (isStockProductOutsideFarmCultures(item.amm, farmCultures, usages)) {
+      if (
+        isStockProductOutsideFarmCultures(
+          item.amm,
+          farmCultures,
+          usages,
+          cultureMatcher,
+        )
+      ) {
         result.add(item.amm);
       }
     });
     return result;
-  }, [filteredStock, farmCultures, usages]);
+  }, [filteredStock, farmCultures, usages, cultureMatcher]);
 
   const stockEmergencyReminders = useMemo(() => {
     const reminders = new Map<

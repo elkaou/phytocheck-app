@@ -234,6 +234,13 @@ describe("stock-filters", () => {
     ).toBe(false);
   });
 
+  it("réutilise un matcher pré-calculé pour les alertes culturelles", () => {
+    const matcher = createStockCultureMatcher(["Blé"]);
+    expect(
+      isStockProductOutsideFarmCultures("1234567", ["Blé"], usages, matcher),
+    ).toBe(false);
+  });
+
   it("analyse la condition des adjuvants pour reconnaître les grandes cultures", () => {
     const fullMaxUsages: Record<string, ProductUsage[]> = {
       "2140227": [
