@@ -379,6 +379,11 @@ export default function StockScreen() {
     [effectiveFilters.cultures],
   );
 
+  const farmCultureMatcher = useMemo(
+    () => createStockCultureMatcher(farmCultures),
+    [farmCultures],
+  );
+
   const withdrawalAmms = useMemo(
     () => new Set(stockWithdrawalReminders.keys()),
     [stockWithdrawalReminders],
@@ -430,14 +435,14 @@ export default function StockScreen() {
           item.amm,
           farmCultures,
           usages,
-          cultureMatcher,
+          farmCultureMatcher,
         )
       ) {
         result.add(item.amm);
       }
     });
     return result;
-  }, [filteredStock, farmCultures, usages, cultureMatcher]);
+  }, [filteredStock, farmCultures, usages, farmCultureMatcher]);
 
   const stockEmergencyReminders = useMemo(() => {
     const reminders = new Map<
