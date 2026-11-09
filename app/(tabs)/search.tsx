@@ -69,6 +69,43 @@ type TypeFilter = (typeof TYPE_FILTERS)[number];
 // restent disponibles immédiatement avec « Afficher les produits suivants ».
 const CULTURE_RESULT_PAGE_SIZE = 20;
 
+/**
+ * Une même AMM peut être indexée avec son nom principal et plusieurs noms
+ * commerciaux secondaires. Pour une recherche par culture, une seule carte
+ * suffit : elle doit représenter le produit principal.
+ */
+function deduplicateCultureResultsByAmm(
+  products: readonly ClassifiedProduct[],
+): ClassifiedProduct[] {
+  const byAmm = new Map<string, ClassifiedProduct>();
+  for (const product of products) {
+    const existing = byAmm.get(product.amm);
+    if (!existing || (existing.matchedName && !product.matchedName)) {
+      byAmm.set(product.amm, product);
+    }
+  }
+  return Array.from(byAmm.values());
+}
+
+/**
+ * Une recherche par nom peut également retourner le nom principal et plusieurs
+ * noms secondaires d'une même AMM. L'AMM reste l'unité réglementaire affichée
+ * dans les résultats : une seule carte est donc conservée, en privilégiant le
+ * nom principal lorsqu'il fait partie des correspondances.
+ */
+function deduplicateResultsByAmm(
+  products: readonly ClassifiedProduct[],
+): ClassifiedProduct[] {
+  const byAmm = new Map<string, ClassifiedProduct>();
+  for (const product of products) {
+    const existing = byAmm.get(product.amm);
+    if (!existing || (existing.matchedName && !product.matchedName)) {
+      byAmm.set(product.amm, product);
+    }
+  }
+  return Array.from(byAmm.values());
+}
+
 export default function SearchScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string; q?: string }>();
@@ -203,18 +240,26 @@ export default function SearchScreen() {
   }, [filterHomologues, results, searchType, stock]);
 
   const displayedManualResults = useMemo(() => {
-    if (searchType === "culture" || !retiredFallbackActive) {
-      return filteredResults;
-    }
-    return sortProductsWithStockItemsFirst(
-      filterHomologatedProducts(results, true),
-      stock,
-    );
+    const manualResults =
+      searchType === "culture" || !retiredFallbackActive
+        ? filteredResults
+        : sortProductsWithStockItemsFirst(
+            filterHomologatedProducts(results, true),
+            stock,
+          );
+    return searchType === "name"
+      ? deduplicateResultsByAmm(manualResults)
+      : manualResults;
   }, [filteredResults, retiredFallbackActive, results, searchType, stock]);
 
+  const uniqueCibleFilteredResults = useMemo(
+    () => deduplicateCultureResultsByAmm(cibleFilteredResults),
+    [cibleFilteredResults],
+  );
+
   const sortedCibleFilteredResults = useMemo(
-    () => sortProductsWithStockItemsFirst(cibleFilteredResults, stock),
-    [cibleFilteredResults, stock],
+    () => sortProductsWithStockItemsFirst(uniqueCibleFilteredResults, stock),
+    [uniqueCibleFilteredResults, stock],
   );
 
   const visibleCultureResults = useMemo(
@@ -562,8 +607,13 @@ export default function SearchScreen() {
               </Text>
               {item.matchedName && (
                 <Text style={styles.resultSecondary}>
-                  (Nom principal : {item.nom})
+                  {searchType === "substance"
+                    ? `(Nom secondaire · principal : ${item.nom})`
+                    : `(Nom principal : ${item.nom})`}
                 </Text>
+              )}
+              {searchType === "substance" && !item.matchedName && (
+                <Text style={styles.resultSecondary}>(Nom principal)</Text>
               )}
             </View>
             <View style={styles.resultBadges}>
@@ -602,25 +652,6 @@ export default function SearchScreen() {
               <Text style={styles.resultInfo} numberOfLines={1}>
                 {item.titulaire}
               </Text>
-              {hasBeeRestriction && (
-                <View
-                  style={[
-                    styles.manualBeeBadge,
-                    beeWarningLevel === "restricted-during-flowering" &&
-                      styles.manualBeeBadgeFlowering,
-                    beeWarningLevel === "restricted-in-presence-of-bees" &&
-                      styles.manualBeeBadgePresence,
-                  ]}
-                  accessible
-                  accessibilityRole="image"
-                  accessibilityLabel={`Avertissement abeilles : ${getBeeWarningLabel(
-                    beeWarningLevel ?? "conditional",
-                  )}`}
-                >
-                  <Text style={styles.manualBeeBadgeIcon}>🐝</Text>
-                  <Text style={styles.manualBeeBadgeText}>Abeilles</Text>
-                </View>
-              )}
             </View>
             <View
               style={[
@@ -1187,7 +1218,7 @@ export default function SearchScreen() {
               {!isSearching &&
                 hasSearched &&
                 (searchType === "culture"
-                  ? sortedCibleFilteredResults.length === 0
+                  ? uniqueCibleFilteredResults.length === 0
                   : displayedManualResults.length === 0) &&
                 emergencyResults.length === 0 && (
                   <View style={styles.emptyContainer}>
@@ -1365,7 +1396,7 @@ export default function SearchScreen() {
                     </View>
                   ))}
                   {searchType === "culture" &&
-                    cibleFilteredResults.length >
+                    uniqueCibleFilteredResults.length >
                       visibleCultureResults.length && (
                       <Pressable
                         style={({ pressed }) => [
@@ -1382,7 +1413,7 @@ export default function SearchScreen() {
                           Afficher les{" "}
                           {Math.min(
                             CULTURE_RESULT_PAGE_SIZE,
-                            cibleFilteredResults.length -
+                            uniqueCibleFilteredResults.length -
                               visibleCultureResults.length,
                           )}{" "}
                           produits suivants
@@ -1830,36 +1861,6 @@ const styles = StyleSheet.create({
   beeBadgeText: {
     fontSize: 16,
     lineHeight: 19,
-  },
-  manualBeeBadge: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    marginTop: 7,
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    backgroundColor: "#FEF3C7",
-    borderWidth: 1,
-    borderColor: "#F59E0B",
-  },
-  manualBeeBadgeFlowering: {
-    backgroundColor: "#FEE2E2",
-    borderColor: "#DC2626",
-  },
-  manualBeeBadgePresence: {
-    backgroundColor: "#FFEDD5",
-    borderColor: "#EA580C",
-  },
-  manualBeeBadgeIcon: {
-    fontSize: 15,
-    lineHeight: 18,
-  },
-  manualBeeBadgeText: {
-    color: "#92400E",
-    fontSize: 11,
-    fontWeight: "700",
   },
   resultBottomRow: {
     flexDirection: "row",

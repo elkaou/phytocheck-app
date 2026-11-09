@@ -9,6 +9,7 @@ import {
   getClassificationColor,
   getCommercialNameType,
   extractActiveSubstanceNames,
+  searchBySubstance,
   searchByExactSubstances,
   sortProductsWithStockFirst,
   sortProductsWithStockItemsFirst,
@@ -93,6 +94,32 @@ describe("product-service", () => {
       etat,
       dateRetrait: "",
       dateAutorisation: "01/01/2020",
+    });
+
+    it("affiche le nom principal et chaque nom secondaire en recherche par matière active", () => {
+      const products = [
+        {
+          ...makeProduct(
+            "test-amm",
+            "PRODUIT PRINCIPAL",
+            "glyphosate (Glyphosate) 360.0 g/L",
+          ),
+          nomsSecondaires: "NOM SECONDAIRE | AUTRE NOM",
+        },
+      ];
+
+      const results = searchBySubstance("glyphosate", 100, products, {});
+
+      expect(results).toHaveLength(3);
+      expect(results.map((result) => result.matchedName || result.nom)).toEqual([
+        "AUTRE NOM",
+        "NOM SECONDAIRE",
+        "PRODUIT PRINCIPAL",
+      ]);
+      expect(results.filter((result) => result.amm === "test-amm")).toHaveLength(3);
+      expect(results.find((result) => !result.matchedName)?.nom).toBe(
+        "PRODUIT PRINCIPAL",
+      );
     });
 
     it("identifie le nom principal et le nom secondaire pour l’affichage", () => {

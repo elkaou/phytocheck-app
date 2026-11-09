@@ -201,7 +201,8 @@ export function classifyProduct(product: Product): ClassifiedProduct {
 }
 
 // Search products by active substance (avec données dynamiques optionnelles)
-// Génère une carte par nom secondaire : si un produit a 2 noms secondaires, 2 cartes sont créées
+// Une carte est générée pour le nom principal et pour chaque nom secondaire,
+// afin de permettre à l'utilisateur d'identifier le produit commercial exact.
 export function searchBySubstance(
   query: string,
   limit = 10000,
@@ -228,23 +229,14 @@ export function searchBySubstance(
 
     const classified = classifyProductWithData(product, dataRiskPhrases);
 
-    // Toujours ajouter une carte pour le nom principal (sans matchedName)
+    // Le nom principal et chaque nom secondaire sont des produits commerciaux
+    // distincts à identifier dans cette recherche.
     results.push(classified);
-
-    if (product.nomsSecondaires && product.nomsSecondaires.trim()) {
-      // Une carte supplémentaire par nom secondaire :
-      // matchedName = nom secondaire (affiché en noir comme titre de la carte)
-      // nom = nom principal (affiché en bleu en dessous)
-      const secondaryNames = product.nomsSecondaires
-        .split(" | ")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      for (const sn of secondaryNames) {
-        results.push({
-          ...classified,
-          matchedName: sn,
-        });
-      }
+    for (const secondaryName of (product.nomsSecondaires || "")
+      .split("|")
+      .map((name) => name.trim())
+      .filter(Boolean)) {
+      results.push({ ...classified, matchedName: secondaryName });
     }
   }
 
