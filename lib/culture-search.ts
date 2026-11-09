@@ -25,7 +25,7 @@ export interface CultureSearchResult {
 
 /** Restriction réglementaire affichée sous forme d'avertissement abeilles. */
 export const BEE_RESTRICTION_PATTERN =
-  /en\s+dehors\s+de\s+la\s+présence\s+(?:des?\s+)?abeilles?/i;
+  /en\s+dehors\s+de\s+la\s+présence\s+(?:(?:d['’])|des?\s+)?abeilles?/i;
 const BEE_FLOWERING_RESTRICTION_PATTERN =
   /SPe\s*8[\s\S]*abeilles?[\s\S]*(?:ne\s+pas\s+appliquer|ne\s+pas\s+utiliser)[\s\S]*(?:durant|pendant)\s+la\s+floraison/i;
 const BEE_PRESENCE_RESTRICTION_PATTERN =

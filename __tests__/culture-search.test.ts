@@ -222,6 +222,24 @@ describe("indexed culture search", () => {
     ).toBe("restricted-during-flowering");
   });
 
+  it("retrouve Uppercut comme nom secondaire sur crucifères oléagineuses et détecte les abeilles", () => {
+    const uppercut = (bundledProducts as Product[]).find(
+      (product) => product.amm === "9400085",
+    );
+    expect(uppercut?.nomsSecondaires).toContain("UPPERCUT");
+
+    const result = createCultureSearchIndex(
+      [uppercut!],
+      {},
+      bundledUsages as Record<string, ProductUsage[]>,
+    ).search("Crucifères oléagineuses", "Insecticide");
+
+    expect(result.products.some((product) => product.matchedName === "UPPERCUT")).toBe(
+      true,
+    );
+    expect(result.beeWarningsByAmm.get("9400085")).toBe("conditional");
+  });
+
   it("retrouve les usages de l'AMM de référence pour un permis PCP", () => {
     const result = index.search("Haricots", "Herbicide");
 

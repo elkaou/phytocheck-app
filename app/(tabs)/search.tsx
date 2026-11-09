@@ -24,6 +24,7 @@ import {
   searchProducts,
   searchBySubstance,
   ClassifiedProduct,
+  StockNameRecord,
   getClassificationLabel,
   getClassificationColor,
   getClassificationBgColor,
@@ -76,11 +77,21 @@ const CULTURE_RESULT_PAGE_SIZE = 20;
  */
 function deduplicateCultureResultsByAmm(
   products: readonly ClassifiedProduct[],
+  stock: readonly StockNameRecord[],
 ): ClassifiedProduct[] {
   const byAmm = new Map<string, ClassifiedProduct>();
   for (const product of products) {
     const existing = byAmm.get(product.amm);
-    if (!existing || (existing.matchedName && !product.matchedName)) {
+    const productIsInStock = isProductNameInStock(product, stock);
+    const existingIsInStock = existing
+      ? isProductNameInStock(existing, stock)
+      : false;
+    if (
+      !existing ||
+      (productIsInStock && !existingIsInStock) ||
+      (!productIsInStock && !existingIsInStock &&
+        existing.matchedName && !product.matchedName)
+    ) {
       byAmm.set(product.amm, product);
     }
   }
@@ -253,8 +264,8 @@ export default function SearchScreen() {
   }, [filteredResults, retiredFallbackActive, results, searchType, stock]);
 
   const uniqueCibleFilteredResults = useMemo(
-    () => deduplicateCultureResultsByAmm(cibleFilteredResults),
-    [cibleFilteredResults],
+    () => deduplicateCultureResultsByAmm(cibleFilteredResults, stock),
+    [cibleFilteredResults, stock],
   );
 
   const sortedCibleFilteredResults = useMemo(

@@ -27,7 +27,7 @@ const BEE_FLOWERING_RESTRICTION_PATTERN =
 const BEE_PRESENCE_RESTRICTION_PATTERN =
   /SPe\s*8[\s\S]*abeilles?[\s\S]*ne\s+pas\s+(?:appliquer|utiliser)[\s\S]*en\s+présence/i;
 const BEE_OUTSIDE_PRESENCE_PATTERN =
-  /en\s+dehors\s+de\s+la\s+présence\s+(?:des?\s+)?abeilles?/i;
+  /en\s+dehors\s+de\s+la\s+présence\s+(?:(?:d['’])|des?\s+)?abeilles?/i;
 
 /**
  * Détermine le niveau d'avertissement à partir de conditions d'usage.
