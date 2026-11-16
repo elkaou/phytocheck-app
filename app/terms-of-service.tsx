@@ -7,7 +7,7 @@ export default function TermsOfServiceScreen() {
   return (
     <LegalDocumentScreen document={LEGAL_DOCUMENTS.terms}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator>
-        <Text style={styles.updateDate}>Version intégrée — dernière mise à jour : 9 octobre 2026</Text>
+        <Text style={styles.updateDate}>Version intégrée — dernière mise à jour : 14 novembre 2026</Text>
 
         <Text style={styles.sectionTitle}>1. Acceptation des conditions</Text>
         <Text style={styles.paragraph}>

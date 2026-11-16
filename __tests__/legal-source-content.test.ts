@@ -26,9 +26,9 @@ describe("sources et dates des documents légaux", () => {
     }
   });
 
-  it("affiche la date de révision du 9 octobre 2026 dans les documents", () => {
+  it("affiche la date de révision du 14 novembre 2026 dans les documents", () => {
     for (const file of legalFiles) {
-      expect(readProjectFile(file), file).toMatch(/9 octobre 2026/i);
+      expect(readProjectFile(file), file).toMatch(/14 novembre 2026/i);
     }
   });
 

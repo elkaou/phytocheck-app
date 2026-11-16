@@ -1,6 +1,6 @@
 # Conditions Générales d'Utilisation de PhytoCheck
 
-**Dernière mise à jour : 9 octobre 2026**
+**Dernière mise à jour : 14 novembre 2026**
 
 ## 1. Acceptation des conditions
 
@@ -213,4 +213,4 @@ Site web : https://phytocheck.com
 
 *En utilisant PhytoCheck, vous reconnaissez avoir lu, compris et accepté ces Conditions Générales d'Utilisation.*
 
-*Dernière révision : 9 octobre 2026*
+*Dernière révision : 14 novembre 2026*
