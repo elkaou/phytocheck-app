@@ -1,114 +1,106 @@
-# Politique de Confidentialité de PhytoCheck
+# Politique de confidentialité de PhytoCheck
 
-**Dernière mise à jour : 9 octobre 2026**
+**Dernière mise à jour : 14 novembre 2026**
 
 ## Introduction
 
-PhytoCheck est une application mobile développée par François Courouble qui permet aux utilisateurs de vérifier l'homologation des produits phytosanitaires en France. Cette politique de confidentialité explique comment l'application collecte, utilise et protège vos données.
+PhytoCheck est une application mobile développée par François Courouble. Elle permet de vérifier l'homologation de produits phytosanitaires en France, de gérer un stock local et, lorsque l'utilisateur le demande, d'analyser des photos d'étiquettes.
 
-## Données collectées
+Cette politique explique quelles données sont traitées, pourquoi elles le sont, où elles sont conservées et comment exercer vos droits.
 
-### Données personnelles
+## Compte utilisateur
 
-PhytoCheck **ne collecte aucune donnée personnelle identifiable**. L'application ne demande pas et ne stocke pas :
-- Nom, prénom ou coordonnées
-- Adresse email (sauf pour la gestion des abonnements via Google Play)
-- Numéro de téléphone
-- Localisation géographique
-- Adresse IP
+PhytoCheck ne propose pas de parcours de création de compte utilisateur dans l'application mobile. L'utilisation courante de l'application ne nécessite donc pas de renseigner un nom, une adresse e-mail ou un mot de passe.
 
-### Données d'utilisation
+Les abonnements Premium sont gérés par Google Play Billing ou par Apple selon la plateforme. PhytoCheck ne collecte ni ne stocke les données bancaires utilisées par ces plateformes.
 
-L'application stocke localement sur votre appareil :
-- **Liste de produits en stock** : Les produits que vous ajoutez à votre stock personnel sont stockés uniquement sur votre appareil via AsyncStorage (stockage local)
-- **Historique de recherches** : Le compteur de recherches gratuites est stocké localement pour gérer la limite de 20 recherches
-- **Statut Premium** : L'état de votre abonnement Premium est vérifié via Google Play Billing
+## Données traitées
 
-Ces données **ne sont jamais transmises à des serveurs externes** et restent sur votre appareil. Elles sont supprimées si vous désinstallez l'application.
+### Données stockées uniquement sur l'appareil
 
-## Permissions demandées
+Les éléments suivants restent sur l'appareil, sauf si l'utilisateur choisit une fonction qui les transmet explicitement :
 
-### Appareil photo (android.permission.CAMERA)
+- la liste des produits ajoutés au stock personnel ;
+- les cultures déclarées pour l'exploitation ;
+- les réglages et préférences de l'application ;
+- le cache local des données réglementaires ;
+- une partie du compteur local de recherches et le statut Premium local.
 
-L'application demande l'accès à votre appareil photo **uniquement pour scanner les étiquettes de produits phytosanitaires**. Cette fonctionnalité vous permet de :
-- Prendre une photo de l'étiquette d'un produit
-- Extraire automatiquement le nom du produit et son numéro AMM (Autorisation de Mise sur le Marché)
-- Rechercher le produit dans la base de données E-Phy
+Ces données locales sont généralement supprimées lors de la désinstallation de l'application, selon le fonctionnement du système d'exploitation et de ses sauvegardes.
 
-**Important** :
-- Les photos ne sont **jamais sauvegardées** sur votre appareil
-- Les photos ne sont **jamais envoyées à des serveurs tiers**
-- Les photos sont traitées temporairement en mémoire pour l'analyse OCR (reconnaissance de texte), puis immédiatement supprimées
-- Vous pouvez refuser cette permission et utiliser la recherche manuelle à la place
+### Identifiant technique de l'appareil ou de l'installation
 
-### Stockage (android.permission.READ_EXTERNAL_STORAGE)
+Pour gérer le quota de recherches gratuites et empêcher qu'une simple suppression des données locales réinitialise ce quota, PhytoCheck utilise un identifiant technique :
 
-Cette permission permet de sélectionner une photo depuis votre galerie pour scanner une étiquette. Elle est optionnelle et n'est utilisée que si vous choisissez cette option.
+- sur Android, l'Android ID fourni par le système ;
+- sur iOS, l'identifiant vendeur (IDFV), conservé dans le stockage sécurisé de l'application.
 
-## Utilisation des données
+Cet identifiant n'est pas utilisé pour la publicité, le profilage, la géolocalisation ou la vente de données. Il est transmis de manière chiffrée à l'API PhytoCheck hébergée sur Render, puis associé à des informations techniques nécessaires au service : compteur de recherches, statut Premium, date de première utilisation et dernière synchronisation.
 
-Les données sont utilisées exclusivement pour :
-1. **Vérifier l'homologation des produits** : Recherche dans la base publique E‑Phy de l'Anses et consultation des autorisations d'urgence de 120 jours publiées par le Ministère de l'Agriculture
-2. **Gérer votre stock personnel** : Stockage local des produits que vous ajoutez
-3. **Gérer les abonnements Premium** : Vérification du statut d'abonnement via Google Play Billing
+### Photos d'étiquettes
 
-## Partage des données
+Lorsque l'utilisateur lance une analyse par photo, la photo est transmise temporairement au serveur d'analyse sécurisé afin d'extraire le nom du produit et son numéro AMM. Elle n'est pas conservée comme photo dans le stock de l'utilisateur et est supprimée après le traitement de la demande, sous réserve des journaux techniques indispensables au fonctionnement et à la sécurité du service.
 
-PhytoCheck **ne partage aucune donnée avec des tiers**. Les seules interactions externes sont :
-- **Google Play Billing** : Pour la gestion des abonnements Premium (conformément à la politique de confidentialité de Google)
-- **Serveur d'analyse OCR** : Les photos scannées sont envoyées temporairement à un serveur sécurisé pour l'extraction de texte, puis immédiatement supprimées après traitement
+La caméra et la galerie sont facultatives : la recherche manuelle reste disponible sans ces permissions.
 
-## Sécurité des données
+### Données réglementaires
 
-- Toutes les données sont stockées localement sur votre appareil de manière sécurisée
-- Les communications avec les serveurs externes (OCR) utilisent le protocole HTTPS
-- Aucune donnée n'est stockée sur des serveurs externes
+Les données E-Phy, les phrases de risque, les usages et les autorisations d'urgence sont des données réglementaires publiques intégrées ou mises à jour dans l'application. Elles ne constituent pas des données personnelles de l'utilisateur.
 
-## Sources de données réglementaires
+## Finalités
 
-L'application utilise la base de données publique **E‑Phy** de l'Anses. Cette base contient :
-- Les produits phytosanitaires autorisés en France
-- Les produits retirés du marché (PPNU - Produits Phytosanitaires Non Utilisables)
-- Les phrases de risque associées (CMR, toxicité)
+PhytoCheck traite ces données pour :
 
-**Source** : https://ephy.anses.fr/
+1. fournir les recherches d'homologation et les avertissements réglementaires ;
+2. gérer localement le stock et les cultures de l'exploitation ;
+3. synchroniser le compteur de recherches gratuites et l'état Premium ;
+4. analyser les photos d'étiquettes lorsque l'utilisateur le demande ;
+5. assurer la sécurité, la maintenance et le bon fonctionnement technique du service ;
+6. gérer les abonnements via Google Play Billing ou Apple.
 
-L'application consulte également la page officielle du Ministère de l'Agriculture et de la Souveraineté alimentaire pour les autorisations d'urgence d'une durée maximale de 120 jours, prévues par l'article 53 du règlement (CE) n°1107/2009. Ces autorisations sont affichées distinctement des données E‑Phy.
+## Transmission et prestataires
 
-**Source des autorisations d'urgence** : https://agriculture.gouv.fr/produits-phytopharmaceutiques-autorisations-de-mise-sur-le-marche-dune-duree-maximale-de-120-jours
+Les données techniques nécessaires au compteur et les demandes d'analyse photo sont transmises à l'infrastructure serveur de PhytoCheck hébergée par Render. Render agit comme prestataire technique pour l'hébergement et le traitement des requêtes au nom de PhytoCheck ; ces données ne sont pas vendues ni utilisées par PhytoCheck à des fins publicitaires.
 
-Ces sources publiques sont mises à jour régulièrement et intégrées dans l'application. Aucune connexion internet n'est requise pour consulter les données déjà téléchargées (sauf pour la fonctionnalité de scan photo).
+Les paiements et la gestion des abonnements sont traités par Google Play ou Apple selon la plateforme. PhytoCheck ne reçoit pas les numéros de carte bancaire.
 
-## Abonnements et paiements
+PhytoCheck ne vend pas les données et ne les partage pas avec des tiers à des fins de publicité ou de profilage.
 
-Les abonnements Premium sont gérés par **Google Play Billing**. PhytoCheck ne stocke pas vos informations de paiement. Pour plus d'informations sur la gestion de vos données de paiement, consultez la [Politique de confidentialité de Google Play](https://policies.google.com/privacy).
+## Sécurité
 
-## Droits des utilisateurs
+Les communications entre l'application et les serveurs PhytoCheck utilisent HTTPS/TLS. L'identifiant technique est conservé dans un stockage sécurisé sur iOS lorsqu'il y est enregistré localement. L'accès aux données serveur est limité aux besoins d'administration et de fonctionnement du service.
 
-Conformément au RGPD (Règlement Général sur la Protection des Données), vous avez le droit de :
-- **Accéder** à vos données : Toutes vos données sont stockées localement sur votre appareil et accessibles via l'application
-- **Supprimer** vos données : Désinstallez l'application pour supprimer toutes les données locales
-- **Exporter** vos données : Vous pouvez exporter votre liste de stock (fonctionnalité à venir)
+Aucune mesure de sécurité ne peut garantir un risque nul. En cas d'incident susceptible d'affecter les données, PhytoCheck prendra les mesures prévues par la réglementation applicable.
 
-## Modifications de cette politique
+## Durée de conservation
 
-Cette politique de confidentialité peut être mise à jour occasionnellement. Toute modification sera publiée sur cette page avec une nouvelle date de mise à jour. Il est recommandé de consulter régulièrement cette page.
+Les données locales restent sur l'appareil jusqu'à leur suppression par l'utilisateur, la désinstallation de l'application ou le remplacement du stockage local.
+
+Les données techniques du compteur sont conservées dans la base serveur tant qu'elles sont nécessaires au fonctionnement du quota, à la gestion de l'abonnement et à la sécurité du service. Elles peuvent ensuite être supprimées ou anonymisées selon les besoins de conservation applicables.
+
+## Sources réglementaires
+
+PhytoCheck utilise notamment :
+
+- la base publique E-Phy de l'Anses : https://ephy.anses.fr/ ;
+- les informations officielles du ministère de l'Agriculture relatives aux autorisations d'urgence de 120 jours : https://agriculture.gouv.fr/produits-phytopharmaceutiques-autorisations-de-mise-sur-le-marche-dune-duree-maximale-de-120-jours.
+
+## Vos droits et suppression des données
+
+Conformément au RGPD et aux textes applicables, vous pouvez demander l'accès, la rectification, la limitation ou la suppression des données personnelles ou techniques vous concernant, ainsi que vous opposer à certains traitements lorsque les conditions légales sont réunies.
+
+Pour demander la suppression des données serveur liées à l'identifiant technique, écrivez à **francois@siteswebs.fr** en indiquant l'adresse e-mail de contact utilisée pour la demande, la plateforme et, si possible, le modèle de l'appareil ainsi que la date approximative d'utilisation. Ces informations servent uniquement à retrouver l'enregistrement concerné. La suppression peut empêcher la synchronisation du quota et nécessiter une nouvelle initialisation du compteur.
+
+Les données locales peuvent être supprimées depuis les fonctions de l'application ou en désinstallant l'application. Les exports de stock sont générés uniquement à la demande de l'utilisateur.
 
 ## Contact
 
-Pour toute question concernant cette politique de confidentialité, vous pouvez contacter le développeur :
+Pour toute question concernant cette politique ou l'exercice de vos droits :
 
-**François Courouble**  
-Email : francois@siteswebs.fr  
+**François Courouble**
+E-mail : francois@siteswebs.fr
 Site web : https://phytocheck.com
 
-## Conformité
+## Modifications
 
-Cette application est conforme au :
-- **RGPD** (Règlement Général sur la Protection des Données - UE)
-- **Politique de confidentialité de Google Play**
-- **Loi Informatique et Libertés** (France)
-
----
-
-*Dernière révision : 9 octobre 2026*
+Cette politique peut être mise à jour pour refléter une évolution de l'application, des services techniques ou de la réglementation. La date de dernière mise à jour figure en haut de cette page.
