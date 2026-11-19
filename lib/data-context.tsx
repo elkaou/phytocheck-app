@@ -19,7 +19,7 @@ import bundleEmergencyAuthorizations from "@/assets/data/emergency-authorization
 const BUNDLE_MANIFEST = {
   version: "1.0",
   updated_at: "19/11/2026",
-  products_count: 17233,
+  products_count: 17253,
   risks_count: 2551,
 };
 
