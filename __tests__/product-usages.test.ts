@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   getUsagesForAmm,
   getUsagesForProduct,
+  isActiveProductUsage,
+  isClosedShelterOnlyUsage,
 } from "@/lib/product-usages";
 
 describe("product-usages", () => {
@@ -34,6 +36,30 @@ describe("product-usages", () => {
 
     expect(
       usages.some((usage) => usage.culture === "Crucifères oléagineuses"),
+    ).toBe(true);
+  });
+
+  it("détecte uniquement la restriction sous abri fermé", () => {
+    expect(
+      isClosedShelterOnlyUsage({
+        culture: "Tomate - Aubergine",
+        condition: "Uniquement sur cultures hors sol sous abri fermé.",
+      }),
+    ).toBe(true);
+    expect(
+      isClosedShelterOnlyUsage({
+        culture: "Fraisier",
+        condition: "Également autorisé sous abri.",
+      }),
+    ).toBe(false);
+  });
+
+  it("ne considère pas un usage retiré comme un usage autorisé", () => {
+    expect(
+      isActiveProductUsage({ culture: "Laitue", etat: "Retrait" }),
+    ).toBe(false);
+    expect(
+      isActiveProductUsage({ culture: "Laitue", etat: "Autorisé" }),
     ).toBe(true);
   });
 });

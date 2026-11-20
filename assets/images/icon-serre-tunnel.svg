@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Serre tunnel</title>
+  <desc id="desc">Pictogramme vert d’une serre tunnel agricole</desc>
+  <g fill="none" stroke="#166534" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 103V61c0-26 22-45 50-45s50 19 50 45v42" fill="#F0FDF4"/>
+    <path d="M14 103h100"/>
+    <path d="M38 103V61c0-13 11-23 26-23s26 10 26 23v42"/>
+    <path d="M64 39v64"/>
+    <path d="M14 61h100" stroke="#22C55E"/>
+    <path d="M26 35v68M102 35v68" stroke="#22C55E" stroke-width="4"/>
+  </g>
+  <path d="M48 103V82h32v21" fill="#DCFCE7" stroke="#166534" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M64 82v21" stroke="#166534" stroke-width="4"/>
+</svg>

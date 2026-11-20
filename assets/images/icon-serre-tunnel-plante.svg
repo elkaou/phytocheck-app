@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 96" role="img" aria-labelledby="title desc">
+  <title id="title">Serre tunnel avec plante</title>
+  <desc id="desc">Pictogramme vert d’un tunnel agricole contenant une plante</desc>
+  <g fill="none" stroke="#86B82A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Tunnel / serre -->
+    <path d="M28 72V38c0-13 16-24 36-24s36 11 36 24v34"/>
+    <!-- Ligne de sol -->
+    <path d="M18 72h92"/>
+    <!-- Tige centrale -->
+    <path d="M64 72V48"/>
+    <!-- Feuille gauche -->
+    <path d="M64 57c-8 0-13-5-13-12 8 0 13 4 13 12Z"/>
+    <!-- Feuille droite -->
+    <path d="M64 51c8 0 13-5 13-12-8 0-13 4-13 12Z"/>
+  </g>
+  <!-- Petites baies rouges sur les feuilles -->
+  <circle cx="53" cy="48" r="3.2" fill="#DC2626"/>
+  <circle cx="75" cy="42" r="3.2" fill="#DC2626"/>
+</svg>

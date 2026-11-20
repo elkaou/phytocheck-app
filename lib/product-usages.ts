@@ -72,3 +72,14 @@ export function isActiveProductUsage(usage: ProductUsage): boolean {
     !usage.etat || usage.etat.trim().toLocaleLowerCase("fr-FR") !== "retrait"
   );
 }
+
+/**
+ * Indique si l'usage est explicitement limité à un abri fermé.
+ * La restriction est portée par la ligne d'usage, jamais par l'AMM entière.
+ */
+export function isClosedShelterOnlyUsage(usage: ProductUsage): boolean {
+  const condition = usage.condition?.replace(/\s+/g, " ").trim() ?? "";
+  return /\b(?:uniquement|exclusivement)\b[^.]{0,80}\bsous\s+abri\s+fermé(?:\b|\s|\.|$)/i.test(
+    condition,
+  );
+}

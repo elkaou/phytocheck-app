@@ -20,6 +20,7 @@ import {
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { ClosedShelterBadge } from "@/components/closed-shelter-icon";
 import {
   searchProducts,
   searchBySubstance,
@@ -55,6 +56,10 @@ import {
   searchEmergencyAuthorizations,
 } from "@/lib/emergency-authorizations";
 import { formatStockQuantity } from "@/lib/quantity";
+import {
+  getUsagesForProduct,
+  isClosedShelterOnlyUsage,
+} from "@/lib/product-usages";
 
 // Filtres de type disponibles pour la recherche par culture
 const TYPE_FILTERS = [
@@ -148,6 +153,14 @@ export default function SearchScreen() {
   const [filterHomologues, setFilterHomologues] = useState(true);
   const [retiredFallbackActive, setRetiredFallbackActive] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+
+  const handleBeeBadgePress = useCallback((level: BeeWarningLevel) => {
+    Alert.alert(
+      "Logo Abeille",
+      `${getBeeWarningLabel(level)}. Consultez toujours l’étiquette et les conditions d’emploi officielles avant toute utilisation.`,
+      [{ text: "Fermer", style: "cancel" }],
+    );
+  }, []);
 
   // --- États recherche par culture ---
   const [cultureQuery, setCultureQuery] = useState("");
@@ -586,6 +599,10 @@ export default function SearchScreen() {
         beeWarningLevel ||
         (searchType === "culture" && cultureBeeRestrictedAmms.has(item.amm)),
       );
+      const hasClosedShelterOnlyUsage = getUsagesForProduct(
+        item,
+        usages,
+      ).some(isClosedShelterOnlyUsage);
 
       return (
         <Pressable
@@ -629,7 +646,7 @@ export default function SearchScreen() {
             </View>
             <View style={styles.resultBadges}>
               {hasBeeRestriction && (
-                <View
+                <Pressable
                   style={[
                     styles.beeBadge,
                     beeWarningLevel === "restricted-during-flowering" &&
@@ -638,12 +655,20 @@ export default function SearchScreen() {
                       styles.beeBadgePresence,
                   ]}
                   accessible
+                  accessibilityRole="button"
                   accessibilityLabel={`Avertissement abeilles : ${getBeeWarningLabel(
                     beeWarningLevel ?? "conditional",
                   )}`}
+                  accessibilityHint="Touchez pour afficher l’explication du logo Abeille"
+                  onPress={() =>
+                    handleBeeBadgePress(beeWarningLevel ?? "conditional")
+                  }
                 >
                   <Text style={styles.beeBadgeText}>🐝</Text>
-                </View>
+                </Pressable>
+              )}
+              {hasClosedShelterOnlyUsage && (
+                <ClosedShelterBadge />
               )}
               {inStock && (
                 <View style={styles.stockBadge}>

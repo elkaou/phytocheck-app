@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Guide d’utilisation de l’application mobile PhytoCheck : recherches, scan, stock, alertes et exports.">
+<title>Guide d’utilisation — PhytoCheck</title>
+<style>
+:root { color-scheme: light; --blue:#0a7ea5; --blue-dark:#075b78; --green:#168b4b; --text:#24313a; --muted:#5f6d75; --border:#dce5e9; --surface:#f6fafb; }
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; line-height:1.65; color:var(--text); background:#eef5f7; }
+.page { max-width:1080px; margin:0 auto; padding:24px 18px 56px; }
+.hero { background:linear-gradient(135deg,var(--blue),var(--blue-dark)); color:white; border-radius:18px; padding:36px clamp(22px,5vw,58px); margin-bottom:24px; box-shadow:0 10px 28px rgba(7,91,120,.22); }
+.hero h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.2rem); line-height:1.1; }
+.hero p { margin:0; max-width:760px; opacity:.94; font-size:1.08rem; }
+.content { background:white; border-radius:18px; padding:clamp(22px,5vw,56px); box-shadow:0 5px 20px rgba(24,59,72,.08); }
+nav.phytocheck-guide__toc { background:var(--surface); border:1px solid var(--border); border-left:5px solid var(--blue); border-radius:12px; padding:18px 22px; margin-bottom:34px; }
+nav h2 { margin:0 0 8px; color:var(--blue-dark); font-size:1.25rem; }
+nav ol { margin:0; padding-left:22px; columns:2; column-gap:34px; }
+nav li { break-inside:avoid; margin:3px 0; }
+a { color:var(--blue-dark); }
+h1,h2,h3 { color:var(--blue-dark); line-height:1.25; scroll-margin-top:18px; }
+.content > h1 { font-size:2.35rem; margin-top:0; }
+h2 { margin-top:2.2em; padding-bottom:6px; border-bottom:1px solid var(--border); }
+h3 { margin-top:1.6em; color:#256b82; }
+p { margin:0 0 1em; }
+ul,ol { padding-left:1.45em; }
+li { margin:.35em 0; }
+table { width:100%; border-collapse:collapse; margin:18px 0 24px; font-size:.96rem; }
+th,td { border:1px solid var(--border); padding:10px 12px; text-align:left; vertical-align:top; }
+th { background:#eaf4f7; color:var(--blue-dark); }
+blockquote { margin:20px 0; padding:14px 18px; background:#fff8df; border-left:4px solid #d49b00; border-radius:8px; }
+hr { border:0; border-top:1px solid var(--border); margin:32px 0 16px; }
+.phyto-footer { height:4px; background:linear-gradient(90deg,var(--blue),var(--green)); border-radius:99px; }
+@media (max-width:700px) { .page { padding:12px 10px 32px; } .content { padding:20px 17px; } nav ol { columns:1; } table { display:block; overflow-x:auto; white-space:normal; } th,td { min-width:150px; } }
+@media print { body { background:white; } .page { max-width:none; padding:0; } .hero,.content { box-shadow:none; } nav { break-after:page; } }
+</style>
+</head>
+<body>
+<div class="page">
+<header class="hero">
+<h1>Guide d’utilisation de PhytoCheck</h1>
+<p>Rechercher, vérifier et gérer vos produits phytopharmaceutiques en France.</p>
+</header>
+<main class="content">
+<nav class="phytocheck-guide__toc" aria-labelledby="sommaire">
+<h2 id="sommaire">Sommaire</h2>
+<ol>
+<li><a href="#1-telecharger-lapplication">1. Télécharger l’application</a></li>
+<li><a href="#2-comprendre-lecran-daccueil">2. Comprendre l’écran d’accueil</a></li>
+<li><a href="#3-rechercher-par-nom-ou-amm">3. Rechercher par nom ou numéro AMM</a></li>
+<li><a href="#4-rechercher-par-matiere-active">4. Rechercher par matière active</a></li>
+<li><a href="#5-rechercher-par-culture">5. Rechercher par culture</a></li>
+<li><a href="#6-lire-la-fiche-produit">6. Lire la fiche produit</a></li>
+<li><a href="#7-scanner-une-etiquette">7. Scanner une étiquette</a></li>
+<li><a href="#8-ajout-multiple">8. Ajouter plusieurs produits par photo</a></li>
+<li><a href="#9-autorisations-120-jours">9. Comprendre les autorisations Article 53</a></li>
+<li><a href="#10-gerer-le-stock">10. Gérer le stock</a></li>
+<li><a href="#11-alertes-reglementaires">11. Alertes réglementaires du stock</a></li>
+<li><a href="#12-premium">12. PhytoCheck Premium</a></li>
+<li><a href="#13-mettre-les-donnees-a-jour">13. Mettre les données à jour</a></li>
+<li><a href="#14-documents-legaux">14. Conditions d’utilisation et confidentialité</a></li>
+<li><a href="#15-questions-frequentes">15. Questions fréquentes</a></li>
+<li><a href="#sources-officielles">Sources officielles</a></li>
+</ol>
+</nav>
+<h1 id="guide-dutilisation-de-phytocheck">Guide d’utilisation de PhytoCheck</h1>
+<p><strong>PhytoCheck</strong> est une application mobile d’information et d’aide à la décision pour les produits phytopharmaceutiques en France. Elle permet de rechercher un produit par son nom, son numéro AMM, sa matière active, sa culture ou une photo d’étiquette, puis de suivre les produits présents dans votre stock.</p>
+<p>L’application utilise deux sources réglementaires publiques :</p>
+<ul>
+<li>le catalogue <strong>E‑Phy de l’Anses</strong> pour les produits, les usages, les statuts et les informations de danger ;</li>
+<li>les publications du <strong>ministère de l’Agriculture et de la Souveraineté alimentaire</strong> pour les autorisations d’urgence d’une durée maximale de 120 jours délivrées au titre de l’article 53.</li>
+</ul>
+<p>PhytoCheck ne remplace pas l’étiquette, la décision officielle, les conditions d’emploi ni le conseil d’un professionnel qualifié. Vérifiez toujours les informations avant toute utilisation.</p>
+<h2 id="1-telecharger-lapplication">1. Télécharger l’application</h2>
+<p>PhytoCheck est disponible sur Android et iPhone. Les recherches, la consultation des fiches et la gestion du stock local ne nécessitent pas la création d’un compte.</p>
+<table>
+<thead>
+<tr>
+<th>Plateforme</th>
+<th>Accès</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Android</strong></td>
+<td>Google Play Store — recherchez « PhytoCheck ».</td>
+</tr>
+<tr>
+<td><strong>iPhone / iPad</strong></td>
+<td>App Store — recherchez « PhytoCheck ».</td>
+</tr>
+</tbody>
+</table>
+<p>Une base de données est embarquée dans l’application. Les informations déjà téléchargées restent donc consultables hors connexion. Une connexion internet est notamment nécessaire pour l’analyse d’images et le téléchargement des mises à jour.</p>
+<h2 id="2-comprendre-lecran-daccueil">2. Comprendre l’écran d’accueil</h2>
+<p>L’accueil propose les principales actions :</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Utilité</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Scanner un produit</strong></td>
+<td>Photographier une étiquette pour rechercher un produit.</td>
+</tr>
+<tr>
+<td><strong>Recherche manuelle</strong></td>
+<td>Rechercher par nom, AMM, matière active ou culture.</td>
+</tr>
+<tr>
+<td><strong>Ajout multiple</strong></td>
+<td>Photographier une zone du local pour identifier plusieurs bidons et les ajouter au stock.</td>
+</tr>
+<tr>
+<td><strong>Gestion du stock</strong></td>
+<td>Consulter, modifier, contrôler, filtrer et exporter l’inventaire.</td>
+</tr>
+</tbody>
+</table>
+<p>L’onglet <strong>Recherche</strong> regroupe les quatre modes de recherche : produit ou AMM, matière active, culture et photo. Lorsque vous revenez dans cet onglet, le champ de recherche est réinitialisé afin de commencer rapidement une nouvelle recherche.</p>
+<h2 id="3-rechercher-par-nom-ou-amm">3. Rechercher par nom ou numéro AMM</h2>
+<p>Dans l’onglet <strong>Recherche</strong>, sélectionnez la recherche par produit. Saisissez tout ou partie du nom commercial, un nom secondaire ou le numéro AMM.</p>
+<p>La recherche accepte les premières lettres et ne dépend pas des majuscules, minuscules ou accents. Les résultats homologués sont affichés par défaut. Le bouton <strong>Homologués</strong> permet d’élargir l’affichage pour consulter aussi les produits retirés ou non homologués dans les données disponibles.</p>
+<p>Les produits présents dans votre stock sont placés en priorité et portent un badge vert indiquant le nom et la quantité réellement enregistrés, par exemple <strong>En stock : 5 L</strong>. Un produit qui possède plusieurs noms commerciaux n’est marqué en stock que si le nom affiché correspond au nom réellement enregistré.</p>
+<p>Pour éviter les doublons, cette recherche affiche une seule carte par AMM. Lorsqu’un nom principal et plusieurs noms secondaires correspondent à la recherche, le nom principal est privilégié.</p>
+<h3 id="statuts-et-couleurs">Statuts et couleurs</h3>
+<table>
+<thead>
+<tr>
+<th>Couleur</th>
+<th>Statut</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Rouge</strong></td>
+<td>PPNU, produit retiré ou statut nécessitant une vigilance immédiate.</td>
+</tr>
+<tr>
+<td><strong>Orange foncé</strong></td>
+<td>Produit présentant une classification toxique.</td>
+</tr>
+<tr>
+<td><strong>Orange clair</strong></td>
+<td>Produit classé CMR.</td>
+</tr>
+<tr>
+<td><strong>Vert</strong></td>
+<td>Produit homologué non CMR et non toxique ; le libellé précise sa fonction lorsque celle-ci est disponible.</td>
+</tr>
+<tr>
+<td><strong>Bleu</strong></td>
+<td>Autorisation d’urgence Article 53, distincte du catalogue E‑Phy.</td>
+</tr>
+<tr>
+<td><strong>Ambre</strong></td>
+<td>Information nécessitant une attention, notamment « Culture non déclarée sur l’exploitation » dans le stock.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-rechercher-par-matiere-active">4. Rechercher par matière active</h2>
+<p>Dans l’onglet <strong>Recherche</strong>, choisissez la section représentée par l’icône en forme de molécule, puis saisissez une matière active, par exemple <em>prosulfocarbe</em>.</p>
+<p>Depuis une fiche produit, vous pouvez également toucher la zone <strong>Substances actives</strong>. PhytoCheck ouvre alors une recherche des produits homologués qui possèdent <strong>exactement le même ensemble de matières actives</strong>. Si le produit contient plusieurs substances, elles sont toutes prises en compte : un produit ayant seulement une partie de l’association n’est pas considéré comme identique.</p>
+<p>Les produits correspondant réellement à votre stock apparaissent en premier et portent le badge vert <strong>En stock</strong> avec la quantité. Les autres produits restent affichés normalement, sans badge de stock.</p>
+<p>Cette recherche présente une fiche pour le nom principal et une fiche pour chaque nom secondaire associé. Le nom commercial affiché en titre est identifié comme <strong>Nom principal</strong> ou <strong>Nom secondaire</strong> ; pour un nom secondaire, le nom principal est rappelé sous le titre. Cela permet de distinguer clairement, par exemple, <strong>CYTHRINE MAX</strong>, <strong>COPMETHRINE</strong>, <strong>PROFI CYPER MAX</strong> et <strong>CYPLAN MAX</strong>.</p>
+<h2 id="5-rechercher-par-culture">5. Rechercher par culture</h2>
+<ol>
+<li>Ouvrez la section <strong>Par culture</strong>.</li>
+<li>Saisissez les premières lettres de la culture, par exemple <em>blé</em>, <em>orge</em>, <em>vigne</em> ou <em>haricots</em>.</li>
+<li>Sélectionnez la suggestion correspondante.</li>
+<li>Choisissez éventuellement une fonction : <strong>Tous</strong>, <strong>Herbicide</strong>, <strong>Fongicide</strong>, <strong>Insecticide</strong> ou <strong>Acaricide</strong>.</li>
+</ol>
+<p>Les suggestions de cultures sont préparées à partir d’un index léger pour apparaître rapidement. L’application tient compte des regroupements utilisés dans les données officielles : une recherche « blé » peut ainsi inclure certains usages publiés sous « céréales » ou « céréales à paille » lorsque la correspondance est prévue.</p>
+<p>Après le choix de la culture et de la fonction, un écran <strong>« Recherche en cours… »</strong> confirme que les données sont en cours d’analyse. Les produits présents dans le stock sont placés en premier et affichés avec leur quantité.</p>
+<p>Lorsqu’un produit est ouvert depuis cette recherche, l’application conserve la culture sélectionnée pour faciliter la lecture de ses usages autorisés. Les usages retirés ne sont pas présentés comme des usages autorisés.</p>
+<h2 id="6-lire-la-fiche-produit">6. Lire la fiche produit</h2>
+<p>Touchez une carte pour ouvrir la fiche détaillée. Elle peut afficher :</p>
+<ul>
+<li>le nom principal et les noms secondaires ;</li>
+<li>le numéro AMM et le titulaire ;</li>
+<li>le statut réglementaire et les dates importantes ;</li>
+<li>la fonction du produit et sa formulation ;</li>
+<li>les substances actives ;</li>
+<li>les mentions de danger, classifications et phrases de risque ;</li>
+<li>les conditions et usages autorisés disponibles.</li>
+</ul>
+<p>La zone <strong>Substances actives</strong> est interactive. Touchez-la pour rechercher les autres produits homologués possédant exactement les mêmes matières actives.</p>
+<p>Le bouton d’ajout au stock ouvre une saisie de quantité. L’unité est déterminée automatiquement selon le produit : <strong>L</strong> pour les formulations liquides et <strong>Kg</strong> pour les poudres, granulés et formulations solides. L’utilisateur n’a donc pas à choisir l’unité manuellement.</p>
+<p>Si le produit est déjà enregistré, un cadre vert <strong>« En stock »</strong> apparaît au bas de la fiche. Touchez ce cadre pour modifier directement la quantité réelle restante.</p>
+<h2 id="7-scanner-une-etiquette">7. Scanner une étiquette</h2>
+<ol>
+<li>Depuis l’accueil, appuyez sur <strong>Scanner un produit</strong>.</li>
+<li>Autorisez l’accès à l’appareil photo si nécessaire.</li>
+<li>Photographiez l’étiquette ou choisissez une image dans la galerie.</li>
+<li>Vérifiez le produit proposé et ouvrez sa fiche.</li>
+</ol>
+<p>Pour améliorer la reconnaissance, photographiez une étiquette bien éclairée, sans reflet, avec le nom commercial et si possible le numéro AMM visibles. Le nom commercial reconnu est rapproché de la base comme lors d’une recherche manuelle. En cas de doute, vérifiez le résultat avec le numéro AMM ou la recherche manuelle.</p>
+<blockquote>
+<p>Le scan d’une image nécessite une connexion internet. L’identification automatique est une aide et doit toujours être contrôlée sur l’étiquette et dans la source officielle.</p>
+</blockquote>
+<h2 id="8-ajout-multiple">8. Ajouter plusieurs produits par photo</h2>
+<p>La fonction <strong>Ajout multiple</strong> est destinée à photographier une zone du local phytosanitaire. L’analyse propose au maximum un produit par bidon détecté afin d’éviter de présenter plusieurs variantes pour un même contenant.</p>
+<ol>
+<li>Appuyez sur <strong>Ajout multiple</strong> depuis l’accueil ou l’accès prévu dans l’onglet Stock.</li>
+<li>Photographiez une zone suffisamment éclairée et lisible.</li>
+<li>Vérifiez chaque proposition, son statut et son éventuel badge réglementaire.</li>
+<li>Corrigez manuellement un nom si l’identification n’est pas certaine.</li>
+<li>Saisissez la quantité totale réellement présente pour chaque produit.</li>
+<li>Validez l’ajout au stock.</li>
+</ol>
+<p>Si un produit existe déjà dans le stock, la quantité actuelle est proposée et peut être remplacée par la quantité totale réellement disponible. Par exemple, vous pouvez remplacer <strong>10 L</strong> par <strong>8 L</strong> sans cumul automatique.</p>
+<p>Les produits identifiés automatiquement peuvent être décomptés du quota gratuit par bidon. Les corrections manuelles et les bidons non identifiés ne sont pas décomptés. Les utilisateurs Premium ne voient pas les avertissements de quota.</p>
+<h2 id="9-autorisations-120-jours">9. Comprendre les autorisations Article 53</h2>
+<p>Le ministère de l’Agriculture peut délivrer, dans certaines situations, une autorisation temporaire au titre de l’<strong>article 53 du règlement (CE) n° 1107/2009</strong>. Sa durée maximale est de 120 jours.</p>
+<p>Dans PhytoCheck, ces autorisations sont séparées des résultats E‑Phy et présentées dans un <strong>encadré bleu</strong>. Elles peuvent indiquer le produit, l’AMM, la culture, la finalité et la date d’échéance.</p>
+<ul>
+<li>elles sont filtrées selon la culture et la fonction choisies ;</li>
+<li>une autorisation de désherbage ne doit pas apparaître dans une recherche fongicide ou insecticide ;</li>
+<li>elles sont temporaires et ne constituent pas une homologation permanente ;</li>
+<li>leur date de validité et leurs conditions doivent être vérifiées dans la décision officielle.</li>
+</ul>
+<h2 id="10-gerer-le-stock">10. Gérer le stock</h2>
+<p>L’onglet <strong>Stock</strong> permet de conserver un inventaire local des produits présents dans votre local phytosanitaire. L’affichage et l’ouverture des fiches ont été optimisés pour rester réactifs, y compris sur Android.</p>
+<h3 id="ajouter-au-stock">Ajouter un produit</h3>
+<p>Depuis une fiche produit, appuyez sur <strong>Ajouter au stock</strong>. Vous pouvez aussi utiliser <strong>Ajout multiple</strong> pour plusieurs bidons ou la loupe de l’onglet Stock pour retrouver un produit déjà enregistré.</p>
+<h3 id="modifier-la-quantite">Modifier la quantité</h3>
+<p>Touchez directement la zone de quantité affichée sur une carte du stock. Saisissez la quantité totale restante ; les nombres décimaux et la virgule sont pris en charge, par exemple <strong>0,6 L</strong> ou <strong>1,25 Kg</strong>. L’unité L ou Kg est adaptée automatiquement au produit et n’est pas proposée comme un choix séparé.</p>
+<p>Le nom du produit ouvre sa fiche détaillée. La croix rouge supprime le produit du stock après confirmation.</p>
+<h3 id="cultures-de-lexploitation">Cultures de l’exploitation</h3>
+<p>Avant d’utiliser le filtre culturel, indiquez les cultures réellement pratiquées sur l’exploitation :</p>
+<ol>
+<li>Dans l’onglet <strong>Stock</strong>, ouvrez <strong>Filtrer</strong>, puis <strong>Cultures de l’exploitation</strong> ;</li>
+<li>ou ouvrez le raccourci correspondant dans l’onglet <strong>À propos</strong> ;</li>
+<li>saisissez les premières lettres d’une culture et choisissez une proposition ;</li>
+<li>répétez l’opération pour ajouter les autres cultures pratiquées.</li>
+</ol>
+<p>Chaque ajout ou suppression est enregistré automatiquement. Sur Android comme sur iPhone, la liste de suggestions reste accessible pendant la saisie. Tant qu’aucune culture n’est enregistrée, aucun filtre culturel n’est appliqué au stock.</p>
+<p>Les <strong>adjuvants</strong> ne sont pas des cultures : ils ne sont donc pas proposés dans cette liste. Lorsqu’un adjuvant comporte une condition d’emploi liée à une culture, par exemple les grandes cultures, celle-ci est prise en compte pour les alertes et filtres concernés.</p>
+<h3 id="filtrer-le-stock">Filtrer le stock</h3>
+<p>Le bouton <strong>Filtrer</strong> ouvre un panneau compact organisé en trois rubriques. Plusieurs choix d’une même rubrique se cumulent. Les critères de rubriques différentes se combinent également : par exemple, vous pouvez afficher seulement les herbicides de blé homologués non CMR et non toxiques.</p>
+<ol>
+<li><strong>Fonction du produit</strong> : Herbicide, Fongicide, Insecticide, Acaricide, Molluscicide, Régulateur de croissance ou <strong>Autre</strong>. Les nématicides, rodenticides et fonctions non listées sont regroupés dans « Autre ».</li>
+<li><strong>Cultures</strong> : sélectionnez aucune, certaines ou toutes les cultures enregistrées sur l’exploitation. Sans sélection, le filtre ne tient pas compte des cultures.</li>
+<li><strong>Statut et danger</strong> : Retirés / PPNU, CMR, Toxiques, Retrait sous 3 mois ou Homologués non CMR, non toxiques.</li>
+</ol>
+<p>Les sélections sont d’abord préparées dans la fenêtre, puis appliquées avec <strong>Afficher les résultats</strong>. Utilisez <strong>Réinitialiser</strong> pour supprimer tous les critères. Ces deux actions donnent un retour visuel et tactile lorsque l’appareil le permet.</p>
+<h3 id="badge-en-stock">Badge « En stock » dans les recherches</h3>
+<p>Lorsqu’un résultat correspond réellement au nom commercial enregistré dans votre stock, il apparaît en priorité avec un badge vert contenant la quantité exacte, par exemple <strong>En stock : 4,5 L</strong>. Les autres produits partageant le même numéro AMM mais n’étant pas enregistrés sous ce nom ne doivent pas être marqués en stock.</p>
+<h3 id="exporter-linventaire">Exporter l’inventaire</h3>
+<p>Les exports PDF et Excel sont réservés aux abonnés Premium. Ils permettent de conserver ou partager un état de l’inventaire indépendamment du téléphone.</p>
+<p>Les deux exports sont classés par ordre alphabétique et reprennent <strong>exactement la liste affichée</strong> : une recherche saisie et les filtres actifs sont donc pris en compte. Pour exporter tout le stock, réinitialisez d’abord les filtres et effacez la recherche.</p>
+<p>L’export PDF comporte le logo PhytoCheck, la quantité, le titulaire et le statut. Si le produit ne correspond à aucune culture enregistrée sur l’exploitation, l’alerte <strong>« Culture non déclarée sur l’exploitation »</strong> est ajoutée dans la colonne Statut. L’export Excel contient les informations principales de l’inventaire sans colonne « Date d’ajout ».</p>
+<h2 id="11-alertes-reglementaires">11. Alertes réglementaires du stock</h2>
+<p>À l’ouverture de l’onglet Stock, l’application compare les produits enregistrés avec les données réglementaires disponibles.</p>
+<p>Une alerte peut signaler :</p>
+<ul>
+<li>un nouveau retrait ou un changement de date de retrait ;</li>
+<li>le passage d’un produit en PPNU ;</li>
+<li>une évolution de statut ou de classification ;</li>
+<li>une autorisation d’urgence ou une échéance associée au produit ;</li>
+<li>un produit dont les usages connus ne correspondent à aucune culture déclarée sur l’exploitation.</li>
+</ul>
+<p>Lorsqu’un produit encore autorisé doit être retiré dans les trois prochains mois, une fenêtre d’alerte peut afficher la date et le nombre de jours restants. La carte du stock conserve également un rappel discret. La case <strong>« Je suis averti, ne plus afficher ces retraits »</strong> permet de masquer une alerte déjà prise en compte. Une nouvelle date de retrait peut déclencher une nouvelle alerte.</p>
+<p>L’alerte ambre <strong>« Culture non déclarée sur l’exploitation »</strong> est informative : vérifiez vos cultures enregistrées, les usages du produit et ses conditions d’emploi avant de prendre une décision. Elle n’apparaît pas lorsqu’aucun usage exploitable n’est disponible dans les données.</p>
+<h2 id="12-premium">12. PhytoCheck Premium</h2>
+<p>La version gratuite permet de découvrir l’application avec un nombre limité de recherches et de produits en stock. Premium est destiné aux utilisateurs qui souhaitent utiliser l’application plus intensivement.</p>
+<table>
+<thead>
+<tr>
+<th>Fonctionnalité</th>
+<th>Gratuit</th>
+<th>Premium</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Recherches</td>
+<td>Quota gratuit</td>
+<td>Illimitées</td>
+</tr>
+<tr>
+<td>Scan et ajout multiple</td>
+<td>Décomptés selon les bidons identifiés</td>
+<td>Illimités</td>
+</tr>
+<tr>
+<td>Produits en stock</td>
+<td>Limite gratuite</td>
+<td>Stock illimité</td>
+</tr>
+<tr>
+<td>Export PDF</td>
+<td>Non disponible</td>
+<td>Disponible</td>
+</tr>
+<tr>
+<td>Export Excel</td>
+<td>Non disponible</td>
+<td>Disponible</td>
+</tr>
+</tbody>
+</table>
+<p>Les abonnements sont gérés par Google Play ou l’App Store. Le prix affiché dans l’onglet Premium est récupéré depuis la plateforme de téléchargement lorsqu’il est disponible. L’abonnement se renouvelle automatiquement sauf annulation depuis les paramètres du compte concerné. Après une réinstallation, utilisez <strong>Restaurer mes achats</strong>.</p>
+<h2 id="13-mettre-les-donnees-a-jour">13. Mettre les données à jour</h2>
+<p>PhytoCheck conserve une base embarquée pour rester utile hors connexion. Lorsque le réseau est disponible, l’application peut vérifier la disponibilité de nouvelles données E‑Phy et de nouvelles autorisations d’urgence.</p>
+<ol>
+<li>Ouvrez l’onglet <strong>À propos</strong>.</li>
+<li>Consultez la date de mise à jour affichée.</li>
+<li>Appuyez sur <strong>Vérifier les mises à jour</strong>.</li>
+</ol>
+<p>Les informations téléchargées restent ensuite disponibles localement. La date E‑Phy et le calendrier des publications Article 53 sont deux informations distinctes.</p>
+<h2 id="14-documents-legaux">14. Conditions d’utilisation et confidentialité</h2>
+<p>Les <strong>Conditions d’utilisation</strong> et la <strong>Politique de confidentialité</strong> sont accessibles depuis l’onglet <strong>À propos</strong>. L’application tente de charger la version officielle en ligne et conserve une copie locale pour permettre la consultation hors connexion.</p>
+<p>Sur Android, si le texte apparaît trop grand, vérifiez d’abord le niveau de zoom et la taille de police du système. Les documents sont conçus pour revenir à la ligne sur les petits écrans.</p>
+<h2 id="15-questions-frequentes">15. Questions fréquentes</h2>
+<h3 id="produit-absent">Pourquoi un produit n’apparaît-il pas ?</h3>
+<p>Essayez les premières lettres, un nom secondaire ou le numéro AMM. Le produit peut aussi avoir un intitulé différent, être absent de la base embarquée ou apparaître dans une autorisation Article 53 distincte.</p>
+<h3 id="commerce-parallele">Les produits issus du commerce parallèle ont-ils des usages autorisés ?</h3>
+<p>Oui. Lorsque les données indiquent un permis de commerce parallèle, PhytoCheck relie le produit à son AMM française de référence pour retrouver les usages correspondants. Vérifiez toujours les conditions d’emploi et la décision officielle applicables au produit concerné.</p>
+<h3 id="stock-nom-secondaire">Pourquoi plusieurs noms portant le même AMM ne sont-ils pas tous marqués en stock ?</h3>
+<p>Le stock est associé au nom commercial réellement enregistré. Deux produits peuvent partager une AMM tout en ayant des noms commerciaux différents. Seul le nom principal ou secondaire enregistré dans votre stock reçoit le badge « En stock ».</p>
+<h3 id="unite-quantite">Pourquoi l’application choisit-elle L ou Kg automatiquement ?</h3>
+<p>L’unité est déduite de la formulation disponible dans les données du produit. Les liquides sont suivis en litres et les poudres, granulés ou formulations solides en kilogrammes.</p>
+<h3 id="culture-non-declaree">Que signifie « Culture non déclarée sur l’exploitation » ?</h3>
+<p>Cette alerte indique que l’application a trouvé des usages pour le produit, mais aucun qui corresponde aux cultures que vous avez enregistrées. Vérifiez les cultures saisies, les conditions d’emploi et les sources officielles. Cette alerte ne constitue pas à elle seule une interdiction d’utilisation.</p>
+<h3 id="exports-filtres">Les exports PDF et Excel tiennent-ils compte des filtres ?</h3>
+<p>Oui. Les exports reprennent seulement les produits visibles après application de la recherche et des filtres. Réinitialisez les filtres si vous souhaitez exporter l’ensemble du stock.</p>
+<h3 id="hors-connexion">L’application fonctionne-t-elle sans internet ?</h3>
+<p>Oui pour les données déjà présentes sur l’appareil et pour le stock local. Une connexion est nécessaire pour l’analyse d’image, la récupération de nouvelles données et certaines opérations en ligne.</p>
+<h3 id="stock-nouveau-telephone">Le stock est-il transféré automatiquement sur un autre téléphone ?</h3>
+<p>Non, le stock est conservé localement sur l’appareil. Les exports Premium peuvent servir de sauvegarde ou de support de transfert.</p>
+<h3 id="decision-traitement">PhytoCheck suffit-il pour décider d’un traitement ?</h3>
+<p>Non. Vérifiez toujours l’étiquette, les conditions d’emploi et la source officielle applicable avant toute intervention.</p>
+<h2 id="sources-officielles">Sources officielles</h2>
+<ul>
+<li><a href="https://ephy.anses.fr/">Catalogue E‑Phy de l’Anses</a></li>
+<li><a href="https://agriculture.gouv.fr/produits-phytopharmaceutiques-autorisations-de-mise-sur-le-marche-dune-duree-maximale-de-120-jours">Autorisations de mise sur le marché d’une durée maximale de 120 jours — ministère de l’Agriculture</a></li>
+<li><a href="https://phytocheck.com/">Site officiel de PhytoCheck</a></li>
+</ul>
+<hr>
+<p><em>Guide d’utilisation PhytoCheck — dernière mise à jour : 9 novembre 2026 — fonctionnalités de la version 1.3.6 et des versions ultérieures.</em></p>
+<div class="phyto-footer"> </div>
+</main>
+</div>
+</body>
+</html>

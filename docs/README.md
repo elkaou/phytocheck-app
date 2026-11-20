@@ -1,7 +1,8 @@
 # Documentation Légale PhytoCheck
 
-Ce dossier contient les documents légaux de l'application PhytoCheck :
+Ce dossier contient le guide utilisateur et les documents légaux de l'application PhytoCheck :
 
+- **guide-utilisation.html** : Guide complet d'utilisation de PhytoCheck
 - **privacy-policy.html** : Politique de confidentialité
 - **terms-of-service.html** : Conditions générales d'utilisation
 - **index.html** : Page d'accueil avec liens vers les documents
@@ -34,6 +35,7 @@ GitHub Pages va automatiquement déployer votre site. Cela prend généralement 
 Une fois publié, vos documents seront accessibles aux URLs suivantes :
 
 - **Page d'accueil** : https://elkaou.github.io/phytocheck-app/
+- **Guide utilisateur** : https://elkaou.github.io/phytocheck-app/guide-utilisation.html
 - **Politique de confidentialité** : https://elkaou.github.io/phytocheck-app/privacy-policy.html
 - **Conditions d'utilisation** : https://elkaou.github.io/phytocheck-app/terms-of-service.html
 

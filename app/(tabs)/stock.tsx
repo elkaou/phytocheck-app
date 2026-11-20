@@ -16,6 +16,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { ScreenContainer } from "@/components/screen-container";
+import { ClosedShelterBadge } from "@/components/closed-shelter-icon";
 import { QuantityModal } from "@/components/quantity-modal";
 import { StockFilterPanel } from "@/components/stock-filter-panel";
 import { StockWithdrawalWarningModal } from "@/components/stock-withdrawal-warning-modal";
@@ -41,6 +42,10 @@ import {
   getBeeWarningLabel,
   type BeeWarningLevel,
 } from "@/lib/bee-restrictions";
+import {
+  getUsagesForAmm,
+  isClosedShelterOnlyUsage,
+} from "@/lib/product-usages";
 import { getStock, StockItem, FREE_STOCK_LIMIT } from "@/lib/store";
 import { stockItemMatchesSearch } from "@/lib/stock-search";
 import {
@@ -88,6 +93,14 @@ export default function StockScreen() {
   } = useData();
 
   const [filters, setFilters] = useState<StockFilters>(EMPTY_STOCK_FILTERS);
+
+  const handleBeeBadgePress = useCallback((level: BeeWarningLevel) => {
+    Alert.alert(
+      "Logo Abeille",
+      `${getBeeWarningLabel(level)}. Consultez toujours l’étiquette et les conditions d’emploi officielles avant toute utilisation.`,
+      [{ text: "Fermer", style: "cancel" }],
+    );
+  }, []);
   const [farmCultures, setFarmCultures] = useState<string[]>([]);
   const [itemBeingEdited, setItemBeingEdited] = useState<StockItem | null>(
     null,
@@ -471,6 +484,18 @@ export default function StockScreen() {
     });
     return warnings;
   }, [stock, productsByAmm, usages]);
+
+  const closedShelterOnlyAmms = useMemo(() => {
+    const restricted = new Set<string>();
+    stock.forEach((item) => {
+      if (
+        getUsagesForAmm(item.amm, usages).some(isClosedShelterOnlyUsage)
+      ) {
+        restricted.add(item.amm);
+      }
+    });
+    return restricted;
+  }, [stock, usages]);
 
   const handleStockSearchToggle = useCallback(() => {
     setIsStockSearchOpen((isOpen) => {
@@ -886,6 +911,7 @@ export default function StockScreen() {
       const withdrawalReminder = stockWithdrawalReminders.get(item.amm);
       const outsideFarmCultures = outsideFarmCultureAmms.has(item.amm);
       const beeWarningLevel = beeWarningsByAmm.get(item.amm);
+      const hasClosedShelterOnlyUsage = closedShelterOnlyAmms.has(item.amm);
       return (
         <View style={styles.stockCard}>
           <View style={styles.stockCardContent}>
@@ -908,7 +934,7 @@ export default function StockScreen() {
             </Pressable>
             <Text style={styles.stockAMM}>AMM : {item.amm}</Text>
             {beeWarningLevel ? (
-              <View
+              <Pressable
                 style={[
                   styles.stockBeeBadge,
                   beeWarningLevel === "restricted-during-flowering" &&
@@ -917,12 +943,16 @@ export default function StockScreen() {
                     styles.stockBeeBadgePresence,
                 ]}
                 accessible
-                accessibilityRole="image"
+                accessibilityRole="button"
                 accessibilityLabel={`Avertissement abeilles : ${getBeeWarningLabel(beeWarningLevel)}`}
+                accessibilityHint="Touchez pour afficher l’explication du logo Abeille"
+                onPress={() => handleBeeBadgePress(beeWarningLevel)}
               >
                 <Text style={styles.stockBeeBadgeIcon}>🐝</Text>
-                <Text style={styles.stockBeeBadgeText}>Abeilles</Text>
-              </View>
+              </Pressable>
+            ) : null}
+            {hasClosedShelterOnlyUsage ? (
+              <ClosedShelterBadge />
             ) : null}
             {outsideFarmCultures ? (
               <View style={styles.stockCultureWarning}>
@@ -1042,6 +1072,7 @@ export default function StockScreen() {
       stockWithdrawalReminders,
       outsideFarmCultureAmms,
       beeWarningsByAmm,
+      closedShelterOnlyAmms,
     ],
   );
 
@@ -1402,13 +1433,12 @@ const styles = StyleSheet.create({
   },
   stockBeeBadge: {
     alignSelf: "flex-start",
-    flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    justifyContent: "center",
     marginTop: 8,
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "#FEF3C7",
     borderWidth: 1,
     borderColor: "#F59E0B",
@@ -1422,13 +1452,8 @@ const styles = StyleSheet.create({
     borderColor: "#EA580C",
   },
   stockBeeBadgeIcon: {
-    fontSize: 16,
-    lineHeight: 19,
-  },
-  stockBeeBadgeText: {
-    color: "#92400E",
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: 17,
+    lineHeight: 20,
   },
   stockCultureWarning: {
     alignSelf: "stretch",

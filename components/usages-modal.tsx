@@ -14,6 +14,9 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ProductUsage } from "@/lib/data-context";
 import { CULTURE_ALIASES, normalizeCultureName } from "@/lib/culture-aliases";
 import { createEphyCultureMatcher } from "@/lib/culture-usage-scope";
+import {
+  isActiveProductUsage,
+} from "@/lib/product-usages";
 
 interface UsagesModalProps {
   visible: boolean;
@@ -37,9 +40,10 @@ export function UsagesModal({
   // Usages filtrés par la culture initiale (si fournie)
   // Même portée directionnelle et mêmes restrictions que dans la recherche.
   const cultureFilteredUsages = useMemo(() => {
-    if (!initialCulture) return usages;
+    const activeUsages = usages.filter(isActiveProductUsage);
+    if (!initialCulture) return activeUsages;
     const matcher = createEphyCultureMatcher(initialCulture);
-    return usages.filter(matcher.matches);
+    return activeUsages.filter(matcher.matches);
   }, [usages, initialCulture]);
 
   // Liste des cibles disponibles pour les usages de la culture filtrée
@@ -134,6 +138,7 @@ export function UsagesModal({
       {item.condition ? (
         <Text style={styles.conditionText}>{item.condition}</Text>
       ) : null}
+
     </View>
   );
 
