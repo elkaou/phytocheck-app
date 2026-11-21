@@ -94,6 +94,7 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     "expo-iap",
+    "./plugins/with-optional-screen-orientations",
     [
       "expo-camera",
       {
